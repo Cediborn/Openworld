@@ -92,9 +92,13 @@ jobs:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /home/runner/debug.keystore
           GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+          # Release build (smaller, faster) signed with the same fixed key.
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: /home/runner/debug.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
         run: |
           mkdir -p ../build/android
-          ~/godot/godot --headless --path . --export-debug "Android" ../build/android/Openworld.apk
+          ~/godot/godot --headless --path . --export-release "Android" ../build/android/Openworld.apk
           test -f ../build/android/Openworld.apk
 
       - uses: actions/upload-artifact@v4
