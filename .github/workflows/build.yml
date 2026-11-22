@@ -89,8 +89,12 @@ jobs:
       - name: Install the Android build template (for a Gradle-built APK)
         working-directory: game
         run: |
-          ~/godot/godot --headless --path . --install-android-build-template --quit || true
-          ls android/build | head -5
+          # Same as Project > Install Android Build Template in the editor.
+          rm -rf android && mkdir -p android/build
+          unzip -q ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/android_source.zip -d android/build
+          printf '%s' "${GODOT_VERSION}.stable" > android/.build_version
+          touch android/build/.gdignore
+          ls android android/build | head -12
 
       - name: Export Android
         working-directory: game
