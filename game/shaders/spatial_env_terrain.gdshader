@@ -87,7 +87,9 @@ void fragment() {
 	float road = smoothstep(0.4, 0.6, pm.g);
 	float snow_cap = smoothstep(snow_line - 15.0, snow_line + 15.0, world_pos.y + macro * 30.0) * (1.0 - smoothstep(0.55, 0.75, slope));
 
-	col = mix(col, layer_albedo(5, xz), trail);
+	// Trails through snow are trampled snow, not bare dirt.
+	vec3 trail_c = mix(layer_albedo(5, xz), layer_albedo(1, xz) * 0.82, smoothstep(0.3, 0.7, w[1]));
+	col = mix(col, trail_c, trail);
 	col = mix(col, layer_albedo(6, xz), road);
 	col = mix(col, layer_albedo(7, xz) * mix(vec3(1.0), vec3(0.55, 0.5, 0.52), w[2]), cliff);
 	col = mix(col, layer_albedo(1, xz), snow_cap);

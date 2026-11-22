@@ -72,6 +72,10 @@ jobs:
           ~/godot/godot --headless --import --path . || true
           ~/godot/godot --headless --import --path . || true
 
+      - name: Run world data tests
+        working-directory: game
+        run: ~/godot/godot --headless --path . -s res://tests/unit/world/world_data_test.gd
+
       - name: Export Windows
         working-directory: game
         run: |

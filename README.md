@@ -9,23 +9,41 @@ A realistic open-world exploration game for PC and phone (landscape), made with 
    - **Openworld-Android-APK**: download, unzip, and open `Openworld.apk` on your phone. Allow "install unknown apps" if asked.
    - **Openworld-Windows**: download, unzip, and run `Openworld.exe`.
 
+A new build is not pushed to your phone automatically: install each new APK the same way.
+It replaces the old version in place.
+
+## The island
+
+| Zone | Where | What's there |
+|---|---|---|
+| Hub Meadow | centre (spawn) | grass, wildflowers, oaks, a loop trail; fireflies at night |
+| Frost Peaks | north | snowy pines, a mountain pass, falling snow, aurora at night |
+| Ember Wastes | east | black basalt, lava rivers, rising embers, smoky haze |
+| Glow Hollow | south | giant glowing mushrooms, crystals, blue grass that shines at night |
+| Brickton | west | timber-framed houses on a cobbled street, lit windows at night |
+
+A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is top-left.
+
 ## Controls
 
 | | PC | Phone |
 |---|---|---|
-| Move | W A S D | Left joystick |
+| Move | W A S D (Ctrl to walk) | Left joystick (push a little to walk) |
 | Look | Mouse (click to lock, Esc to free) | Drag on the right side |
 | Sprint | Shift | Orange button |
-| Jump | Space | Big white button |
+| Jump | Space | White button |
 
-## What's in this first build
+## How it's built
 
-The green valley test zone: hills, a winding dirt trail, grass that moves in the wind, oak and pine trees, rocks, snowy mountains, golden-hour sun and haze.
-The explorer is a stand-in made of simple shapes; the realistic model comes next.
+- `game/`: the Godot project. `data/` holds the baked island (`tools/bake_world.gd` regenerates it) and tunable values.
+- Ground is drawn by the GPU from the baked height map, with less detail far away.
+- Grass travels with the player, so phones only draw what is close.
+- Phones render at a lower resolution that rises or falls to keep the frame rate steady.
+- `tools/fetch_vendor.py` + `tools/asset_manifest.json`: the **Fetch assets** workflow downloads the CC0 assets and stores them on the `assets` branch; builds copy them in.
+- `.github/workflows/build.yml`: runs the world tests and builds Windows and Android on every push.
+- `.claude/`, `CLAUDE.md`, `project.yaml`: the [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) template (MIT, see `LICENSE-claude-code-game-studios`).
 
-## Layout
+## Credits (all CC0)
 
-- `game/`: the Godot project (open `game/project.godot` in Godot 4.5)
-- `tools/fetch_assets.py`: downloads free CC0 photo textures from Poly Haven during the build
-- `.github/workflows/build.yml`: builds Windows and Android on every push
-- `.claude/`, `CLAUDE.md`, `project.yaml`: the [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) template (MIT, see `LICENSE-claude-code-game-studios`)
+- Explorer body and animations: Quaternius (Universal Base Characters, Universal Animation Library), via the Quaternius_IK_Rigged pack by jamesonBradfield.
+- Textures, rocks and plants: Poly Haven (see `tools/asset_manifest.json`).

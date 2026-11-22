@@ -115,7 +115,7 @@ func _build_aurora() -> void:
 			var u1 := float(s + 1) / segs
 			var p0 := _curtain(u0, c)
 			var p1 := _curtain(u1, c)
-			var hgt := 260.0 + c * 40.0
+			var hgt := 380.0 + c * 60.0
 			var quad := [[p0, Vector2(u0, 0)], [p1, Vector2(u1, 0)], [p0 + Vector3(0, hgt, 0), Vector2(u0, 1)], [p1 + Vector3(0, hgt, 0), Vector2(u1, 1)]]
 			for k in [0, 1, 2, 2, 1, 3]:
 				st.set_uv(quad[k][1])
@@ -127,14 +127,15 @@ func _build_aurora() -> void:
 	aurora_mat.set_shader_parameter("noise_tex", Props.noise())
 	aurora.material_override = aurora_mat
 	aurora.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	aurora.custom_aabb = AABB(Vector3(-2000, 0, -2500), Vector3(4000, 1200, 2600))
+	aurora.custom_aabb = AABB(Vector3(-2000, 0, -2500), Vector3(4000, 2200, 2600))
 	add_child(aurora)
 
 
 func _curtain(u: float, c: int) -> Vector3:
 	var x := lerpf(-1400.0, 1400.0, u)
-	var z := -900.0 - c * 180.0 + sin(u * 9.0 + c) * 160.0 + sin(u * 23.0) * 40.0
-	return Vector3(x, 420.0 + c * 60.0, z)
+	var z := -650.0 - c * 150.0 + sin(u * 9.0 + c) * 140.0 + sin(u * 23.0) * 40.0
+	# High enough to clear the far mountain ring (peaks reach ~850 m).
+	return Vector3(x, 900.0 + c * 80.0, z)
 
 
 func set_zone(weights: Array) -> void:
@@ -165,9 +166,9 @@ func _apply() -> void:
 	sun.light_energy = 1.7 * day
 	sun.visible = day > 0.01
 	sun.light_color = Color(1.0, 0.97, 0.92).lerp(Color(1.0, 0.68, 0.38), golden)
-	moon.light_energy = 0.32 * night
+	moon.light_energy = 0.55 * night
 	moon.visible = night > 0.05
-	env.ambient_light_energy = lerpf(0.25, 1.15, day)
+	env.ambient_light_energy = lerpf(0.55, 1.15, day)
 	env.background_energy_multiplier = lerpf(1.0, 1.0, day)
 	sky_mat.energy_multiplier = lerpf(0.5, 1.0, day)
 
