@@ -94,6 +94,10 @@ jobs:
           unzip -q ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/android_source.zip -d android/build
           printf '%s' "${GODOT_VERSION}.stable" > android/.build_version
           touch android/build/.gdignore
+          # Compress the engine library inside the APK (smaller download).
+          printf '\nandroid {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n    }\n}\n' >> android/build/build.gradle
+          grep -rl "extractNativeLibs" android/build/src 2>/dev/null | xargs -r sed -i 's/android:extractNativeLibs="false"/android:extractNativeLibs="true"/'
+          tail -8 android/build/build.gradle
           ls android android/build | head -12
 
       - name: Give each build a higher version number (so phones accept it as an update)
