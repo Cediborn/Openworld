@@ -25,9 +25,11 @@ var shot_hour := -1.0
 ## and its name is shown on screen so it can be reported.
 const BOOT_FILE := "user://boot_step.txt"
 const SKIP_FILE := "user://skip_steps.json"
+const ESSENTIAL := ["world data", "quality settings", "sky and lighting", "ground", "player", "first frame", "done"]
 var skip: Array = []
 var boot_label: Label
 var crash_note := ""
+var booted := false
 
 
 func _ready() -> void:
@@ -47,7 +49,10 @@ func _read_last_boot() -> void:
 		var last := FileAccess.get_file_as_string(BOOT_FILE).strip_edges()
 		if last != "" and last != "done":
 			crash_note = "Last launch crashed while loading: %s. Skipping it this time." % last
-			if not last in skip:
+			# Essential steps are never skipped; only optional scenery can be.
+			if last in ESSENTIAL:
+				crash_note = "Last launch crashed while loading: %s." % last
+			elif not last in skip:
 				skip.append(last)
 			var f := FileAccess.open(SKIP_FILE, FileAccess.WRITE)
 			f.store_string(JSON.stringify(skip))
@@ -81,7 +86,7 @@ func _step(name: String) -> bool:
 	_mark(name)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	return not name in skip
+	return name in ESSENTIAL or not name in skip
 
 
 func _boot() -> void:
@@ -141,6 +146,7 @@ func _boot() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_mark("done")
+	booted = true
 	boot_label.get_parent().get_node("BootBg").queue_free()
 	if crash_note != "":
 		boot_label.text = crash_note
@@ -254,7 +260,8 @@ func _process(delta: float) -> void:
 	hud_zone.modulate.a = clampf(minf(zone_timer, 3.5 - zone_timer) * 2.0, 0.0, 1.0)
 
 	if tour.size() > 0:
-		_run_tour()
+		if booted:
+			_run_tour()
 		return
 	if shot_path != "":
 		shot_frames += 1
