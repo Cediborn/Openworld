@@ -86,6 +86,12 @@ jobs:
           ~/godot/godot --headless --path . --export-release "Windows Desktop" ../build/windows/Openworld.exe
           test -f ../build/windows/Openworld.exe
 
+      - name: Install the Android build template (for a Gradle-built APK)
+        working-directory: game
+        run: |
+          ~/godot/godot --headless --path . --install-android-build-template --quit || true
+          ls android/build | head -5
+
       - name: Export Android
         working-directory: game
         env:
@@ -100,6 +106,7 @@ jobs:
           mkdir -p ../build/android
           ~/godot/godot --headless --path . --export-release "Android" ../build/android/Openworld.apk
           test -f ../build/android/Openworld.apk
+          ls -la ../build/android
 
       - uses: actions/upload-artifact@v4
         with:
