@@ -86,11 +86,6 @@
    "res": "1k"
   },
   {
-   "id": "jacaranda_tree",
-   "type": "models",
-   "res": "1k"
-  },
-  {
    "id": "fir_sapling",
    "type": "models",
    "res": "1k"
@@ -198,6 +193,11 @@
   {
    "id": "mossy_rock",
    "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "jacaranda_tree",
+   "type": "models",
    "res": "1k"
   }
  ],

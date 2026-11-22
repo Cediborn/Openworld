@@ -38,9 +38,27 @@ def polyhaven_asset(asset_id, kind, res, out_dir, log):
     dest = out_dir / asset_id
     if kind == "models":
         g = files["gltf"][res]["gltf"]
-        save(dest / f"{asset_id}.gltf", fetch(g["url"]))
+        gltf_bytes = fetch(g["url"])
         for rel, info in g.get("include", {}).items():
             save(dest / rel, fetch(info["url"]))
+        # JPEG colour maps lose the leaf cut-outs; fetch PNG versions with alpha.
+        swapped = []
+        for key, val in files.items():
+            if key in ("gltf", "fbx", "blend", "usd") or not isinstance(val, dict):
+                continue
+            if "diff" not in key.lower():
+                continue
+            png = val.get(res, {}).get("png")
+            if not png:
+                continue
+            name = png["url"].rsplit("/", 1)[-1]
+            save(dest / "textures" / name, fetch(png["url"]))
+            swapped.append(name)
+        text = gltf_bytes.decode("utf-8")
+        for name in swapped:
+            text = text.replace("textures/" + name[:-4] + ".jpg", "textures/" + name)
+        save(dest / f"{asset_id}.gltf", text.encode("utf-8"))
+        save(OUT / "catalogues" / "files" / f"{asset_id}.json", json.dumps(files, indent=1).encode())
     elif kind == "hdris":
         save(dest / f"{asset_id}.hdr", fetch(files["hdri"][res]["hdr"]["url"]))
     else:
