@@ -1,6 +1,6 @@
 extends Node3D
 ## The open world: loads the baked island and builds the ground, plants,
-## village, sky, effects, player and on-screen controls.
+## village, sky, effects, animals, player and on-screen controls.
 
 var data := WorldData.new()
 var config: Dictionary = {}
@@ -134,6 +134,10 @@ func _boot() -> void:
 		grass = GrassField.new()
 		add_child(grass)
 		grass.setup(data, player, mobile)
+	if await _step("wildlife"):
+		var wildlife := Wildlife.new()
+		add_child(wildlife)
+		wildlife.setup(data, player, mobile)
 	if await _step("weather effects"):
 		effects = ZoneEffects.new()
 		add_child(effects)

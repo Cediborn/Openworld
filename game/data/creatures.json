@@ -1,0 +1,35 @@
+{
+  "_comment": "Green-valley animals. Speeds in m/s, distances in metres, times in seconds. stride = metres covered per full step cycle.",
+  "species": {
+    "deer": {
+      "model": "res://assets/creatures/RedDeer.glb",
+      "walk_speed": 1.3, "run_speed": 9.0, "walk_stride": 1.5, "run_stride": 3.6,
+      "flee_radius": 18.0, "calm_radius": 40.0, "wander_radius": 30.0,
+      "idle_time": [3.0, 9.0], "graze_chance": 0.6, "scale": [0.92, 1.08],
+      "swing": 0.42, "lift": 0.9, "bob": 0.03
+    },
+    "boar": {
+      "model": "res://assets/creatures/WildBoar.glb",
+      "walk_speed": 1.0, "run_speed": 6.5, "walk_stride": 0.9, "run_stride": 2.0,
+      "flee_radius": 10.0, "calm_radius": 25.0, "wander_radius": 20.0,
+      "idle_time": [2.0, 7.0], "graze_chance": 0.8, "scale": [0.9, 1.12],
+      "swing": 0.45, "lift": 0.7, "bob": 0.02
+    },
+    "wolf": {
+      "model": "res://assets/creatures/GreyWolf.glb",
+      "walk_speed": 1.5, "run_speed": 8.0, "walk_stride": 1.1, "run_stride": 2.6,
+      "flee_radius": 12.0, "calm_radius": 30.0, "wander_radius": 45.0,
+      "idle_time": [2.0, 6.0], "graze_chance": 0.25, "scale": [0.95, 1.05],
+      "swing": 0.5, "lift": 0.8, "bob": 0.025
+    }
+  },
+  "spawns": [
+    {"species": "deer", "count": 5, "center": [30, 70], "radius": 22},
+    {"species": "deer", "count": 3, "center": [-60, 110], "radius": 15},
+    {"species": "boar", "count": 3, "center": [-40, 30], "radius": 14},
+    {"species": "boar", "count": 2, "center": [70, -20], "radius": 10},
+    {"species": "wolf", "count": 3, "center": [20, -110], "radius": 18}
+  ],
+  "max_active_mobile": 10,
+  "active_distance": 140.0
+}

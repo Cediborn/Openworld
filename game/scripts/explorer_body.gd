@@ -8,7 +8,12 @@ const MODEL := "res://assets/character/Superhero_Male_FullBody.gltf"
 const ANIM_DIR := "res://assets/character/anims/"
 const ANIMS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Jump_Start", "Jump", "Jump_Land", "Swim_Idle", "Swim_Fwd"]
 
-enum Region { SKIN, JACKET, PANTS, BOOTS }
+enum Region { SKIN, JACKET, PANTS, BOOTS, HAIR }
+
+## How far each region is pushed out along the normal (metres) and how many
+## smoothing passes it gets. Smoothing hides the base body's muscles under cloth.
+const INFLATE := [0.0, 0.034, 0.02, 0.016, 0.009]
+const SMOOTH_PASSES := [0, 24, 16, 18, 2]
 
 const JACKET_BONES := ["Spine", "Chest", "UpperChest", "LeftShoulder", "RightShoulder",
 	"LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm"]
@@ -18,6 +23,7 @@ const FOOT_BONES := ["LeftFoot", "RightFoot", "LeftToes", "RightToes"]
 var anim: AnimationPlayer
 var skeleton: Skeleton3D
 var current := ""
+var smooth_normals := PackedVector3Array()
 
 
 func _ready() -> void:
@@ -57,7 +63,7 @@ func _region_of_bone(b: String, y: float) -> int:
 	if b in LEG_BONES:
 		return Region.BOOTS if y < 0.36 else Region.PANTS
 	if b == "Hips":
-		return Region.JACKET if y > 1.02 else Region.PANTS
+		return Region.JACKET if y > 0.93 else Region.PANTS   # jacket hem falls over the hips
 	if b in JACKET_BONES:
 		return Region.JACKET
 	return Region.SKIN
@@ -89,6 +95,7 @@ func _paint_regions(arrays: Array, skin: Skin) -> Array:
 	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
 	var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 	var per: int = bones.size() / verts.size()
 	var bind_names := []
 	for i in skin.get_bind_count():
@@ -96,9 +103,10 @@ func _paint_regions(arrays: Array, skin: Skin) -> Array:
 		if nm == &"":
 			nm = skeleton.get_bone_name(skin.get_bind_bone(i))
 		bind_names.append(String(nm))
-	var cols := PackedColorArray()
-	cols.resize(verts.size())
-	var inflate := [0.0, 0.03, 0.018, 0.02]
+	var region := PackedInt32Array()
+	region.resize(verts.size())
+	var head_w := PackedFloat32Array()
+	head_w.resize(verts.size())
 	for v in verts.size():
 		var score := [0.0, 0.0, 0.0, 0.0]
 		for k in per:
@@ -108,15 +116,117 @@ func _paint_regions(arrays: Array, skin: Skin) -> Array:
 			var bi: int = bones[v * per + k]
 			var bname: String = bind_names[bi] if bi < bind_names.size() else ""
 			score[_region_of_bone(bname, verts[v].y)] += w
+			if bname == "Head":
+				head_w[v] += w
 		var r := 0
 		for i in 4:
 			if score[i] > score[r]:
 				r = i
-		cols[v] = Color(r / 3.0, 0, 0, 1)
-		verts[v] += norms[v] * inflate[r]
+		region[v] = r
+	_mark_hair(verts, head_w, region)
+	smooth_normals = norms.duplicate()
+	verts = _smooth_cloth(verts, indices, region)
+	# Winding check: keep the new normals pointing the same way as the originals.
+	for v in verts.size():
+		if smooth_normals[v].dot(norms[v]) < 0.0:
+			smooth_normals[v] = -smooth_normals[v]
+	norms = smooth_normals
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	var cols := PackedColorArray()
+	cols.resize(verts.size())
+	for v in verts.size():
+		cols[v] = Color(region[v] / 4.0, 0, 0, 1)
+		var push: float = INFLATE[region[v]]
+		if region[v] == Region.JACKET:
+			# Fill the base body's narrow waist so the jacket hangs straight like a parka.
+			push += 0.035 * clampf(1.0 - absf(verts[v].y - 1.05) / 0.18, 0.0, 1.0)
+		verts[v] += norms[v] * push
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_COLOR] = cols
 	return arrays
+
+
+## Short hair: the top and back of the skull, above the brow and ears.
+func _mark_hair(verts: PackedVector3Array, head_w: PackedFloat32Array, region: PackedInt32Array) -> void:
+	var lo := Vector3.INF
+	var hi := -Vector3.INF
+	for v in verts.size():
+		if head_w[v] > 0.6:
+			lo = lo.min(verts[v])
+			hi = hi.max(verts[v])
+	if lo == Vector3.INF:
+		return
+	var h := hi - lo
+	var cx := (lo.x + hi.x) * 0.5
+	for v in verts.size():
+		if head_w[v] < 0.5:
+			continue
+		var q := (verts[v] - lo) / h   # 0..1 inside the head's box; face is +Z
+		var crown := q.y > 0.70 - 0.10 * (1.0 - q.z)          # hairline sweeps lower towards the back
+		var back := q.z < 0.42 and q.y > 0.36
+		var side := absf(verts[v].x - cx) / (h.x * 0.5) > 0.82 and q.y > 0.62 and q.z < 0.6   # temples, above the ears
+		if crown or back or side:
+			region[v] = Region.HAIR
+
+
+## Taubin smoothing on clothing only. Vertices are welded by position first,
+## so UV seams don't tear apart.
+func _smooth_cloth(verts: PackedVector3Array, indices: PackedInt32Array, region: PackedInt32Array) -> PackedVector3Array:
+	var key_of := {}
+	var weld := PackedInt32Array()
+	weld.resize(verts.size())
+	var uniq: Array[Vector3] = []
+	for v in verts.size():
+		var key := Vector3i((verts[v] * 2000.0).round())
+		if not key_of.has(key):
+			key_of[key] = uniq.size()
+			uniq.append(verts[v])
+		weld[v] = key_of[key]
+	var n := uniq.size()
+	var reg := PackedInt32Array()
+	reg.resize(n)
+	for v in verts.size():
+		reg[weld[v]] = maxi(reg[weld[v]], region[v])
+	var nbrs: Array = []
+	nbrs.resize(n)
+	for i in n:
+		nbrs[i] = []   # plain Array: packed arrays are copied on access, so append() would be lost
+	for t in range(0, indices.size(), 3):
+		for e in 3:
+			var a := weld[indices[t + e]]
+			var b := weld[indices[t + (e + 1) % 3]]
+			nbrs[a].append(b)
+			nbrs[b].append(a)
+	var pos := PackedVector3Array(uniq)
+	for pass_i in SMOOTH_PASSES.max():
+		var nxt := pos.duplicate()
+		for i in n:
+			if pass_i >= SMOOTH_PASSES[reg[i]] or nbrs[i].is_empty():
+				continue
+			var avg := Vector3.ZERO
+			for j in nbrs[i]:
+				avg += pos[j]
+			avg /= nbrs[i].size()
+			# Taubin smoothing: alternate shrink and grow steps so cloth keeps its volume.
+			nxt[i] = pos[i].lerp(avg, 0.6 if pass_i % 2 == 0 else -0.63)
+		pos = nxt
+	# Fresh normals from the smoothed surface, so cloth no longer shades like muscle.
+	var nrm := PackedVector3Array()
+	nrm.resize(n)
+	for t in range(0, indices.size(), 3):
+		var a := weld[indices[t]]
+		var b := weld[indices[t + 1]]
+		var c := weld[indices[t + 2]]
+		var fn := (pos[b] - pos[a]).cross(pos[c] - pos[a])
+		nrm[a] += fn
+		nrm[b] += fn
+		nrm[c] += fn
+	var out := verts.duplicate()
+	for v in verts.size():
+		out[v] = pos[weld[v]]
+		if region[v] != Region.SKIN and nrm[weld[v]].length_squared() > 0.0:
+			smooth_normals[v] = nrm[weld[v]].normalized()
+	return out
 
 
 func _outfit_material(body: Material) -> ShaderMaterial:
@@ -179,44 +289,33 @@ func _add_accessories() -> void:
 	tail.rotation.z = 0.25
 	neck.add_child(tail)
 
-	# Short dark hair: a slightly squashed cap over the skull.
-	var head := _attach("Head")
-	var hair := MeshInstance3D.new()
-	var hm := SphereMesh.new()
-	hm.radius = 0.112
-	hm.height = 0.21
-	hm.radial_segments = 24
-	hm.rings = 12
-	hair.mesh = hm
-	var hair_mat := _fabric(Color(0.09, 0.07, 0.05), 0.75)
-	hair_mat.uv1_scale = Vector3(30, 30, 1)
-	hair.material_override = hair_mat
-	hair.position = Vector3(0, 0.145, -0.03)
-	hair.scale = Vector3(1.03, 0.7, 1.1)
-	head.add_child(hair)
-
-	# Leather boots over the feet.
+	# Boot soles and laced cuffs (the boots themselves are painted on the feet).
 	for side in ["Left", "Right"]:
 		var foot := _attach(side + "Foot")
-		var boot := MeshInstance3D.new()
-		var bm := CapsuleMesh.new()
-		bm.radius = 0.072
-		bm.height = 0.31
-		boot.mesh = bm
-		boot.material_override = _fabric(Color(0.25, 0.16, 0.09), 0.6)
+		var leather := _fabric(Color(0.25, 0.16, 0.09), 0.6)
+		var sole := MeshInstance3D.new()
+		var sm := BoxMesh.new()
+		sm.size = Vector3(0.105, 0.26, 0.03)
+		sole.mesh = sm
+		sole.material_override = _fabric(Color(0.07, 0.06, 0.05), 0.85)
 		# Foot bone: local +Y points to the toes, local +Z points up.
-		boot.position = Vector3(0, 0.07, -0.045)
-		boot.scale = Vector3(1.25, 1.0, 1.0)
-		foot.add_child(boot)
-		var shaft := MeshInstance3D.new()
-		var shm := CapsuleMesh.new()
-		shm.radius = 0.062
-		shm.height = 0.24
-		shaft.mesh = shm
-		shaft.material_override = boot.material_override
-		shaft.position = Vector3(0, -0.005, 0.06)
-		shaft.rotation.x = PI * 0.5
-		foot.add_child(shaft)
+		sole.position = Vector3(0, 0.06, -0.075)
+		foot.add_child(sole)
+		var cuff := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.066
+		cm.bottom_radius = 0.058
+		cm.height = 0.07
+		cuff.mesh = cm
+		cuff.material_override = leather
+		cuff.position = Vector3(0, -0.01, 0.1)
+		cuff.rotation.x = PI * 0.5
+		foot.add_child(cuff)
+		# Rounded toe cap hides the base body's toes.
+		var cap := SphereMesh.new()
+		cap.radius = 0.06
+		cap.height = 0.12
+		_piece(foot, cap, leather, Vector3(0, 0.13, -0.035), Vector3.ZERO, Vector3(0.95, 1.45, 0.7))
 
 	# Backpack with a rolled sleeping mat on top.
 	var chest := _attach("UpperChest")
@@ -255,3 +354,61 @@ func _add_accessories() -> void:
 		strap.position = Vector3(0.1 * side, -0.05, 0.11)
 		strap.rotation.x = -0.12
 		chest.add_child(strap)
+
+	_add_jacket_details()
+
+
+## Field-jacket details from the concept sheet: collar, chest pockets with
+## flaps, front zip, thigh cargo pockets and the backpack's flap and side pockets.
+func _add_jacket_details() -> void:
+	var jacket := _fabric(Color(0.27, 0.28, 0.18))
+	var seam := _fabric(Color(0.17, 0.17, 0.11))
+	var neck := _attach("Neck")
+	_piece(neck, _torus(0.075, 0.118), jacket, Vector3(0, -0.035, -0.005), Vector3.ZERO, Vector3(1.0, 1.1, 1.0))
+	var chest := _attach("UpperChest")
+	for sx in [-1.0, 1.0]:
+		_piece(chest, _box(Vector3(0.1, 0.11, 0.03)), jacket, Vector3(0.085 * sx, 0.0, 0.125), Vector3(-0.12, 0, 0))
+		_piece(chest, _box(Vector3(0.11, 0.035, 0.035)), seam, Vector3(0.085 * sx, 0.06, 0.132), Vector3(-0.12, 0, 0))
+	_piece(chest, _box(Vector3(0.014, 0.5, 0.012)), seam, Vector3(0, -0.2, 0.135), Vector3(-0.1, 0, 0))
+	var pants := _fabric(Color(0.15, 0.15, 0.12))
+	for side in ["Left", "Right"]:
+		var leg := _attach(side + "UpperLeg")
+		var sx := -1.0 if side == "Left" else 1.0   # outer side of each thigh
+		_piece(leg, _box(Vector3(0.035, 0.16, 0.13)), pants, Vector3(0.085 * sx, 0.24, 0.02))
+		_piece(leg, _box(Vector3(0.04, 0.035, 0.14)), pants, Vector3(0.087 * sx, 0.155, 0.02))
+	var canvas := _fabric(Color(0.42, 0.33, 0.20))
+	_piece(chest, _box(Vector3(0.3, 0.06, 0.22)), _fabric(Color(0.36, 0.28, 0.17)), Vector3(0, 0.07, -0.21))
+	for sx in [-1.0, 1.0]:
+		var pocket := CapsuleMesh.new()
+		pocket.radius = 0.06
+		pocket.height = 0.22
+		_piece(chest, pocket, canvas, Vector3(0.19 * sx, -0.2, -0.2))
+	# Straps that hold the sleeping mat.
+	for sx in [-1.0, 1.0]:
+		_piece(chest, _torus(0.074, 0.084), _fabric(Color(0.22, 0.17, 0.11)), Vector3(0.12 * sx, 0.14, -0.2), Vector3(0, 0, PI * 0.5))
+
+
+func _piece(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	mi.scale = scl
+	parent.add_child(mi)
+	return mi
+
+
+static func _box(size: Vector3) -> BoxMesh:
+	var b := BoxMesh.new()
+	b.size = size
+	return b
+
+
+static func _torus(inner: float, outer: float) -> TorusMesh:
+	var t := TorusMesh.new()
+	t.inner_radius = inner
+	t.outer_radius = outer
+	t.rings = 24
+	t.ring_segments = 8
+	return t
