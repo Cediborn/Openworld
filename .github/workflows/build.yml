@@ -104,7 +104,16 @@ jobs:
           GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
         run: |
           mkdir -p ../build/android
-          ~/godot/godot --headless --path . --export-release "Android" ../build/android/Openworld.apk
+          set +e
+          ~/godot/godot --headless --path . --export-release "Android" ../build/android/Openworld.apk > export.log 2>&1
+          code=$?
+          set -e
+          if [ ! -f ../build/android/Openworld.apk ]; then
+            # Surface the tail of the log as an annotation (readable without signing in).
+            grep -iE "error|fail|what went wrong|exception|could not" export.log | tail -n 25 | tr '\n' '|' | sed 's/^/::error title=Android export::/' ; echo
+            tail -n 30 export.log | tr '\n' '|' | sed 's/^/::error title=Android export tail::/' ; echo
+            exit 1
+          fi
           test -f ../build/android/Openworld.apk
           ls -la ../build/android
 
