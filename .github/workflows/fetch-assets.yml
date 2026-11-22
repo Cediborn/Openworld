@@ -1,0 +1,41 @@
+name: Fetch assets
+
+# Downloads the CC0 assets listed in tools/asset_manifest.json and stores them
+# on the `assets` branch, so builds don't depend on outside sites being up.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/asset_manifest.json
+      - tools/fetch_vendor.py
+      - .github/workflows/fetch-assets.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-assets
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: python3 tools/fetch_vendor.py
+      - name: Commit to the assets branch
+        run: |
+          mkdir -p /tmp/out && cp -r vendor/. /tmp/out/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan assets-new
+          git rm -rq --cached . && find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r /tmp/out/. .
+          find . -type f -size +95M -not -path "./.git/*" -print -delete
+          git add -A
+          git commit -qm "Fetched assets from ${GITHUB_SHA::7}"
+          git push -f origin assets-new:assets
