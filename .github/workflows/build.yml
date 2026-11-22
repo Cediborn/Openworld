@@ -96,6 +96,12 @@ jobs:
           touch android/build/.gdignore
           ls android android/build | head -12
 
+      - name: Give each build a higher version number (so phones accept it as an update)
+        working-directory: game
+        run: |
+          sed -i "s/^version\/code=.*/version\/code=$((100 + GITHUB_RUN_NUMBER))/; s/^version\/name=.*/version\/name=\"0.2.${GITHUB_RUN_NUMBER}\"/" export_presets.cfg
+          grep "^version/" export_presets.cfg
+
       - name: Export Android
         working-directory: game
         env:
