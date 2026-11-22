@@ -1,0 +1,16 @@
+{
+  "_comment": "Sound mix. Volumes in dB. stride = metres walked between footsteps at that pace. Ambience fades between biomes by how much of each biome surrounds the player.",
+  "ambience": {
+    "meadow": {"file": "res://assets/audio/ambience/meadow.ogg", "volume_db": -8.0},
+    "frost": {"file": "res://assets/audio/ambience/frost.ogg", "volume_db": -6.0},
+    "ember": {"file": "res://assets/audio/ambience/ember.ogg", "volume_db": -5.0},
+    "glow": {"file": "res://assets/audio/ambience/glow.ogg", "volume_db": -7.0},
+    "village": {"file": "res://assets/audio/ambience/village.ogg", "volume_db": -8.0}
+  },
+  "ambience_fade": 1.5,
+  "footsteps": {"volume_db": -9.0, "walk_stride": 0.75, "run_stride": 1.15, "takes": 4},
+  "jump_db": -12.0,
+  "land_db": -8.0,
+  "creature_max_distance": 70.0,
+  "creature_unit_size": 8.0
+}

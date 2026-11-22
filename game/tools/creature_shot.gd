@@ -1,6 +1,6 @@
 extends Node3D
 # Test scene: the three green-valley animals side by side under a sun.
-# Args: <out.png> <mode: idle|walk|run|graze> [view: side|front|close]
+# Args: <out.png> <mode: idle|walk|run|graze|roar> [view: side|front|close] [species,list] [spacing]
 var frames := 0
 var mode := "idle"
 func _ready():
@@ -16,13 +16,20 @@ func _ready():
 	var ground := MeshInstance3D.new(); var pm := PlaneMesh.new(); pm.size = Vector2(40, 40); ground.mesh = pm
 	var gm := StandardMaterial3D.new(); gm.albedo_color = Color(0.3, 0.42, 0.2); ground.material_override = gm; add_child(ground)
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/creatures.json"))
-	var zs := {"deer": 1.9, "boar": 0.0, "wolf": -1.7}
-	for sp in ["deer", "boar", "wolf"]:
+	var list: PackedStringArray = (args[3] if args.size() > 3 else "deer,boar,wolf").split(",")
+	var gap: float = float(args[4]) if args.size() > 4 else 1.8
+	var zs := {}
+	for i in list.size():
+		zs[list[i]] = (float(list.size() - 1) * 0.5 - i) * gap
+	for sp in list:
 		var c := Creature.new()
 		var cfg: Dictionary = data.species[sp].duplicate()
 		cfg.scale = [1.0, 1.0]
 		cfg.idle_time = [999.0, 999.0]
 		cfg.graze_chance = 1.0 if mode == "graze" else 0.0
+		cfg.aggro_radius = 0.0
+		cfg.temper = "flee"
+		cfg.flee_radius = -1.0
 		add_child(c)
 		c.setup(cfg, 3)
 		c.position = Vector3(0, 0, zs[sp])
@@ -33,8 +40,9 @@ func _ready():
 			c.run_mix = 1.0 if mode == "run" else 0.0
 			c.target = c.position + Vector3(0, 0, -1000)
 	var cam := Camera3D.new(); cam.fov = 40; add_child(cam); cam.current = true
+	var span: float = gap * list.size()
 	if view == "side":
-		cam.position = Vector3(-5.6, 1.1, -0.3); cam.look_at(Vector3(0, 0.75, 0.0))
+		cam.position = Vector3(-span * 1.05 - 0.5, span * 0.18 + 0.6, -0.3); cam.look_at(Vector3(0, span * 0.14 + 0.35, 0.0))
 	elif view == "close":
 		cam.position = Vector3(-2.2, 1.0, -1.7); cam.look_at(Vector3(0, 0.75, -1.7))
 	else:
@@ -48,5 +56,8 @@ func _process(_d):
 			c.rotation.y = 0.0
 			if mode == "run":
 				c.state = Creature.State.FLEE
+			if mode == "roar":
+				c.state = Creature.State.ROAR
+				c.timer = 99.0
 	if frames == 37:
 		get_viewport().get_texture().get_image().save_png(OS.get_cmdline_user_args()[0]); get_tree().quit()

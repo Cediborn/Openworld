@@ -1,26 +1,74 @@
 {
-  "_comment": "Green-valley animals. Speeds in m/s, distances in metres, times in seconds. stride = metres covered per full step cycle.",
+  "_comment": "Island creatures. Speeds m/s, distances m, times s. stride = metres per full step cycle. min_height keeps a species out of lava. temper: flee (runs from the player) or threaten (roars, chases for chase_time, then returns home). zone: 0 meadow, 1 frost, 2 ember, 3 glow. sounds name files in assets/audio/creatures.",
   "species": {
     "deer": {
-      "model": "res://assets/creatures/RedDeer.glb",
+      "model": "res://assets/creatures/RedDeer.glb", "zone": 0, "temper": "flee",
       "walk_speed": 1.3, "run_speed": 9.0, "walk_stride": 1.5, "run_stride": 3.6,
       "flee_radius": 18.0, "calm_radius": 40.0, "wander_radius": 30.0,
       "idle_time": [3.0, 9.0], "graze_chance": 0.6, "scale": [0.92, 1.08],
-      "swing": 0.42, "lift": 0.9, "bob": 0.03
+      "swing": 0.42, "lift": 0.9, "bob": 0.03,
+      "sounds": {"call": "deer_call", "volume_db": -4.0}
     },
     "boar": {
-      "model": "res://assets/creatures/WildBoar.glb",
+      "model": "res://assets/creatures/WildBoar.glb", "zone": 0, "temper": "flee",
       "walk_speed": 1.0, "run_speed": 6.5, "walk_stride": 0.9, "run_stride": 2.0,
       "flee_radius": 10.0, "calm_radius": 25.0, "wander_radius": 20.0,
       "idle_time": [2.0, 7.0], "graze_chance": 0.8, "scale": [0.9, 1.12],
-      "swing": 0.45, "lift": 0.7, "bob": 0.02
+      "swing": 0.45, "lift": 0.7, "bob": 0.02,
+      "sounds": {"call": "boar_grunt", "volume_db": -3.0}
     },
     "wolf": {
-      "model": "res://assets/creatures/GreyWolf.glb",
+      "model": "res://assets/creatures/GreyWolf.glb", "zone": 0, "temper": "flee",
       "walk_speed": 1.5, "run_speed": 8.0, "walk_stride": 1.1, "run_stride": 2.6,
       "flee_radius": 12.0, "calm_radius": 30.0, "wander_radius": 45.0,
       "idle_time": [2.0, 6.0], "graze_chance": 0.25, "scale": [0.95, 1.05],
-      "swing": 0.5, "lift": 0.8, "bob": 0.025
+      "swing": 0.5, "lift": 0.8, "bob": 0.025,
+      "sounds": {"call": "wolf_howl", "volume_db": -2.0}
+    },
+    "ice_troll": {
+      "model": "res://assets/creatures/IceTroll.glb", "zone": 1, "body": "biped", "temper": "threaten",
+      "walk_speed": 1.1, "run_speed": 4.2, "walk_stride": 1.4, "run_stride": 2.4,
+      "aggro_radius": 16.0, "stop_distance": 4.0, "chase_time": 6.0, "leash": 45.0, "cooldown": 14.0, "roar_time": 1.8,
+      "wander_radius": 18.0, "idle_time": [3.0, 8.0], "graze_chance": 0.0, "scale": [0.95, 1.1],
+      "swing": 0.45, "lift": 0.7, "bob": 0.06,
+      "glow_color": [0.55, 0.85, 1.0], "glow_energy": 1.4, "roughness": 0.7,
+      "sounds": {"call": "troll_grunt", "roar": "troll_roar", "volume_db": 2.0}
+    },
+    "frost_spirit": {
+      "model": "res://assets/creatures/FrostSpirit.glb", "zone": 1, "body": "float", "shader": "spirit", "temper": "threaten",
+      "walk_speed": 1.0, "run_speed": 5.0, "walk_stride": 1.0, "run_stride": 1.0, "hover": 0.5,
+      "aggro_radius": 14.0, "stop_distance": 3.0, "chase_time": 5.0, "leash": 40.0, "cooldown": 10.0, "roar_time": 1.4,
+      "wander_radius": 25.0, "idle_time": [2.0, 6.0], "graze_chance": 0.0, "scale": [0.95, 1.05],
+      "swing": 0.0, "lift": 0.0, "bob": 0.0,
+      "glow_color": [0.75, 0.9, 1.0], "glow_energy": 1.5,
+      "sounds": {"call": "spirit_whisper", "roar": "spirit_shriek", "volume_db": -2.0}
+    },
+    "lava_golem": {
+      "model": "res://assets/creatures/LavaGolem.glb", "zone": 2, "min_height": 2.0, "body": "biped", "temper": "threaten",
+      "walk_speed": 0.9, "run_speed": 3.2, "walk_stride": 1.3, "run_stride": 2.0,
+      "aggro_radius": 15.0, "stop_distance": 4.0, "chase_time": 6.0, "leash": 40.0, "cooldown": 14.0, "roar_time": 2.0,
+      "wander_radius": 16.0, "idle_time": [4.0, 10.0], "graze_chance": 0.0, "scale": [0.95, 1.08],
+      "swing": 0.38, "lift": 0.55, "bob": 0.05,
+      "glow_color": [1.0, 0.42, 0.08], "glow_energy": 3.0, "roughness": 0.95,
+      "sounds": {"call": "golem_rumble", "roar": "golem_roar", "volume_db": 3.0}
+    },
+    "fire_salamander": {
+      "model": "res://assets/creatures/FireSalamander.glb", "zone": 2, "min_height": 2.0, "body": "quad", "temper": "threaten",
+      "walk_speed": 0.8, "run_speed": 4.5, "walk_stride": 0.35, "run_stride": 0.6,
+      "aggro_radius": 7.0, "stop_distance": 1.6, "chase_time": 3.0, "leash": 20.0, "cooldown": 8.0, "roar_time": 0.9,
+      "wander_radius": 12.0, "idle_time": [1.0, 5.0], "graze_chance": 0.0, "scale": [1.3, 1.6],
+      "swing": 0.55, "lift": 0.6, "bob": 0.0, "splay": 0.8, "wiggle": 0.28,
+      "glow_color": [1.0, 0.45, 0.08], "glow_energy": 3.5, "roughness": 0.5,
+      "sounds": {"call": "salamander_hiss", "roar": "salamander_hiss", "volume_db": -6.0}
+    },
+    "mushroom_beetle": {
+      "model": "res://assets/creatures/MushroomBeetle.glb", "zone": 3, "body": "hex", "temper": "threaten",
+      "walk_speed": 0.7, "run_speed": 3.0, "walk_stride": 0.45, "run_stride": 0.7,
+      "aggro_radius": 10.0, "stop_distance": 3.0, "chase_time": 4.0, "leash": 30.0, "cooldown": 12.0, "roar_time": 1.2,
+      "wander_radius": 16.0, "idle_time": [3.0, 8.0], "graze_chance": 0.3, "scale": [0.9, 1.15],
+      "swing": 0.4, "lift": 0.5, "bob": 0.01, "splay": 0.75, "wiggle": 0.04,
+      "glow_color": [0.35, 0.95, 1.0], "glow_energy": 2.5, "roughness": 0.35,
+      "sounds": {"call": "beetle_chitter", "roar": "beetle_hiss", "volume_db": -3.0}
     }
   },
   "spawns": [
@@ -28,7 +76,18 @@
     {"species": "deer", "count": 3, "center": [-60, 110], "radius": 15},
     {"species": "boar", "count": 3, "center": [-40, 30], "radius": 14},
     {"species": "boar", "count": 2, "center": [70, -20], "radius": 10},
-    {"species": "wolf", "count": 3, "center": [20, -110], "radius": 18}
+    {"species": "wolf", "count": 3, "center": [20, -110], "radius": 18},
+    {"species": "ice_troll", "count": 1, "center": [0, -300], "radius": 10},
+    {"species": "ice_troll", "count": 1, "center": [116, -319], "radius": 10},
+    {"species": "frost_spirit", "count": 2, "center": [-102, -281], "radius": 15},
+    {"species": "frost_spirit", "count": 1, "center": [90, -250], "radius": 12},
+    {"species": "lava_golem", "count": 1, "center": [300, 0], "radius": 10},
+    {"species": "lava_golem", "count": 1, "center": [281, -102], "radius": 10},
+    {"species": "fire_salamander", "count": 4, "center": [260, 30], "radius": 14},
+    {"species": "fire_salamander", "count": 3, "center": [281, 102], "radius": 12},
+    {"species": "mushroom_beetle", "count": 2, "center": [0, 300], "radius": 14},
+    {"species": "mushroom_beetle", "count": 2, "center": [-116, 319], "radius": 14},
+    {"species": "mushroom_beetle", "count": 1, "center": [116, 319], "radius": 12}
   ],
   "max_active_mobile": 10,
   "active_distance": 140.0

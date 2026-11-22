@@ -1,6 +1,7 @@
 class_name Wildlife
 extends Node3D
-## Spawns the green-valley animals listed in data/creatures.json and keeps
+## Spawns the island's creatures listed in data/creatures.json (each in its own
+## biome) and keeps
 ## only the ones near the player awake, so phones don't animate the whole island.
 
 var data: WorldData
@@ -12,7 +13,7 @@ var animals: Array[Creature] = []
 var _check := 0.0
 
 
-## Reads the spawn list and places every herd on meadow ground.
+## Reads the spawn list and places every group inside its biome.
 func setup(world_data: WorldData, p: Node3D, is_mobile: bool) -> void:
 	data = world_data
 	player = p
@@ -32,7 +33,8 @@ func setup(world_data: WorldData, p: Node3D, is_mobile: bool) -> void:
 				var a := rng.randf() * TAU
 				var r := sqrt(rng.randf()) * float(sp.radius)
 				var q := center + Vector3(cos(a) * r, 0, sin(a) * r)
-				if data.dominant_zone(q.x, q.z) == 0 and data.on_path(q.x, q.z) < 0.5:
+				if data.dominant_zone(q.x, q.z) == int(species.get("zone", 0)) and data.on_path(q.x, q.z) < 0.5 \
+						and data.height(q.x, q.z) > float(species.get("min_height", -INF)):
 					pos = q
 					break
 			if pos == Vector3.INF:

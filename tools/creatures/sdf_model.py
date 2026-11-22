@@ -81,10 +81,10 @@ def smin(a, b, k):
 
 
 class Part:
-    def __init__(self, kind, args, bone, color, blend=0.04, fur=0.0, tag=""):
+    def __init__(self, kind, args, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0):
         self.kind, self.args, self.bone = kind, args, bone
         self.color = np.asarray(color, float)
-        self.blend, self.fur, self.tag = blend, fur, tag
+        self.blend, self.fur, self.tag, self.glow = blend, fur, tag, glow
 
     def dist(self, p):
         if self.kind == "cone":
@@ -92,12 +92,12 @@ class Part:
         return ellipsoid(p, *self.args)
 
 
-def cone(a, b, ra, rb, bone, color, blend=0.04, fur=0.0, tag=""):
-    return Part("cone", (a, b, ra, rb), bone, color, blend, fur, tag)
+def cone(a, b, ra, rb, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0):
+    return Part("cone", (a, b, ra, rb), bone, color, blend, fur, tag, glow)
 
 
-def ell(c, r, bone, color, blend=0.04, fur=0.0, tag=""):
-    return Part("ell", (c, r), bone, color, blend, fur, tag)
+def ell(c, r, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0):
+    return Part("ell", (c, r), bone, color, blend, fur, tag, glow)
 
 
 def mirror(parts):
@@ -112,7 +112,7 @@ def mirror(parts):
             c, r = pt.args
             args = ((-c[0], c[1], c[2]), r)
         bone = pt.bone.replace("_L", "_R") if pt.bone.endswith("_L") else pt.bone
-        out.append(Part(pt.kind, args, bone, pt.color, pt.blend, pt.fur, pt.tag))
+        out.append(Part(pt.kind, args, bone, pt.color, pt.blend, pt.fur, pt.tag, pt.glow))
     return out
 
 # ---------------------------------------------------------------- model
@@ -121,7 +121,8 @@ class Model:
     def __init__(self, name, bones, parts, voxel=0.02, tris=6000, fur_freq=55.0, seed=1):
         self.name, self.bones, self.parts = name, bones, parts
         self.voxel, self.tris, self.fur_freq, self.seed = voxel, tris, fur_freq, seed
-        self.color_fn = None   # optional fn(points, normals, part_index, part_dist) -> rgb
+        self.color_fn = None   # optional fn(points, normals, part_dist, rgb) -> rgb
+        self.glow_fn = None    # optional fn(points, normals, part_dist) -> glow 0..1 (stored in alpha)
 
     def field(self, p, with_fur=True):
         d = None
@@ -193,7 +194,12 @@ class Model:
         cols = (w @ np.stack([pt.color for pt in self.parts])) / w.sum(1, keepdims=True)
         if self.color_fn is not None:
             cols = self.color_fn(verts, norms, pd, cols)
-        return np.clip(cols, 0, 1)
+        hard = np.zeros_like(w)
+        hard[np.arange(len(verts)), np.argmin(pd, 1)] = 1.0
+        glow = hard @ np.array([pt.glow for pt in self.parts])
+        if self.glow_fn is not None:
+            glow = np.maximum(glow, self.glow_fn(verts, norms, pd))
+        return np.clip(cols, 0, 1), np.clip(glow, 0, 1)
 
     def weights(self, verts, pd):
         names = [b[0] for b in self.bones]
@@ -212,14 +218,17 @@ class Model:
         verts, faces = self.mesh()
         norms = self.normals(verts)
         pd = self.part_distances(verts)
-        cols = self.colors(verts, norms, pd, faces)
+        cols, glow = self.colors(verts, norms, pd, faces)
         joints, wts = self.weights(verts, pd)
-        write_glb(path, self.name, verts, norms, cols, faces, joints, wts, self.bones)
+        write_glb(path, self.name, verts, norms, cols, faces, joints, wts, self.bones, glow)
         return len(verts), len(faces)
 
 # ---------------------------------------------------------------- glTF
 
-def write_glb(path, name, verts, norms, cols, faces, joints, wts, bones):
+def write_glb(path, name, verts, norms, cols, faces, joints, wts, bones, glow=None):
+    """Vertex alpha stores 1 - glow, so ordinary surfaces stay fully opaque white-alpha."""
+    if glow is None:
+        glow = np.zeros(len(verts))
     blobs, views, accs = [], [], []
 
     def add(arr, comp, typ, target=None, minmax=False, normalized=False):
@@ -243,7 +252,7 @@ def write_glb(path, name, verts, norms, cols, faces, joints, wts, bones):
     F, U8, U16, U32 = 5126, 5121, 5123, 5125
     a_pos = add(verts.astype(np.float32), F, "VEC3", 34962, True)
     a_nor = add(norms.astype(np.float32), F, "VEC3", 34962)
-    c8 = np.concatenate([np.round(cols * 255), np.full((len(cols), 1), 255)], 1).astype(np.uint8)
+    c8 = np.concatenate([np.round(cols * 255), np.round((1 - glow[:, None]) * 255)], 1).astype(np.uint8)
     a_col = add(c8, U8, "VEC4", 34962, normalized=True)
     a_jnt = add(joints, U16, "VEC4", 34962)
     a_wgt = add(wts, F, "VEC4", 34962)
