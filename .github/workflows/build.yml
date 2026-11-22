@@ -18,9 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download photo textures (Poly Haven, CC0)
-        continue-on-error: true
-        run: python3 tools/fetch_assets.py
+      - name: Get downloaded assets (assets branch)
+        run: |
+          git fetch --depth 1 origin assets
+          mkdir -p /tmp/assets && git archive FETCH_HEAD | tar -x -C /tmp/assets
+          mkdir -p game/assets/vendor
+          cp -r /tmp/assets/polyhaven game/assets/vendor/
+          # Only the leaf textures of this tree are used; its mesh is film-quality.
+          rm -f game/assets/vendor/polyhaven/models/jacaranda_tree/*.gltf
+          du -sh game/assets/vendor
 
       - uses: actions/setup-java@v4
         with:

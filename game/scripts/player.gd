@@ -1,13 +1,18 @@
 class_name Player
 extends CharacterBody3D
 ## Third-person explorer. Keyboard and mouse on PC, joystick and buttons on phone.
-## The body is a stand-in built from simple shapes until the realistic model lands.
+## Speeds come from data/game_config.json. Animations follow the real speed.
 
-const WALK := 3.2
-const RUN := 6.5
-const JUMP := 5.0
-const GRAVITY := 18.0
 const LOOK_SENS := 0.0025
+## Speed (m/s) at which each animation looks right at normal playback rate.
+const ANIM_SPEED := {"Walk": 1.45, "Jog_Fwd": 3.6, "Sprint": 6.2}
+
+var walk_speed := 2.2
+var jog_speed := 4.6
+var sprint_speed := 7.5
+var jump_velocity := 5.0
+var gravity := 18.0
+var camera_distance := 4.0
 
 var move_input := Vector2.ZERO     # set by touch joystick
 var look_input := Vector2.ZERO     # set by touch drag, consumed each frame
@@ -15,14 +20,22 @@ var sprint_held := false
 var jump_pressed := false
 
 var yaw := 0.0
-var pitch := -0.18
+var pitch := -0.2
 var cam_pivot: Node3D
 var spring: SpringArm3D
 var camera: Camera3D
-var model: Node3D
-var legs: Array[Node3D] = []
-var arms: Array[Node3D] = []
-var stride := 0.0
+var body: ExplorerBody
+var air_time := 0.0
+var land_timer := 0.0
+
+
+func setup(config: Dictionary) -> void:
+	walk_speed = config.get("walk_speed", walk_speed)
+	jog_speed = config.get("jog_speed", jog_speed)
+	sprint_speed = config.get("sprint_speed", sprint_speed)
+	jump_velocity = config.get("jump_velocity", jump_velocity)
+	gravity = config.get("gravity", gravity)
+	camera_distance = config.get("camera_distance", camera_distance)
 
 
 func _ready() -> void:
@@ -33,19 +46,19 @@ func _ready() -> void:
 	col.shape = cap
 	col.position.y = 0.9
 	add_child(col)
-	floor_snap_length = 0.5
-	floor_max_angle = deg_to_rad(50)
+	floor_snap_length = 0.6
+	floor_max_angle = deg_to_rad(52)
 
-	model = _build_body()
-	model.rotation.y = PI   # face away from the camera at spawn
-	add_child(model)
+	body = ExplorerBody.new()
+	add_child(body)
+	body.rotation.y = PI   # face away from the camera at spawn
 
 	cam_pivot = Node3D.new()
-	cam_pivot.position.y = 1.6
 	add_child(cam_pivot)
 	cam_pivot.top_level = true
+	cam_pivot.global_position = global_position + Vector3(0, 1.6, 0)
 	spring = SpringArm3D.new()
-	spring.spring_length = 4.2
+	spring.spring_length = camera_distance
 	spring.margin = 0.3
 	var probe := SphereShape3D.new()
 	probe.radius = 0.25
@@ -54,7 +67,7 @@ func _ready() -> void:
 	cam_pivot.add_child(spring)
 	camera = Camera3D.new()
 	camera.fov = 62.0
-	camera.far = 4000.0
+	camera.far = 5000.0
 	camera.position.x = 0.55   # over-the-shoulder
 	spring.add_child(camera)
 	camera.current = true
@@ -78,131 +91,63 @@ func _physics_process(delta: float) -> void:
 	var kb := Vector2(
 		float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)),
 		float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
-	var dir2: Vector2 = (move_input + kb).limit_length(1.0)
+	var stick: Vector2 = (move_input + kb).limit_length(1.0)
 	var running: bool = sprint_held or Input.is_physical_key_pressed(KEY_SHIFT)
+	var walking: bool = Input.is_physical_key_pressed(KEY_CTRL) or Input.is_physical_key_pressed(KEY_ALT)
 	var want_jump: bool = jump_pressed or Input.is_physical_key_pressed(KEY_SPACE)
 	jump_pressed = false
 
-	var basis_y := Basis(Vector3.UP, yaw)
-	var wish: Vector3 = basis_y * Vector3(dir2.x, 0, dir2.y)
-	var speed: float = (RUN if running else WALK) * dir2.length()
-	var target := wish.normalized() * speed if wish.length() > 0.05 else Vector3.ZERO
-	var accel: float = 10.0 if is_on_floor() else 3.0
-	velocity.x = move_toward(velocity.x, target.x, accel * delta * 6.0)
-	velocity.z = move_toward(velocity.z, target.z, accel * delta * 6.0)
+	# Push the stick a little to walk, all the way to jog; sprint button to run.
+	var speed := 0.0
+	var amount := stick.length()
+	if amount > 0.05:
+		if running:
+			speed = sprint_speed
+		elif walking:
+			speed = walk_speed
+		elif amount < 0.6:
+			speed = walk_speed * clampf(amount / 0.6, 0.4, 1.0)
+		else:
+			speed = jog_speed
+	var wish: Vector3 = Basis(Vector3.UP, yaw) * Vector3(stick.x, 0, stick.y)
+	var target := wish.normalized() * speed if amount > 0.05 else Vector3.ZERO
+	var accel: float = 14.0 if is_on_floor() else 3.0
+	velocity.x = move_toward(velocity.x, target.x, accel * delta * 4.0)
+	velocity.z = move_toward(velocity.z, target.z, accel * delta * 4.0)
 	if is_on_floor():
+		if air_time > 0.35:
+			land_timer = 0.25
+		air_time = 0.0
 		if want_jump:
-			velocity.y = JUMP
+			velocity.y = jump_velocity
+			body.play("Jump_Start", 0.08)
 	else:
-		velocity.y -= GRAVITY * delta
+		air_time += delta
+		velocity.y -= gravity * delta
 	move_and_slide()
 
 	var flat := Vector2(velocity.x, velocity.z)
 	if flat.length() > 0.3:
 		var face: float = atan2(flat.x, flat.y)
-		model.rotation.y = lerp_angle(model.rotation.y, face, 1.0 - exp(-12.0 * delta))
+		body.rotation.y = lerp_angle(body.rotation.y, face, 1.0 - exp(-10.0 * delta))
 	_animate(flat.length(), delta)
 
-	cam_pivot.global_position = cam_pivot.global_position.lerp(global_position + Vector3(0, 1.6, 0), 1.0 - exp(-20.0 * delta))
+	var follow := global_position + Vector3(0, 1.6, 0)
+	cam_pivot.global_position = cam_pivot.global_position.lerp(follow, 1.0 - exp(-18.0 * delta))
 	cam_pivot.rotation = Vector3(pitch, yaw, 0)
 
 
 func _animate(speed: float, delta: float) -> void:
-	stride += speed * delta * 2.1
-	var amt: float = clampf(speed / RUN, 0.0, 1.0)
-	var swing: float = sin(stride) * lerpf(0.0, 0.75, amt)
-	legs[0].rotation.x = swing
-	legs[1].rotation.x = -swing
-	arms[0].rotation.x = -swing * 0.8
-	arms[1].rotation.x = swing * 0.8
-	model.get_node("Body").position.y = 0.0 + absf(cos(stride)) * 0.05 * amt
-
-
-# ---------- Stand-in body ----------
-
-static func _mat(c: Color, rough := 0.85) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = c
-	m.roughness = rough
-	return m
-
-
-static func _part(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, scl := Vector3.ONE) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	mi.scale = scl
-	parent.add_child(mi)
-	return mi
-
-
-func _build_body() -> Node3D:
-	var root := Node3D.new()
-	var body := Node3D.new()
-	body.name = "Body"
-	root.add_child(body)
-	var jacket := _mat(Color(0.30, 0.31, 0.20))
-	var pants := _mat(Color(0.16, 0.16, 0.13))
-	var boots := _mat(Color(0.28, 0.18, 0.11), 0.7)
-	var skin := _mat(Color(0.72, 0.52, 0.40), 0.6)
-	var hair := _mat(Color(0.10, 0.08, 0.06))
-	var scarf := _mat(Color(0.48, 0.12, 0.10))
-	var canvas := _mat(Color(0.47, 0.38, 0.24))
-	var mat_roll := _mat(Color(0.32, 0.35, 0.27))
-
-	var cap := CapsuleMesh.new()
-	cap.radius = 0.11
-	cap.height = 0.9
-	for side in [-1, 1]:
-		var hip := Node3D.new()
-		hip.position = Vector3(0.11 * side, 0.92, 0)
-		body.add_child(hip)
-		_part(hip, cap, pants, Vector3(0, -0.45, 0))
-		var boot := BoxMesh.new()
-		boot.size = Vector3(0.15, 0.12, 0.28)
-		_part(hip, boot, boots, Vector3(0, -0.86, 0.04))
-		legs.append(hip)
-
-	var torso := CapsuleMesh.new()
-	torso.radius = 0.22
-	torso.height = 0.75
-	_part(body, torso, jacket, Vector3(0, 1.25, 0), Vector3(1.0, 1.0, 0.75))
-	var arm := CapsuleMesh.new()
-	arm.radius = 0.075
-	arm.height = 0.66
-	for side in [-1, 1]:
-		var sh := Node3D.new()
-		sh.position = Vector3(0.27 * side, 1.47, 0)
-		body.add_child(sh)
-		_part(sh, arm, jacket, Vector3(0.02 * side, -0.3, 0))
-		var hand := SphereMesh.new()
-		hand.radius = 0.055
-		hand.height = 0.11
-		_part(sh, hand, skin, Vector3(0.02 * side, -0.65, 0))
-		arms.append(sh)
-
-	var neck := TorusMesh.new()
-	neck.inner_radius = 0.06
-	neck.outer_radius = 0.15
-	_part(body, neck, scarf, Vector3(0, 1.58, 0), Vector3(1, 0.9, 1))
-	var head := SphereMesh.new()
-	head.radius = 0.115
-	head.height = 0.26
-	_part(body, head, skin, Vector3(0, 1.72, 0))
-	var hair_m := SphereMesh.new()
-	hair_m.radius = 0.12
-	hair_m.height = 0.16
-	hair_m.is_hemisphere = true
-	_part(body, hair_m, hair, Vector3(0, 1.76, -0.01))
-
-	var pack := BoxMesh.new()
-	pack.size = Vector3(0.36, 0.46, 0.2)
-	_part(body, pack, canvas, Vector3(0, 1.28, -0.25))
-	var roll := CylinderMesh.new()
-	roll.top_radius = 0.08
-	roll.bottom_radius = 0.08
-	roll.height = 0.46
-	var r := _part(body, roll, mat_roll, Vector3(0, 1.58, -0.25))
-	r.rotation.z = PI * 0.5
-	return root
+	land_timer -= delta
+	if air_time > 0.2:
+		body.play("Jump", 0.2)
+	elif land_timer > 0.0:
+		body.play("Jump_Land", 0.08)
+	elif speed < 0.25:
+		body.play("Idle", 0.25)
+	elif speed < walk_speed + 0.4:
+		body.play("Walk", 0.25, speed / ANIM_SPEED.Walk)
+	elif speed < jog_speed + 0.8:
+		body.play("Jog_Fwd", 0.2, speed / ANIM_SPEED.Jog_Fwd)
+	else:
+		body.play("Sprint", 0.2, speed / ANIM_SPEED.Sprint)

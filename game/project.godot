@@ -17,6 +17,19 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4
 
+[physics]
+
+common/physics_interpolation=true
+common/physics_ticks_per_second=60
+
+[importer_defaults]
+
+texture={
+"compress/mode": 2,
+"mipmaps/generate": true,
+"detect_3d/compress_to": 0
+}
+
 [input_devices]
 
 pointing/emulate_touch_from_mouse=false
@@ -28,9 +41,13 @@ renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="mobile"
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=1
+anti_aliasing/quality/msaa_3d.mobile=0
+scaling_3d/scale.mobile=0.62
+environment/defaults/default_clear_color=Color(0.5, 0.65, 0.85, 1)
 anti_aliasing/quality/screen_space_aa=1
 lights_and_shadows/directional_shadow/size=4096
 lights_and_shadows/directional_shadow/size.mobile=2048
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
-lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=1
-environment/defaults/default_clear_color=Color(0.55, 0.72, 0.9, 1)
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=0
+lights_and_shadows/positional_shadow/atlas_size.mobile=1024
+mesh_lod/lod_change/threshold_pixels=1.5

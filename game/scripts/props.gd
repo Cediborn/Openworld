@@ -44,7 +44,7 @@ static func bark_material() -> StandardMaterial3D:
 
 static func leaf_material(dark: Color, light: Color) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = load("res://shaders/foliage.gdshader")
+	m.shader = load("res://shaders/spatial_veg_foliage.gdshader")
 	m.set_shader_parameter("noise_tex", noise())
 	m.set_shader_parameter("leaf_dark", dark)
 	m.set_shader_parameter("leaf_light", light)

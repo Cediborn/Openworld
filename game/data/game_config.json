@@ -1,0 +1,14 @@
+{
+  "_comment": "Tunable gameplay values. Speeds in metres per second, day length in real minutes.",
+  "walk_speed": 2.2,
+  "jog_speed": 4.6,
+  "sprint_speed": 7.5,
+  "jump_velocity": 5.0,
+  "gravity": 18.0,
+  "camera_distance": 4.0,
+  "day_minutes": 16.0,
+  "start_hour": 7.6,
+  "target_fps_pc": 58,
+  "target_fps_mobile": 40,
+  "spawn": [0, 0, 40]
+}
