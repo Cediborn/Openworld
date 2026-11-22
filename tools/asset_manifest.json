@@ -1,17 +1,221 @@
 {
-  "polyhaven": [],
-  "zips": [
-    {
-      "name": "quaternius_ik_rigged",
-      "url": "https://codeberg.org/jamesonBradfield/Quaternius_IK_Rigged_with_animations/archive/5c4dae72e49ad4e5959571e00a25d3d872cacba5.zip",
-      "keep_prefix": "",
-      "skip_ext": [".import", ".uid"]
-    },
-    {
-      "name": "ual1_standard",
-      "url": "https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip",
-      "keep_prefix": "",
-      "skip_ext": []
-    }
-  ]
+ "polyhaven": [
+  {
+   "id": "fern_02",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "shrub_02",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "shrub_03",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "shrub_04",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "rock_07",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "rock_09",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "rock_face_01",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "rock_face_02",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "stone_01",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "rock_moss_set_01",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "dandelion_01",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "flower_empodium",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "flower_gazania",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "flower_ursinia",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "weed_plant_02",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "tree_stump_01",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "dead_tree_trunk",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "jacaranda_tree",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "fir_sapling",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "moon_rock_01",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "moon_rock_03",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "namaqualand_boulder_04",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "dead_quiver_trunk",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "nettle_plant",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "periwinkle_plant",
+   "type": "models",
+   "res": "1k"
+  },
+  {
+   "id": "leafy_grass",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "sparse_grass",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "dirt_floor",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "rock_face_03",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "snow_02",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "dark_rock_02",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "burned_ground_01",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "forest_floor",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "cobblestone_floor_05",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "plastered_stone_wall",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "weathered_brown_planks",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "clay_roof_tiles_02",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "castle_brick_07",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "bark_brown_02",
+   "type": "textures",
+   "res": "1k"
+  },
+  {
+   "id": "mossy_rock",
+   "type": "textures",
+   "res": "1k"
+  }
+ ],
+ "zips": [
+  {
+   "name": "quaternius_ik_rigged",
+   "url": "https://codeberg.org/jamesonBradfield/Quaternius_IK_Rigged_with_animations/archive/5c4dae72e49ad4e5959571e00a25d3d872cacba5.zip",
+   "keep_prefix": "",
+   "skip_ext": [
+    ".import",
+    ".uid"
+   ]
+  },
+  {
+   "name": "ual1_standard",
+   "url": "https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip",
+   "keep_prefix": "",
+   "skip_ext": []
+  }
+ ]
 }
