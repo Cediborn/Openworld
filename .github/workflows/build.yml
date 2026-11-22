@@ -8,6 +8,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   GODOT_VERSION: 4.5.1
 
@@ -103,3 +106,12 @@ jobs:
         with:
           name: Openworld-Windows
           path: build/windows/
+
+      - name: Publish APK and Windows zip as the "latest" release (direct download, no unzip on phone)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd build/windows && zip -q -r ../Openworld-Windows.zip . && cd ../..
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest build/android/Openworld.apk build/Openworld-Windows.zip \
+            --title "Latest build" --notes "Built from ${GITHUB_SHA::7}. On a phone, tap Openworld.apk to download and install." --latest
