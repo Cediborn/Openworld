@@ -26,9 +26,13 @@ var mobile := false
 var material: ShaderMaterial
 
 
-func setup(world_data: WorldData, is_mobile: bool) -> void:
+var photo := true
+
+
+func setup(world_data: WorldData, is_mobile: bool, use_photo := true) -> void:
 	data = world_data
 	mobile = is_mobile
+	photo = use_photo
 	material = _make_material()
 	_build_tiles()
 	_build_collision()
@@ -53,7 +57,7 @@ func _make_material() -> ShaderMaterial:
 	m.set_shader_parameter("fallback_colors", cols)
 	m.set_shader_parameter("layer_scale", scales)
 	m.set_shader_parameter("layer_tint", PackedVector3Array(TINTS))
-	var albedo := _layer_array("albedo")
+	var albedo := _layer_array("albedo") if photo else null
 	var normal := _layer_array("normal") if not mobile else null
 	m.set_shader_parameter("use_textures", albedo != null)
 	m.set_shader_parameter("use_normal_maps", normal != null)

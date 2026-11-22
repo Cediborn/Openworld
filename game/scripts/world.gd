@@ -20,44 +20,133 @@ var shot_frames := 0
 var shot_hour := -1.0
 
 
+## Loading steps, in order. Each is recorded before it runs; if the game
+## crashes during one, that step is skipped on the next launch (safe mode)
+## and its name is shown on screen so it can be reported.
+const BOOT_FILE := "user://boot_step.txt"
+const SKIP_FILE := "user://skip_steps.json"
+var skip: Array = []
+var boot_label: Label
+var crash_note := ""
+
+
 func _ready() -> void:
 	_parse_args()
 	config = JSON.parse_string(FileAccess.get_file_as_string("res://data/game_config.json"))
-	if not data.load_data():
-		push_error("World data missing: run tools/bake_world.gd")
-		return
-	var q := Quality.new()
-	add_child(q)
-	q.setup(mobile, config)
+	_read_last_boot()
+	_show_boot_label()
+	_boot()
 
-	sky = SkyCycle.new()
-	add_child(sky)
-	sky.setup(mobile, config)
-	if shot_hour >= 0.0:
-		sky.time_of_day = shot_hour
-		sky.day_minutes = 100000.0
 
-	var terrain := Terrain.new()
-	add_child(terrain)
-	terrain.setup(data, mobile)
+func _read_last_boot() -> void:
+	if FileAccess.file_exists(SKIP_FILE):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(SKIP_FILE))
+		if parsed is Array:
+			skip = parsed
+	if FileAccess.file_exists(BOOT_FILE):
+		var last := FileAccess.get_file_as_string(BOOT_FILE).strip_edges()
+		if last != "" and last != "done":
+			crash_note = "Last launch crashed while loading: %s. Skipping it this time." % last
+			if not last in skip:
+				skip.append(last)
+			var f := FileAccess.open(SKIP_FILE, FileAccess.WRITE)
+			f.store_string(JSON.stringify(skip))
+			f.close()
 
+
+func _mark(step: String) -> void:
+	var f := FileAccess.open(BOOT_FILE, FileAccess.WRITE)
+	f.store_string(step)
+	f.close()
+	if boot_label:
+		boot_label.text = ("%s\n\n" % crash_note if crash_note != "" else "") + "Loading: " + step + "..."
+
+
+func _show_boot_label() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 10
+	add_child(layer)
+	var bg := ColorRect.new()
+	bg.color = Color(0.05, 0.06, 0.08)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.name = "BootBg"
+	layer.add_child(bg)
+	boot_label = _label(Vector2(40, 40), 26)
+	boot_label.size = Vector2(1400, 400)
+	boot_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	layer.add_child(boot_label)
+
+
+func _step(name: String) -> bool:
+	_mark(name)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return not name in skip
+
+
+func _boot() -> void:
+	if await _step("world data"):
+		if not data.load_data():
+			boot_label.text = "World data missing."
+			return
+	if await _step("quality settings"):
+		var q := Quality.new()
+		add_child(q)
+		q.setup(mobile, config)
+	if await _step("sky and lighting"):
+		sky = SkyCycle.new()
+		add_child(sky)
+		sky.setup(mobile, config)
+		if shot_hour >= 0.0:
+			sky.time_of_day = shot_hour
+			sky.day_minutes = 100000.0
+	var photo_ground: bool = await _step("ground photo textures")
+	if await _step("ground"):
+		var terrain := Terrain.new()
+		add_child(terrain)
+		terrain.setup(data, mobile, photo_ground)
 	var veg := Vegetation.new()
 	add_child(veg)
-	veg.setup(data, mobile)
-
-	village = Village.new()
-	add_child(village)
-	village.setup(data)
-
+	veg.mobile = mobile
+	veg.data = data
+	veg.begin()
+	if await _step("trees"):
+		veg.add_kinds(["oak", "pine"])
+	if await _step("rocks"):
+		veg.add_kinds(["model_rock"])
+	if await _step("plants"):
+		veg.add_kinds(["model_plant"])
+	if await _step("mushrooms and crystals"):
+		veg.add_kinds(["mushroom", "crystal"])
+	if await _step("village"):
+		village = Village.new()
+		add_child(village)
+		village.setup(data)
+	_mark("player")
+	await get_tree().process_frame
 	_spawn_player()
-	grass = GrassField.new()
-	add_child(grass)
-	grass.setup(data, player, mobile)
-	effects = ZoneEffects.new()
-	add_child(effects)
-	effects.setup(player, mobile)
-	sky.night_changed.connect(_on_night)
+	if await _step("grass"):
+		grass = GrassField.new()
+		add_child(grass)
+		grass.setup(data, player, mobile)
+	if await _step("weather effects"):
+		effects = ZoneEffects.new()
+		add_child(effects)
+		effects.setup(player, mobile)
+	if sky:
+		sky.night_changed.connect(_on_night)
 	_build_ui()
+	_mark("first frame")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_mark("done")
+	boot_label.get_parent().get_node("BootBg").queue_free()
+	if crash_note != "":
+		boot_label.text = crash_note
+		get_tree().create_timer(8.0).timeout.connect(func(): boot_label.text = "")
+	else:
+		boot_label.text = ""
 	if fly.size() == 5:
 		var cam := Camera3D.new()
 		cam.far = 5000.0
@@ -145,12 +234,13 @@ func _build_ui() -> void:
 
 
 func _process(delta: float) -> void:
-	if player == null:
+	if player == null or sky == null or hud_fps == null:
 		return
 	var p := player.global_position
 	var w := data.zone(p.x, p.z)
 	sky.set_zone(w)
-	effects.update(w, sky.night)
+	if effects:
+		effects.update(w, sky.night)
 	hud_fps.text = "%d FPS" % Engine.get_frames_per_second()
 	hud_clock.text = sky.clock_text()
 	# Show the zone name when you walk into a new one.

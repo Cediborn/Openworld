@@ -13,18 +13,34 @@ var rng := RandomNumberGenerator.new()
 var bodies := {}     # tile key -> StaticBody3D for trunks and rocks
 
 
-func setup(world_data: WorldData, is_mobile: bool) -> void:
-	data = world_data
-	mobile = is_mobile
+var cfg: Dictionary = {}
+
+
+func begin() -> void:
 	rng.seed = 4242
-	var cfg: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/vegetation.json"))
+	cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/vegetation.json"))
+
+
+## Adds one group of items. Groups: oak, pine, mushroom, crystal,
+## model_rock (rocks, stumps, dead trees) and model_plant (ferns, shrubs, flowers).
+func add_kinds(groups: Array) -> void:
 	var scale_mul: float = cfg.mobile_scale if mobile else 1.0
 	for item in cfg["items"]:
+		if not _group_of(item) in groups:
+			continue
+		if mobile and not item.get("mobile", true):
+			continue
 		var parts := _parts_for(item)
 		if parts.is_empty():
 			continue
 		var xforms := _scatter(item, scale_mul)
 		_emit(item, parts, xforms)
+
+
+static func _group_of(item: Dictionary) -> String:
+	if item.kind != "model":
+		return item.kind
+	return "model_plant" if item.id in ["fern", "shrub_a", "shrub_b", "nettle", "dandelion"] else "model_rock"
 
 
 # ---------- What each item looks like ----------
@@ -94,7 +110,8 @@ func _model_parts(path: String, tint) -> Array:
 				arrays[Mesh.ARRAY_VERTEX] = v
 				arrays[Mesh.ARRAY_NORMAL] = nr
 			single.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-			out.append([_with_lods(single), mat])
+			# Phones skip building extra detail levels at load time (slow and memory hungry).
+			out.append([single if mobile else _with_lods(single), mat])
 	scene.free()
 	return out
 
