@@ -20,7 +20,7 @@ It replaces the old version in place.
 | Frost Peaks | north | snowy pines, a mountain pass, falling snow, aurora at night |
 | Ember Wastes | east | black basalt, lava rivers, rising embers, smoky haze |
 | Glow Hollow | south | giant glowing mushrooms, crystals, blue grass that shines at night |
-| Brickton | west | timber-framed houses on a cobbled street, lit windows at night |
+| Brickton | west | a market town: main street, market square with stalls and a well, inn, town hall bell tower, north and south residential streets, craft quarter, guarded east gate; 40+ townsfolk |
 
 A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is top-left.
 
@@ -32,6 +32,23 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 | Look | Mouse (click to lock, Esc to free) | Drag on the right side |
 | Sprint | Shift | Orange button |
 | Jump | Space | White button |
+| Attack (3-swing combo) | Left click or F | Red sword button |
+| Dodge roll | Q | Blue arrow button |
+| Block | Hold right mouse | Hold grey shield button |
+| Drink potion | H | Flask button (top right) |
+| Talk / use | E | Tap the prompt |
+| Dialogue choices | 1, 2, 3 or click | Tap |
+| Journal (quests, map, gear, progress) | J | Book button (top right) |
+
+## What there is to do
+
+- **Main story, The Shattered Island** (after the Elder's first quest): six chapters across all five regions, ending in the Ancient Sanctuary against the Ancient Guardian.
+- **10 side quests and 5 special quests** from townsfolk and travellers, or found in the world (an old map, a hole in the ground, a singing crystal).
+- **Monster contracts** from Captain Harlan, Brann the hunter and the board in the market square. New ones keep coming; pay grows with your level.
+- **Exploring**: 22 named places (some hidden), 12 treasures (chests, buried caches that need their map, a locked cellar, guarded hoards), 6 shrines with different puzzles, 4 rare bosses with unique weapons, random world events (raids, a travelling merchant, rare creatures, eruptions, travellers in need).
+- **Progress**: coins, experience and levels, Brickton reputation, weapons and armour (frost and fire resistance), blacksmith upgrades. Everything saves.
+
+Design notes: `design/gdd/chapter-one.md`. Content is generated from `tools/content/*.py` into `game/data/`.
 
 ## How it's built
 
@@ -40,7 +57,8 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 - Grass travels with the player, so phones only draw what is close.
 - Phones render at a lower resolution that rises or falls to keep the frame rate steady.
 - `tools/fetch_vendor.py` + `tools/asset_manifest.json`: the **Fetch assets** workflow downloads the CC0 assets and stores them on the `assets` branch; builds copy them in.
-- `.github/workflows/build.yml`: runs the world tests and builds Windows and Android on every push.
+- Combat animations for the explorer are authored on his skeleton by `tools/bake_anims.gd` (swings, guard, block, hit, death, talking); monsters animate procedurally with per-species attack moves (`data/creatures.json`).
+- `.github/workflows/build.yml`: runs the world, combat and full-playthrough tests and builds Windows and Android on every push.
 - `.claude/`, `CLAUDE.md`, `project.yaml`: the [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) template (MIT, see `LICENSE-claude-code-game-studios`).
 
 ## Credits (all CC0)

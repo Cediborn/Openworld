@@ -79,6 +79,17 @@ jobs:
         working-directory: game
         run: ~/godot/godot --headless --path . -s res://tests/unit/world/world_data_test.gd
 
+      - name: Run combat tests (every species attacks for real, sword hits only where the blade connects)
+        working-directory: game
+        run: |
+          ~/godot/godot --headless --path . -s res://tests/integration/combat_test.gd
+          ~/godot/godot --headless --path . -s res://tests/integration/sword_test.gd
+
+      - name: Play every quest, shrine, treasure and event start to finish
+        working-directory: game
+        timeout-minutes: 25
+        run: ~/godot/godot --headless --path . -s res://tests/integration/playthrough_test.gd
+
       - name: Export Windows
         working-directory: game
         run: |

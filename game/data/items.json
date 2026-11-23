@@ -1,0 +1,403 @@
+{
+  "_comment": "Everything the explorer can carry. kind: potion (heal = hit points), material, quest (cannot be sold), key, collectible, trophy, weapon (damage = sword multiplier, glow = blade colour), armor (armor = damage taken multiplier, frost/fire = extra multiplier against that element and for fire also lava). value = coins a merchant pays; price = coins to buy.",
+  "items": {
+    "potion": {
+      "name": "Healing Draught",
+      "kind": "potion",
+      "heal": 45,
+      "price": 25,
+      "value": 8,
+      "desc": "Bitter, warm, and very effective. Press H (or the flask button) to drink."
+    },
+    "elixir": {
+      "name": "Glowcap Elixir",
+      "kind": "potion",
+      "heal": 90,
+      "price": 70,
+      "value": 25,
+      "desc": "Wren's improved remedy, brewed from Glow Hollow mushrooms. Heals twice as much."
+    },
+    "iron_ore": {
+      "name": "Iron Ore",
+      "kind": "material",
+      "value": 6,
+      "price": 18,
+      "desc": "Rough ore from the Frost Peaks."
+    },
+    "frost_shard": {
+      "name": "Frost Shard",
+      "kind": "material",
+      "value": 12,
+      "desc": "A sliver of never-melting ice."
+    },
+    "ember_shard": {
+      "name": "Ember Shard",
+      "kind": "material",
+      "value": 12,
+      "desc": "Still warm. Glows when you breathe on it."
+    },
+    "glow_spore": {
+      "name": "Glow Spore",
+      "kind": "material",
+      "value": 10,
+      "desc": "A luminous spore pod from Glow Hollow."
+    },
+    "obsidian": {
+      "name": "Obsidian",
+      "kind": "material",
+      "value": 14,
+      "desc": "Volcanic glass, sharp enough to shave with."
+    },
+    "beetle_chitin": {
+      "name": "Beetle Chitin",
+      "kind": "material",
+      "value": 9,
+      "desc": "Light, hard shell plates."
+    },
+    "troll_hide": {
+      "name": "Troll Hide",
+      "kind": "material",
+      "value": 15,
+      "desc": "Thick, frost-white hide."
+    },
+    "golem_core": {
+      "name": "Golem Core",
+      "kind": "material",
+      "value": 30,
+      "desc": "A fist-sized stone that still hums with heat."
+    },
+    "starsteel": {
+      "name": "Starsteel Ingot",
+      "kind": "material",
+      "value": 60,
+      "desc": "Ancient metal that rings like a bell. Rare and precious."
+    },
+    "rare_crystal": {
+      "name": "Resonant Crystal",
+      "kind": "material",
+      "value": 50,
+      "desc": "A crystal that hums on its own. Nobody knows why."
+    },
+    "magic_crystal": {
+      "name": "Heartlight Crystal",
+      "kind": "collectible",
+      "value": 0,
+      "desc": "A crystal taken from the corruption's source, cleansed. It warms your hand and steadies your breath (+15 max health)."
+    },
+    "moonbell": {
+      "name": "Moonbell Flower",
+      "kind": "material",
+      "value": 5,
+      "desc": "A pale blue flower that only blooms in Glow Hollow."
+    },
+    "glowcap": {
+      "name": "Glowcap Mushroom",
+      "kind": "material",
+      "value": 5,
+      "desc": "A cap that glows teal in the dark."
+    },
+    "map_fragment": {
+      "name": "Ancient Map Fragment",
+      "kind": "quest",
+      "desc": "A torn piece of a very old map. The marks point to all five corners of the island."
+    },
+    "ancient_relic": {
+      "name": "Ember Relic",
+      "kind": "quest",
+      "desc": "A carved disc of black stone from the temple beneath the ashes. One of five matching slots is empty."
+    },
+    "crystal_sample": {
+      "name": "Corrupted Crystal Sample",
+      "kind": "quest",
+      "desc": "A shard of violet crystal. It flickers like something is looking out of it."
+    },
+    "fragment_meadow": {
+      "name": "Fragment of Growth",
+      "kind": "quest",
+      "desc": "A green ancient fragment from Hub Meadow."
+    },
+    "fragment_frost": {
+      "name": "Fragment of Stillness",
+      "kind": "quest",
+      "desc": "A white ancient fragment from Frost Peaks."
+    },
+    "fragment_ember": {
+      "name": "Fragment of Fire",
+      "kind": "quest",
+      "desc": "A red ancient fragment from the Ember Wastes."
+    },
+    "fragment_glow": {
+      "name": "Fragment of Light",
+      "kind": "quest",
+      "desc": "A teal ancient fragment from Glow Hollow."
+    },
+    "fragment_town": {
+      "name": "Fragment of Memory",
+      "kind": "quest",
+      "desc": "A golden ancient fragment hidden in Brickton."
+    },
+    "supply_bag": {
+      "name": "Hale's Supply Bag",
+      "kind": "quest",
+      "desc": "Heavy with spices, needles and a lot of paperwork."
+    },
+    "caravan_cargo": {
+      "name": "Caravan Strongbox",
+      "kind": "quest",
+      "desc": "The Ostrander caravan's strongbox. Still locked."
+    },
+    "explorer_journal": {
+      "name": "Edric's Journal",
+      "kind": "quest",
+      "desc": "Edric Vane's expedition journal. Several pages are missing."
+    },
+    "journal_page": {
+      "name": "Journal Page",
+      "kind": "quest",
+      "desc": "A torn page from Edric Vane's journal."
+    },
+    "last_page": {
+      "name": "Edric's Last Pages",
+      "kind": "quest",
+      "desc": "Water-stained pages from the end of Edric's journal."
+    },
+    "old_map": {
+      "name": "Old Treasure Map",
+      "kind": "quest",
+      "desc": "A crude map of Hub Meadow with three marks and a rhyme."
+    },
+    "chest_key": {
+      "name": "Brass Chest Key",
+      "kind": "key",
+      "desc": "Fits an old brass lock."
+    },
+    "rusty_key": {
+      "name": "Rusty Iron Key",
+      "kind": "key",
+      "desc": "Heavy and old. There's a crown stamped on the bow."
+    },
+    "sun_key": {
+      "name": "Sun Key",
+      "kind": "key",
+      "desc": "A golden key shaped like a sunburst."
+    },
+    "moon_key": {
+      "name": "Moon Key",
+      "kind": "key",
+      "desc": "A silver key shaped like a crescent."
+    },
+    "star_key": {
+      "name": "Star Key",
+      "kind": "key",
+      "desc": "A pale key shaped like a star."
+    },
+    "shrine_shard": {
+      "name": "Shrine Shard",
+      "kind": "quest",
+      "desc": "A carved piece of a shrine's mechanism."
+    },
+    "treasure_map_frost": {
+      "name": "Frozen Map",
+      "kind": "quest",
+      "desc": "A map drawn on hide. An X marks a spot in the Frost Peaks."
+    },
+    "treasure_map_glow": {
+      "name": "Spore-Stained Map",
+      "kind": "quest",
+      "desc": "A map of Glow Hollow, smelling of mushrooms. An X near the eastern pools."
+    },
+    "ancient_coin": {
+      "name": "Ancient Coin",
+      "kind": "collectible",
+      "value": 0,
+      "desc": "A coin from the old kingdom. A crowned tree on one side."
+    },
+    "warden_sigil": {
+      "name": "Warden's Sigil",
+      "kind": "collectible",
+      "value": 0,
+      "desc": "The mark of the island's Wardens."
+    },
+    "trophy_cinderhulk": {
+      "name": "Cinderhulk's Core",
+      "kind": "trophy",
+      "value": 0,
+      "desc": "Trophy: the molten heart of the ancient golem Cinderhulk."
+    },
+    "trophy_gloomhorn": {
+      "name": "Gloomhorn's Horn",
+      "kind": "trophy",
+      "value": 0,
+      "desc": "Trophy: the great horn of Gloomhorn."
+    },
+    "trophy_rimeclaw": {
+      "name": "Rimeclaw's Claw",
+      "kind": "trophy",
+      "value": 0,
+      "desc": "Trophy: a claw of ice that never melts."
+    },
+    "trophy_sentinel": {
+      "name": "Sentinel's Eye",
+      "kind": "trophy",
+      "value": 0,
+      "desc": "Trophy: the cracked crystal eye of the Hollow Sentinel."
+    },
+    "trophy_queen": {
+      "name": "Queen's Mandible",
+      "kind": "trophy",
+      "value": 0,
+      "desc": "Trophy: a mandible of the Beetle Queen."
+    },
+    "trophy_greymane": {
+      "name": "Greymane's Pelt",
+      "kind": "trophy",
+      "value": 0,
+      "desc": "Trophy: the silver pelt of the great wolf Greymane."
+    },
+    "trophy_guardian": {
+      "name": "Guardian's Crown",
+      "kind": "trophy",
+      "value": 0,
+      "desc": "Trophy: the crystal crown of the Ancient Guardian."
+    },
+    "iron_sword": {
+      "name": "Explorer's Sword",
+      "kind": "weapon",
+      "damage": 1.0,
+      "desc": "A plain, dependable short sword."
+    },
+    "heart_blade": {
+      "name": "Heartforged Sword",
+      "kind": "weapon",
+      "damage": 1.6,
+      "glow": [
+        0.5,
+        0.95,
+        1.0
+      ],
+      "desc": "Bram forged a sliver of the three heart-stones into your blade."
+    },
+    "hunter_blade": {
+      "name": "Hunter's Falchion",
+      "kind": "weapon",
+      "damage": 1.45,
+      "glow": [
+        0.9,
+        0.9,
+        0.8
+      ],
+      "desc": "Brann's spare blade. Light and quick."
+    },
+    "cinder_edge": {
+      "name": "Cinder Edge",
+      "kind": "weapon",
+      "damage": 1.95,
+      "glow": [
+        1.0,
+        0.45,
+        0.1
+      ],
+      "desc": "Forged from Cinderhulk's core. The edge never cools."
+    },
+    "frostbite": {
+      "name": "Frostbite",
+      "kind": "weapon",
+      "damage": 1.9,
+      "glow": [
+        0.6,
+        0.9,
+        1.0
+      ],
+      "desc": "Carved from Rimeclaw's claw. Leaves frost on whatever it cuts."
+    },
+    "gloomfang": {
+      "name": "Gloomfang",
+      "kind": "weapon",
+      "damage": 1.9,
+      "glow": [
+        0.3,
+        1.0,
+        0.8
+      ],
+      "desc": "Gloomhorn's horn, honed into a blade."
+    },
+    "kingsblade": {
+      "name": "Kingsblade of Caldor",
+      "kind": "weapon",
+      "damage": 2.15,
+      "glow": [
+        1.0,
+        0.85,
+        0.4
+      ],
+      "desc": "The last king of Caldor's sword, found in the royal chamber."
+    },
+    "dawnbreaker": {
+      "name": "Dawnbreaker",
+      "kind": "weapon",
+      "damage": 2.6,
+      "glow": [
+        1.0,
+        0.95,
+        0.75
+      ],
+      "desc": "Legendary. The Wardens' blade, freed from the Ancient Guardian's crown."
+    },
+    "frost_coat": {
+      "name": "Expedition Furs",
+      "kind": "armor",
+      "armor": 0.95,
+      "frost": 0.6,
+      "desc": "Cold-resistant furs. Frost creatures hit 40% softer."
+    },
+    "ember_mantle": {
+      "name": "Ashwalker Mantle",
+      "kind": "armor",
+      "armor": 0.95,
+      "fire": 0.55,
+      "desc": "Fire-resistant cloak. Fire creatures and lava burn 45% less."
+    },
+    "hunter_leathers": {
+      "name": "Hunter's Leathers",
+      "kind": "armor",
+      "armor": 0.85,
+      "desc": "Supple, reinforced leather. 15% less damage."
+    },
+    "royal_plate": {
+      "name": "Caldor Royal Plate",
+      "kind": "armor",
+      "armor": 0.75,
+      "frost": 0.9,
+      "fire": 0.9,
+      "desc": "Ancient plate from the royal chamber. 25% less damage."
+    },
+    "warden_mantle": {
+      "name": "Warden's Mantle",
+      "kind": "armor",
+      "armor": 0.8,
+      "frost": 0.7,
+      "fire": 0.7,
+      "desc": "The last Warden's mantle. Resists cold and fire."
+    },
+    "explorer_compass": {
+      "name": "Edric's Compass",
+      "kind": "collectible",
+      "value": 0,
+      "desc": "Its needle twitches toward places you haven't found yet. Undiscovered places show on your map."
+    }
+  },
+  "shop": {
+    "merchant": [
+      "potion",
+      "elixir",
+      "iron_ore"
+    ],
+    "travelling": [
+      "elixir",
+      "starsteel",
+      "rare_crystal",
+      "obsidian",
+      "potion"
+    ]
+  }
+}

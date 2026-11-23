@@ -14,9 +14,16 @@ var jump_btn := Rect2()
 var sprint_btn := Rect2()
 var attack_btn := Rect2()
 var pause_btn := Rect2()
+var dodge_btn := Rect2()
+var block_btn := Rect2()
+var potion_btn := Rect2()
+var journal_btn := Rect2()
 var sprint_on := false
+var block_touch := -1
 ## Called when the pause button is tapped.
 var on_pause: Callable
+## Called when the journal button is tapped.
+var on_journal: Callable
 
 
 func _ready() -> void:
@@ -32,6 +39,10 @@ func _layout() -> void:
 	sprint_btn = Rect2(Vector2(s.x - 360 * u, s.y - 170 * u), Vector2(110, 110) * u)
 	attack_btn = Rect2(Vector2(s.x - 330 * u, s.y - 340 * u), Vector2(140, 140) * u)
 	pause_btn = Rect2(Vector2(s.x - 96 * u, 16 * u), Vector2(76, 76) * u)
+	dodge_btn = Rect2(Vector2(s.x - 160 * u, s.y - 330 * u), Vector2(100, 100) * u)
+	block_btn = Rect2(Vector2(s.x - 470 * u, s.y - 290 * u), Vector2(100, 100) * u)
+	potion_btn = Rect2(Vector2(s.x - 96 * u, 110 * u), Vector2(76, 76) * u)
+	journal_btn = Rect2(Vector2(s.x - 190 * u, 16 * u), Vector2(76, 76) * u)
 
 
 func _input(event: InputEvent) -> void:
@@ -48,6 +59,16 @@ func _input(event: InputEvent) -> void:
 			elif pause_btn.has_point(event.position):
 				if on_pause.is_valid():
 					on_pause.call()
+			elif dodge_btn.has_point(event.position):
+				player.dodge_pressed = true
+			elif block_btn.has_point(event.position):
+				block_touch = event.index
+				player.block_held = true
+			elif potion_btn.has_point(event.position):
+				player.potion_pressed = true
+			elif journal_btn.has_point(event.position):
+				if on_journal.is_valid():
+					on_journal.call()
 			elif sprint_btn.has_point(event.position):
 				sprint_on = not sprint_on
 				player.sprint_held = sprint_on
@@ -62,6 +83,9 @@ func _input(event: InputEvent) -> void:
 				player.move_input = Vector2.ZERO
 			if event.index == look_touch:
 				look_touch = -1
+			if event.index == block_touch:
+				block_touch = -1
+				player.block_held = false
 		queue_redraw()
 	elif event is InputEventScreenDrag:
 		if event.index == stick_touch:
@@ -93,6 +117,23 @@ func _draw() -> void:
 	draw_circle(ac, attack_btn.size.x * 0.5, Color(0.85, 0.25, 0.2, 0.75))
 	draw_line(ac + Vector2(-26, 26) * u, ac + Vector2(26, -26) * u, Color(1, 1, 1), 9 * u)
 	draw_line(ac + Vector2(-30, 8) * u, ac + Vector2(-8, 30) * u, Color(1, 1, 1), 7 * u)
+	# Dodge (curved arrow), block (shield), potion (flask), journal (book).
+	var dc := dodge_btn.get_center()
+	draw_circle(dc, dodge_btn.size.x * 0.5, Color(0.25, 0.55, 0.85, 0.7))
+	draw_arc(dc, 22 * u, -2.6, 1.2, 16, Color(1, 1, 1), 7 * u)
+	draw_colored_polygon(PackedVector2Array([dc + Vector2(10, 22) * u, dc + Vector2(-6, 30) * u, dc + Vector2(4, 12) * u]), Color(1, 1, 1))
+	var bc := block_btn.get_center()
+	draw_circle(bc, block_btn.size.x * 0.5, Color(0.55, 0.55, 0.6, 0.85 if block_touch != -1 else 0.6))
+	draw_colored_polygon(PackedVector2Array([bc + Vector2(-20, -22) * u, bc + Vector2(20, -22) * u, bc + Vector2(18, 6) * u, bc + Vector2(0, 26) * u, bc + Vector2(-18, 6) * u]), Color(1, 1, 1))
+	var fc := potion_btn.get_center()
+	draw_circle(fc, potion_btn.size.x * 0.5, Color(0, 0, 0, 0.35))
+	draw_circle(fc + Vector2(0, 8) * u, 16 * u, Color(0.9, 0.25, 0.3))
+	draw_rect(Rect2(fc + Vector2(-6, -20) * u, Vector2(12, 16) * u), Color(0.9, 0.85, 0.8))
+	var jc := journal_btn.get_center()
+	draw_circle(jc, journal_btn.size.x * 0.5, Color(0, 0, 0, 0.35))
+	draw_rect(Rect2(jc + Vector2(-18, -20) * u, Vector2(36, 40) * u), Color(0.75, 0.55, 0.3))
+	draw_line(jc + Vector2(-10, -8) * u, jc + Vector2(10, -8) * u, Color(1, 1, 1), 3 * u)
+	draw_line(jc + Vector2(-10, 2) * u, jc + Vector2(10, 2) * u, Color(1, 1, 1), 3 * u)
 	# Pause button.
 	var pc := pause_btn.get_center()
 	draw_circle(pc, pause_btn.size.x * 0.5, Color(0, 0, 0, 0.35))

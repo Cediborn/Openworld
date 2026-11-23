@@ -21,8 +21,60 @@ func setup(data: WorldData) -> void:
 		_house(h)
 
 
+## Builds one more house from the same parts (used for lodges and halls outside the village).
+func build_house(h: Dictionary) -> void:
+	_house(h)
+
+
 func set_night(amount: float) -> void:
 	window_mat.emission_energy_multiplier = amount * 3.0
+	for l in night_lights:
+		l.visible = amount > 0.3
+		l.light_energy = 1.4 * amount
+
+
+var night_lights: Array[Light3D] = []
+
+
+## Signs, awnings, the town hall's bell tower and workshop sheds.
+func _extras(root: Node3D, h: Dictionary, w: float, d: float, top: float, rise: float) -> void:
+	var kind: String = h.get("kind", "")
+	if kind == "":
+		return
+	var timber := _tex_mat("weathered_brown_planks", Color(0.55, 0.45, 0.38), 0.8)
+	if h.has("name"):
+		var board := Structures.box(root, Vector3(2.6, 0.7, 0.08), Vector3(w * 0.25, 3.1, d * 0.5 + 0.45), timber)
+		board.name = "Sign"
+		var l := Structures.label(root, h.name, Vector3(w * 0.25, 3.1, d * 0.5 + 0.5), 54, Color(1.0, 0.92, 0.75))
+		l.double_sided = false
+		Structures.box(root, Vector3(0.08, 0.08, 0.5), Vector3(w * 0.25, 3.5, d * 0.5 + 0.25), timber)
+	match kind:
+		"inn":
+			var lan := Structures.box(root, Vector3(0.3, 0.4, 0.3), Vector3(-w * 0.32, 2.6, d * 0.5 + 0.35), window_mat)
+			lan.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var light := Structures.flame_light(root, Vector3(-w * 0.32, 2.4, d * 0.5 + 1.0), Color(1.0, 0.7, 0.4), 1.4, 12.0)
+			night_lights.append(light)
+		"shop":
+			Structures.box(root, Vector3(w * 0.8, 0.06, 1.8), Vector3(0, 2.75, d * 0.5 + 0.8), Structures.plain(Color(0.7, 0.25, 0.2), 0.9), Vector3(0.25, 0, 0))
+			for sx in [-1.0, 1.0]:
+				Structures.cyl(root, 0.05, 0.05, 2.6, Vector3(sx * w * 0.38, 1.8, d * 0.5 + 1.6), timber)
+		"hall":
+			# Bell tower over the roof ridge.
+			var tz := -d * 0.1
+			Structures.box(root, Vector3(2.4, 3.2, 2.4), Vector3(0, top + rise + 1.4, tz), _tex_mat("plastered_stone_wall", Color(0.9, 0.88, 0.82), 0.35))
+			for sx in [-1.0, 1.0]:
+				for sz in [-1.0, 1.0]:
+					Structures.box(root, Vector3(0.3, 2.0, 0.3), Vector3(sx * 1.05, top + rise + 4.0, tz + sz * 1.05), timber)
+			Structures.cyl(root, 0.55, 0.3, 0.7, Vector3(0, top + rise + 3.9, tz), Structures.plain(Color(0.65, 0.5, 0.25), 0.35, 0.8))
+			Structures.prism(root, Vector3(3.0, 2.0, 3.0), Vector3(0, top + rise + 6.0, tz), _tex_mat("clay_roof_tiles_02", Color(0.55, 0.58, 0.62), 0.5))
+		"workshop":
+			# Open lean-to on the street side with a workbench.
+			for sx in [-1.0, 1.0]:
+				Structures.cyl(root, 0.08, 0.08, 2.6, Vector3(sx * w * 0.42, 1.8, d * 0.5 + 2.6), timber)
+			Structures.box(root, Vector3(w * 0.95, 0.1, 3.0), Vector3(0, 3.15, d * 0.5 + 1.4), _tex_mat("clay_roof_tiles_02", Color(0.8, 0.7, 0.65), 0.5), Vector3(-0.2, 0, 0))
+			Structures.box(root, Vector3(2.2, 0.9, 0.8), Vector3(w * 0.2, 0.95, d * 0.5 + 1.2), timber, Vector3.ZERO, true)
+			for i in 3:
+				Structures.cyl(root, 0.15, 0.15, 2.0, Vector3(-w * 0.3, 0.65 + i * 0.28, d * 0.5 + 1.0), _tex_mat("bark_brown_02", Color(0.7, 0.6, 0.5), 1.0), Vector3(0, 0, PI * 0.5))
 
 
 func _tex_mat(name: String, tint := Color.WHITE, scale := 0.5) -> StandardMaterial3D:
@@ -119,6 +171,7 @@ func _house(h: Dictionary) -> void:
 				continue
 			_box(root, Vector3(0.9, 1.1, 0.1), Vector3(w * wx, 0.5 + f * 3.0 + 1.7, d * 0.5 + 0.04), window_mat)
 			_box(root, Vector3(1.1, 0.12, 0.2), Vector3(w * wx, 0.5 + f * 3.0 + 1.1, d * 0.5 + 0.08), timber)
+	_extras(root, h, w, d, top, rise)
 	# Collision.
 	var body := StaticBody3D.new()
 	var col := CollisionShape3D.new()

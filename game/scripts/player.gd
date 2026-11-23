@@ -44,16 +44,48 @@ var max_health := 100.0
 var health := 100.0
 var dead := false
 var attack_pressed := false   # set by the touch attack button
+var dodge_pressed := false    # set by the touch dodge button
+var block_held := false       # set by the touch block button
+var potion_pressed := false   # set by the touch potion button
 var since_damage := 99.0
 var since_attack := 99.0
-var attack_hit_at := -1.0     # seconds into the current swing when the blade connects
-var attack_clock := 0.0
 var burn_tick := 0.0
 var damage_mult := 1.0
+## Damage taken is multiplied by this (armour); per-element extra factors below.
+var armor_mult := 1.0
+var resist := {"frost": 1.0, "fire": 1.0}
 ## Camera look speed multiplier from the settings menu.
 var look_mult := 1.0
 ## Set by the Story node while a conversation is open: no attacking or moving.
 var in_conversation := false
+
+# Sword combo state. Each swing comes from combat.combo in game_config.json:
+# the animation, when the blade is "live" (fractions of the clip) and how far
+# the explorer steps in. Damage is dealt only where the blade's real path
+# crosses a creature's body, so hits land when the sword visibly connects.
+var swing := -1               # index into the combo, -1 when not attacking
+var swing_t := 0.0            # seconds into the current swing
+var swing_len := 0.0
+var swing_queued := false
+var swing_hit := {}           # creatures already struck by this swing
+var swing_yaw := 0.0          # facing locked for the swing
+var swing_step := Vector3.ZERO
+var prev_blade: Array = []
+var combo_reset := 0.0
+var dodge_t := -1.0
+var dodge_dir := Vector3.ZERO
+var blocking := false
+var heal_left := 0.0
+## Called to use a healing potion; returns true if one was used (set by the world).
+var use_potion: Callable
+## Emitted when a swing connects (for sounds and effects).
+signal struck(target: Node3D, pos: Vector3)
+## Emitted when a blocked hit is absorbed.
+signal blocked_hit
+## Emitted when a swing starts (combo index) and when a dodge roll starts.
+signal swung(index: int)
+signal dodged
+var trail: SwordTrail
 
 
 func setup(config: Dictionary) -> void:
@@ -101,6 +133,9 @@ func _ready() -> void:
 	camera.position.x = 0.55   # over-the-shoulder
 	spring.add_child(camera)
 	camera.current = true
+	trail = SwordTrail.new()
+	trail.body = body
+	add_child(trail)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -114,6 +149,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		attack_pressed = true
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_F:
 		attack_pressed = true
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_Q:
+			dodge_pressed = true
+		elif event.keycode == KEY_H:
+			potion_pressed = true
 
 
 func _physics_process(delta: float) -> void:
@@ -131,19 +171,28 @@ func _physics_process(delta: float) -> void:
 	jump_pressed = false
 	var want_attack := attack_pressed
 	attack_pressed = false
+	var want_dodge := dodge_pressed
+	dodge_pressed = false
+	var want_potion := potion_pressed
+	potion_pressed = false
+	var want_block: bool = block_held or (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
 	since_damage += delta
 	since_attack += delta
 	if dead or in_conversation:
 		stick = Vector2.ZERO
 		want_jump = false
 		want_attack = false
-	_update_combat(delta, want_attack)
+		want_dodge = false
+		want_block = false
+		want_potion = false
+	var wish: Vector3 = Basis(Vector3.UP, yaw) * Vector3(stick.x, 0, stick.y)
+	_update_combat(delta, want_attack, want_dodge, want_block, want_potion, wish)
 
 	# Push the stick a little to walk, all the way to jog; sprint button to run.
 	var speed := 0.0
 	var amount := stick.length()
 	if amount > 0.05:
-		if running:
+		if running and not blocking:
 			speed = sprint_speed
 		elif walking:
 			speed = walk_speed
@@ -151,21 +200,28 @@ func _physics_process(delta: float) -> void:
 			speed = walk_speed * clampf(amount / 0.6, 0.4, 1.0)
 		else:
 			speed = jog_speed
-	if attack_hit_at >= 0.0:
+	if swing >= 0:
 		speed *= combat.get("attack_move_factor", 0.3)
+	if blocking:
+		speed = minf(speed, walk_speed)
 	var in_lava := _in_lava()
 	if in_lava:
 		speed *= combat.get("lava_speed_factor", 0.55)
-	var wish: Vector3 = Basis(Vector3.UP, yaw) * Vector3(stick.x, 0, stick.y)
 	var target := wish.normalized() * speed if amount > 0.05 else Vector3.ZERO
+	if swing >= 0:
+		target += swing_step
+	if dodge_t >= 0.0:
+		target = dodge_dir * combat.get("dodge_speed", 7.5) * (1.0 - smoothstep(0.35, 0.6, dodge_t))
 	var accel: float = 14.0 if is_on_floor() else 3.0
+	if dodge_t >= 0.0:
+		accel = 40.0
 	velocity.x = move_toward(velocity.x, target.x, accel * delta * 4.0)
 	velocity.z = move_toward(velocity.z, target.z, accel * delta * 4.0)
 	if is_on_floor():
 		if air_time > 0.35:
 			land_timer = 0.25
 		air_time = 0.0
-		if want_jump and not body.busy():
+		if want_jump and not body.busy() and swing < 0:
 			velocity.y = jump_velocity
 			body.play("Jump_Start", 0.08)
 	else:
@@ -180,7 +236,13 @@ func _physics_process(delta: float) -> void:
 			velocity.y = maxf(velocity.y, SCRAMBLE_SPEED)
 
 	var flat := Vector2(velocity.x, velocity.z)
-	if flat.length() > 0.3:
+	if swing >= 0:
+		body.rotation.y = lerp_angle(body.rotation.y, swing_yaw, 1.0 - exp(-22.0 * delta))
+	elif blocking:
+		body.rotation.y = lerp_angle(body.rotation.y, yaw + PI, 1.0 - exp(-12.0 * delta))
+	elif dodge_t >= 0.0:
+		body.rotation.y = lerp_angle(body.rotation.y, atan2(dodge_dir.x, dodge_dir.z), 1.0 - exp(-25.0 * delta))
+	elif flat.length() > 0.3:
 		var face: float = atan2(flat.x, flat.y)
 		body.rotation.y = lerp_angle(body.rotation.y, face, 1.0 - exp(-10.0 * delta))
 	_animate(flat.length(), delta)
@@ -199,60 +261,217 @@ func _in_lava() -> bool:
 	return p.y < WorldData.LAVA_LEVEL + 0.05 and data.zone(p.x, p.z)[2] > 0.3
 
 
-func _update_combat(delta: float, want_attack: bool) -> void:
+func _combo() -> Array:
+	return combat.get("combo", [
+		{"anim": "Sword_Slash1", "live": [0.27, 0.56], "step": 0.6, "damage": 1.0},
+		{"anim": "Sword_Slash2", "live": [0.26, 0.55], "step": 0.6, "damage": 1.0},
+		{"anim": "Sword_Slash3", "live": [0.36, 0.6], "step": 1.0, "damage": 1.6},
+	])
+
+
+## True while the explorer cannot be hurt (mid-roll).
+func invulnerable() -> bool:
+	var iv: Array = combat.get("dodge_iframes", [0.05, 0.4])
+	return dodge_t >= iv[0] and dodge_t <= iv[1]
+
+
+func _update_combat(delta: float, want_attack: bool, want_dodge: bool, want_block: bool, want_potion: bool, wish: Vector3) -> void:
 	# Health comes back slowly once you've been out of harm for a while.
 	if not dead and since_damage > combat.get("regen_delay", 6.0) and health < max_health:
 		health = minf(max_health, health + combat.get("regen_per_second", 5.0) * delta)
 		health_changed.emit(health, max_health)
+	if heal_left > 0.0 and not dead:
+		var h := minf(heal_left, delta * 45.0)
+		heal_left -= h
+		health = minf(max_health, health + h)
+		health_changed.emit(health, max_health)
 	if not dead and _in_lava():
 		burn_tick -= delta
 		take_damage(combat.get("lava_damage_per_second", 30.0) * delta, Vector3.INF, true)
-	if want_attack and attack_hit_at < 0.0 and is_on_floor() and not body.busy():
+	if want_potion and use_potion.is_valid() and health < max_health:
+		if use_potion.call():
+			heal_left += float(combat.get("potion_heal", 45.0))
+	combo_reset -= delta
+	# Dodge roll: a quick roll in the stick direction (or backwards) with a moment of invulnerability.
+	if dodge_t >= 0.0:
+		dodge_t += delta
+		if dodge_t > combat.get("dodge_time", 0.62):
+			dodge_t = -1.0
+	elif want_dodge and is_on_floor() and not dead:
+		_end_swing()
+		blocking = false
+		dodge_dir = wish.normalized() if wish.length() > 0.1 else -Vector3(sin(body.rotation.y), 0, cos(body.rotation.y))
+		dodge_t = 0.0
+		body.play_once("Roll", 0.06, combat.get("dodge_anim_speed", 1.5))
+		dodged.emit()
+		return
+	blocking = want_block and dodge_t < 0.0 and swing < 0 and is_on_floor() and not dead
+	if blocking:
 		body.set_sword_drawn(true)
-		# Swing towards where the camera looks if standing still.
-		if Vector2(velocity.x, velocity.z).length() < 0.5:
-			body.rotation.y = yaw + PI
-		var length := body.play_once("Sword_Attack", 0.08, combat.get("sword_anim_speed", 1.5))
-		attack_hit_at = length * combat.get("sword_hit_fraction", 0.38)
-		attack_clock = 0.0
 		since_attack = 0.0
-	if attack_hit_at >= 0.0:
-		attack_clock += delta
-		if attack_clock >= attack_hit_at:
-			attack_hit_at = -1.0
-			_strike()
+	# Sword combo.
+	if want_attack and dodge_t < 0.0 and not dead:
+		if swing < 0 and is_on_floor() and (not body.busy() or body.current in ["Hit_Chest", "Jump_Land"]):
+			_start_swing(0 if combo_reset <= 0.0 else _next_index(), wish)
+		elif swing >= 0 and swing_t > swing_len * 0.15:
+			swing_queued = true
+	if swing >= 0:
+		swing_t += delta
+		var c: Dictionary = _combo()[swing]
+		var live: Array = c.get("live", [0.3, 0.55])
+		var f := swing_t / swing_len
+		# Step in during the wind-up, then plant the feet.
+		swing_step = swing_step.move_toward(Vector3.ZERO, delta * 6.0) if f > live[0] else swing_step
+		if f >= live[0] and f <= live[1]:
+			_blade_sweep(c)
+			if trail:
+				trail.emitting = true
+		elif trail:
+			trail.emitting = false
+		prev_blade = body.blade_segment()
+		# Chain into the next swing once this one has cut through.
+		if swing_queued and f >= combat.get("combo_chain_at", 0.62):
+			_start_swing(_next_index(), wish)
+		elif swing_t >= swing_len:
+			_end_swing()
 	if since_attack > combat.get("sheathe_after", 6.0):
 		body.set_sword_drawn(false)
 
 
-## Hits every creature in front of the explorer within sword reach.
-func _strike() -> void:
-	var fwd := Vector3(sin(body.rotation.y), 0, cos(body.rotation.y))
-	var reach: float = combat.get("sword_range", 2.6)
-	var arc := cos(deg_to_rad(combat.get("sword_arc_degrees", 80.0)))
+func _next_index() -> int:
+	return (swing + 1) % _combo().size() if swing >= 0 else _last_swing_index()
+
+
+var _last_swing := -1
+func _last_swing_index() -> int:
+	return (_last_swing + 1) % _combo().size()
+
+
+func _start_swing(index: int, wish: Vector3) -> void:
+	var c: Dictionary = _combo()[index]
+	body.set_sword_drawn(true)
+	swing = index
+	_last_swing = index
+	swing_t = 0.0
+	swing_queued = false
+	swing_hit.clear()
+	var speed: float = combat.get("sword_anim_speed", 1.0)
+	body.cancel_action()
+	swing_len = body.play_once(c.anim, 0.06, speed)
+	swung.emit(index)
+	since_attack = 0.0
+	combo_reset = swing_len + combat.get("combo_window", 0.45)
+	# Turn towards the most likely target: the closest creature roughly where
+	# the stick (or camera) points, so the sword cuts towards it.
+	var aim := wish.normalized() if wish.length() > 0.1 else -Vector3(sin(yaw), 0, cos(yaw))
+	var tgt := _pick_target(aim)
+	var face := aim
+	swing_step = Vector3.ZERO
+	if tgt:
+		var to: Vector3 = tgt.global_position - global_position
+		to.y = 0
+		face = to.normalized()
+		var gap: float = to.length() - tgt.hit_radius() - combat.get("ideal_gap", 1.15)
+		if gap > 0.0:
+			swing_step = face * clampf(gap, 0.0, float(c.get("step", 0.6)) * 1.6) / maxf(swing_len * 0.3, 0.05)
+	elif c.get("step", 0.0) > 0.0:
+		swing_step = face * float(c.step) * 0.5 / maxf(swing_len * 0.3, 0.05)
+	swing_yaw = atan2(face.x, face.z)
+	prev_blade = []
+
+
+func _end_swing() -> void:
+	swing = -1
+	swing_queued = false
+	swing_step = Vector3.ZERO
+	if trail:
+		trail.emitting = false
+
+
+func _pick_target(aim: Vector3) -> Node3D:
+	var best: Node3D = null
+	var best_score := INF
+	var reach: float = combat.get("lock_range", 4.5)
 	for c in get_tree().get_nodes_in_group("creatures"):
-		if not c.visible or not c.alive():
+		if not c.visible or not c.alive() or not c.is_hostile_to_player():
 			continue
 		var to: Vector3 = c.global_position - global_position
 		to.y = 0
 		var d: float = to.length() - c.hit_radius()
-		if d < reach and (to.length() < 0.6 or fwd.dot(to.normalized()) > arc):
-			c.take_hit(combat.get("sword_damage", 34.0) * damage_mult, global_position)
+		if d > reach:
+			continue
+		var facing: float = aim.dot(to.normalized()) if to.length() > 0.01 else 1.0
+		if facing < 0.2:
+			continue
+		var score: float = d - facing * 1.5
+		if score < best_score:
+			best_score = score
+			best = c
+	return best
 
 
-## Damage from monsters (from_pos set) or lava (burn).
-func take_damage(amount: float, from_pos: Vector3, burn := false) -> void:
+## Damages creatures the blade passes through this frame (once per swing).
+func _blade_sweep(c: Dictionary) -> void:
+	var seg := body.blade_segment()
+	var segs := [seg]
+	if prev_blade.size() == 2:
+		# Fast swings travel far between frames; also test the swept area.
+		segs.append([prev_blade[1], seg[1]])
+		segs.append([(prev_blade[0] + prev_blade[1]) * 0.5, (seg[0] + seg[1]) * 0.5])
+	for cr in get_tree().get_nodes_in_group("creatures"):
+		if swing_hit.has(cr) or not cr.visible or not cr.alive():
+			continue
+		var a: Vector3 = cr.body_axis()[0]
+		var b: Vector3 = cr.body_axis()[1]
+		var r: float = cr.hit_radius() + 0.08
+		for sgm in segs:
+			var pts := Geometry3D.get_closest_points_between_segments(sgm[0], sgm[1], a, b)
+			if pts[0].distance_to(pts[1]) < r:
+				swing_hit[cr] = true
+				var dmg: float = combat.get("sword_damage", 34.0) * damage_mult * float(c.get("damage", 1.0))
+				cr.take_hit(dmg, global_position)
+				struck.emit(cr, pts[0])
+				break
+
+
+## The old single-strike entry point, kept for tests and scripted sequences.
+func _strike() -> void:
+	for cr in get_tree().get_nodes_in_group("creatures"):
+		if not cr.visible or not cr.alive():
+			continue
+		var to: Vector3 = cr.global_position - global_position
+		to.y = 0
+		if to.length() - cr.hit_radius() < combat.get("sword_range", 2.6):
+			cr.take_hit(combat.get("sword_damage", 34.0) * damage_mult, global_position)
+
+
+## Damage from monsters (from_pos set) or lava (burn). element: "", "frost" or "fire".
+func take_damage(amount: float, from_pos: Vector3, burn := false, element := "") -> void:
 	if dead:
 		return
+	if not burn and invulnerable():
+		return
+	if burn:
+		amount *= resist.get("fire", 1.0)
+	else:
+		amount *= armor_mult * float(resist.get(element, 1.0))
+		if blocking and from_pos != Vector3.INF:
+			var to := from_pos - global_position
+			to.y = 0
+			var fwd := Vector3(sin(body.rotation.y), 0, cos(body.rotation.y))
+			if fwd.dot(to.normalized()) > 0.25:
+				amount *= combat.get("block_factor", 0.25)
+				blocked_hit.emit()
 	health -= amount
 	since_damage = 0.0
 	if not burn:
-		if attack_hit_at < 0.0:
+		if swing < 0 and dodge_t < 0.0 and not blocking:
 			body.play_once("Hit_Chest", 0.05)
 		if from_pos != Vector3.INF:
 			var away := global_position - from_pos
 			away.y = 0
-			velocity += away.normalized() * combat.get("knockback", 5.0) + Vector3.UP * 2.5
+			var kb: float = combat.get("knockback", 5.0) * (0.35 if blocking else 1.0)
+			velocity += away.normalized() * kb + Vector3.UP * (0.8 if blocking else 2.5)
 		hurt.emit(false)
 	elif burn_tick <= 0.0:
 		burn_tick = 0.5
@@ -261,7 +480,10 @@ func take_damage(amount: float, from_pos: Vector3, burn := false) -> void:
 	if health <= 0.0:
 		health = 0.0
 		dead = true
-		attack_hit_at = -1.0
+		_end_swing()
+		blocking = false
+		dodge_t = -1.0
+		body.cancel_action()
 		body.play_once("Death01", 0.1)
 		died.emit()
 
@@ -280,6 +502,9 @@ func respawn(at: Vector3) -> void:
 	velocity = Vector3.ZERO
 	global_position = at
 	cam_pivot.global_position = at + Vector3(0, 1.6, 0)
+	_end_swing()
+	dodge_t = -1.0
+	heal_left = 0.0
 	body.cancel_action()
 	body.set_sword_drawn(false)
 	health_changed.emit(health, max_health)
@@ -289,12 +514,15 @@ func _animate(speed: float, delta: float) -> void:
 	if dead or body.busy():
 		return
 	land_timer -= delta
-	if air_time > 0.2:
+	var drawn := body.sword_hand != null and body.sword_hand.visible
+	if blocking:
+		body.play("Sword_Block", 0.12)
+	elif air_time > 0.2:
 		body.play("Jump", 0.2)
 	elif land_timer > 0.0:
 		body.play("Jump_Land", 0.08)
 	elif speed < 0.25:
-		body.play("Idle", 0.25)
+		body.play("Sword_Idle" if drawn else "Idle", 0.25)
 	elif speed < walk_speed + 0.4:
 		body.play("Walk", 0.25, speed / ANIM_SPEED.Walk)
 	elif speed < jog_speed + 0.8:

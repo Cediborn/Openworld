@@ -11,9 +11,10 @@ const MODELS := {
 }
 const ANIM_DIR := "res://assets/character/anims/"
 const ANIMS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Jump_Start", "Jump", "Jump_Land", "Swim_Idle", "Swim_Fwd",
-	"Sword_Attack", "Sword_Idle", "Hit_Chest", "Death01", "Idle_Talking", "Walk_Formal", "PickUp_Table", "Punch_Jab", "Sitting_Talking", "Interact"]
+	"Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Sword_Idle", "Sword_Block", "Hit_Chest", "Death01", "Idle_Talking",
+	"PickUp_Table", "Interact", "Roll", "Sitting_Idle", "Crouch_Idle", "Dance"]
 ## Animations that play once and then hand control back to locomotion.
-const ONE_SHOTS := ["Jump_Start", "Jump", "Jump_Land", "Sword_Attack", "Hit_Chest", "Death01", "PickUp_Table", "Punch_Jab"]
+const ONE_SHOTS := ["Jump_Start", "Jump", "Jump_Land", "Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Hit_Chest", "Death01", "PickUp_Table", "Roll"]
 ## The explorer's look; villagers pass their own outfit before being added.
 const EXPLORER := {
 	"model": "male", "jacket": Color(0.29, 0.29, 0.19), "pants": Color(0.16, 0.16, 0.13),
@@ -45,7 +46,7 @@ var outfit_mat: ShaderMaterial
 var sword_hand: Node3D
 var sword_hip: Node3D
 var blade_mat: StandardMaterial3D
-var _busy_until := 0.0   # seconds (engine time) until a one-shot animation ends
+var _busy_left := 0.0   # seconds of game time until a one-shot animation ends
 var smooth_normals := PackedVector3Array()
 
 
@@ -106,19 +107,32 @@ func play_once(name: String, blend := 0.1, speed := 1.0) -> float:
 	anim.play(name, blend)
 	anim.seek(0.0, true)
 	var length := anim.get_animation(name).length / speed
-	_busy_until = Time.get_ticks_msec() / 1000.0 + length
+	_busy_left = length
 	return length
 
 
 ## True while a one-shot action is still playing.
 func busy() -> bool:
-	return Time.get_ticks_msec() / 1000.0 < _busy_until
+	return _busy_left > 0.0
+
+
+func _process(delta: float) -> void:
+	if _busy_left > 0.0:
+		_busy_left -= delta
 
 
 ## Ends a one-shot early (used when respawning).
 func cancel_action() -> void:
-	_busy_until = 0.0
+	_busy_left = 0.0
 	current = ""
+
+
+## World-space line along the drawn blade, from just above the guard to the tip.
+func blade_segment() -> Array:
+	if sword_hand == null:
+		return [global_position, global_position]
+	var x := sword_hand.global_transform
+	return [x * Vector3(0, 0.15, 0), x * Vector3(0, 0.8, 0)]
 
 
 ## Makes both copies of the blade glow (quest reward).
@@ -127,6 +141,11 @@ func set_blade_glow(c: Color) -> void:
 		blade_mat.emission_enabled = true
 		blade_mat.emission = c
 		blade_mat.emission_energy_multiplier = 1.6
+
+
+func clear_blade_glow() -> void:
+	if blade_mat:
+		blade_mat.emission_enabled = false
 
 
 ## Shows the sword in the hand (fighting) or in its scabbard (exploring).
@@ -577,7 +596,74 @@ func _add_sword() -> void:
 
 ## Props for villagers: apron, chef hat, beard, cane, basket, hammer, hair bun.
 func _add_villager_props(acc: Array) -> void:
-	var head := _attach("Head") if acc.any(func(a): return a in ["chef_hat", "beard", "bun", "headscarf", "cap"]) else null
+	var head := _attach("Head") if acc.any(func(a): return a in ["chef_hat", "beard", "bun", "headscarf", "cap", "helmet", "hood", "hat"]) else null
+	if "helmet" in acc:
+		var steel := StandardMaterial3D.new()
+		steel.albedo_color = Color(0.55, 0.56, 0.6)
+		steel.metallic = 0.85
+		steel.roughness = 0.35
+		var dome := SphereMesh.new()
+		dome.radius = 0.125
+		dome.height = 0.16
+		dome.is_hemisphere = true
+		_piece(head, dome, steel, Vector3(0, 0.1, -0.01), Vector3.ZERO, Vector3(1.05, 1.1, 1.12))
+		_piece(head, _box(Vector3(0.025, 0.09, 0.02)), steel, Vector3(0, 0.07, 0.125))
+	if "hood" in acc:
+		var hood := SphereMesh.new()
+		hood.radius = 0.14
+		hood.height = 0.3
+		_piece(head, hood, _fabric(outfit.get("hood_color", Color(0.18, 0.16, 0.2))), Vector3(0, 0.08, -0.04), Vector3.ZERO, Vector3(1.05, 1.0, 1.15))
+	if "hat" in acc:
+		var brim := CylinderMesh.new()
+		brim.top_radius = 0.2
+		brim.bottom_radius = 0.2
+		brim.height = 0.015
+		var hc: Color = outfit.get("hat_color", Color(0.3, 0.22, 0.15))
+		_piece(head, brim, _fabric(hc), Vector3(0, 0.15, -0.01))
+		var crown := CylinderMesh.new()
+		crown.top_radius = 0.09
+		crown.bottom_radius = 0.11
+		crown.height = 0.12
+		_piece(head, crown, _fabric(hc), Vector3(0, 0.21, -0.01))
+	if "spear" in acc:
+		var hand4 := _attach("RightHand")
+		var sp := Node3D.new()
+		sp.position = Vector3(-0.01, 0.08, 0.02)
+		sp.rotation = Vector3(0, 0, PI * 0.5)
+		hand4.add_child(sp)
+		var shaft := CylinderMesh.new()
+		shaft.top_radius = 0.016
+		shaft.bottom_radius = 0.018
+		shaft.height = 2.0
+		_piece(sp, shaft, _fabric(Color(0.35, 0.24, 0.14), 0.8), Vector3(0, 0.3, 0))
+		var tip := PrismMesh.new()
+		tip.size = Vector3(0.06, 0.2, 0.01)
+		var steel2 := StandardMaterial3D.new()
+		steel2.albedo_color = Color(0.7, 0.72, 0.75)
+		steel2.metallic = 0.9
+		steel2.roughness = 0.3
+		_piece(sp, tip, steel2, Vector3(0, 1.38, 0))
+	if "staff" in acc:
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.02
+		cyl.bottom_radius = 0.025
+		cyl.height = 1.7
+		_piece(self, cyl, _fabric(Color(0.25, 0.2, 0.18), 0.8), Vector3(-0.3, 0.85, 0.15), Vector3(0.05, 0, 0.05))
+		var orb := SphereMesh.new()
+		orb.radius = 0.06
+		orb.height = 0.12
+		var om := StandardMaterial3D.new()
+		om.albedo_color = Color(0.6, 0.8, 1.0)
+		om.emission_enabled = true
+		om.emission = Color(0.5, 0.75, 1.0)
+		om.emission_energy_multiplier = 2.5
+		_piece(self, orb, om, Vector3(-0.26, 1.74, 0.19))
+	if "satchel" in acc:
+		var hips2 := _attach("Hips")
+		_piece(hips2, _box(Vector3(0.22, 0.2, 0.08)), _fabric(Color(0.45, 0.32, 0.2)), Vector3(0.2, 0.0, 0.08), Vector3(0, -0.4, 0))
+	if "book" in acc:
+		var lh := _attach("LeftHand")
+		_piece(lh, _box(Vector3(0.16, 0.04, 0.22)), _fabric(Color(0.45, 0.15, 0.12)), Vector3(0, 0.08, 0.04))
 	if "apron" in acc:
 		var spine := _attach("Spine")
 		var col: Color = outfit.get("apron_color", Color(0.9, 0.88, 0.82))

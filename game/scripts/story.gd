@@ -1,61 +1,99 @@
 class_name Story
 extends Node3D
-## Villagers, conversations and the Elder's quest ("The Island's Heart").
-## Finds the nearest thing to interact with (a villager or a heart-stone),
-## shows the prompt, runs dialogue, and moves the quest through its stages:
-## intro -> hunt -> return -> forge -> done. State is saved by SaveGame.
+## People and conversations. Spawns the villagers, finds the nearest thing to
+## interact with (a villager, a heart-stone or any Interactable), shows the
+## prompt, and runs dialogue: pages of lines that can end in choices.
+##
+## It also still runs the Elder's original quest ("The Island's Heart"):
+## intro -> hunt -> return -> forge -> done. Every newer quest lives in the
+## Quests node, which Story asks first whenever you talk to someone.
 
 ## Emitted whenever quest progress changes (the world autosaves on it).
 signal progress_changed
+## Emitted after any conversation with a villager ends.
+signal talked(v: Villager)
 
 const STAGES := ["intro", "hunt", "return", "forge", "done"]
 
 var data: WorldData
 var player: Player
 var hud: Hud
+var town: Town
 var touch := false
 var npc_cfg: Dictionary
 var quest_cfg: Dictionary
 var villagers: Array[Villager] = []
+var by_id := {}
 var stones := {}             # id -> Node3D (removed once picked up)
 var stage := "intro"
 var found: Array = []        # ids of heart-stones picked up
-var dialogue_lines: Array = []
-var dialogue_index := -1
-var dialogue_with: Villager
-var focus = null             # Villager or stone id under the prompt
+var focus = null             # Villager, stone id or Interactable under the prompt
 var _cull := 0.0
+var mobile := false
+## Newer systems, set by the world.
+var quests: Quests
+var state: GameState
+var services: Callable       # (villager) -> conversation Dictionary or {}
+## Called when Bram finishes the heart-stone blade.
+var on_heart_blade: Callable
+
+# A conversation: {"speaker", "lines": [..], "choices": [..], "on_choice": Callable(i) -> next convo or {}, "on_end": Callable}
+var convo: Dictionary = {}
+var line_i := -1
+var dialogue_with: Villager
 
 
-func setup(world_data: WorldData, p: Player, h: Hud, is_touch: bool) -> void:
+func setup(world_data: WorldData, p: Player, h: Hud, is_touch: bool, t: Town = null, is_mobile := false) -> void:
 	data = world_data
 	player = p
 	hud = h
 	touch = is_touch
+	town = t
+	mobile = is_mobile
 	npc_cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/npcs.json"))
 	quest_cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/quest.json"))
 	var i := 0
 	for v: Dictionary in npc_cfg.villagers:
-		var vil := Villager.new()
-		add_child(vil)
-		vil.setup(v, 77 + i)
-		vil.player = player
-		vil.height_at = func(x: float, z: float) -> float: return data.height(x, z)
-		vil.global_position = Vector3(vil.home.x, data.height(vil.home.x, vil.home.z), vil.home.z)
-		vil.rotation.y = PI if vil.home.z < -2.0 else 0.0   # face the street
-		villagers.append(vil)
+		spawn_villager(v, 77 + i)
 		i += 1
 	hud.interact_pressed.connect(interact)
 	hud.dialogue_advanced.connect(_advance)
+	hud.choice_made.connect(_choose)
 	_refresh()
+
+
+func spawn_villager(v: Dictionary, seed_value: int) -> Villager:
+	var vil := Villager.new()
+	add_child(vil)
+	vil.setup(v, seed_value)
+	vil.player = player
+	vil.town = town
+	vil.height_at = func(x: float, z: float) -> float: return data.height(x, z)
+	vil.global_position = Vector3(vil.home.x, data.height(vil.home.x, vil.home.z), vil.home.z)
+	if v.has("face"):
+		vil.rotation.y = deg_to_rad(float(v.face))
+	else:
+		vil.rotation.y = PI if vil.home.z < -2.0 else 0.0   # face the street
+	villagers.append(vil)
+	by_id[vil.id] = vil
+	return vil
+
+
+func remove_villager(id: String) -> void:
+	var v: Villager = by_id.get(id)
+	if v == null:
+		return
+	villagers.erase(v)
+	by_id.erase(id)
+	v.queue_free()
 
 
 ## Restores progress from a save.
 func load_state(s: Dictionary) -> void:
 	stage = s.get("stage", "intro")
 	found = s.get("found", [])
-	if stage == "done":
-		player.set_sword_upgrade(quest_cfg.reward_damage_multiplier, _color(quest_cfg.reward_blade_color))
+	if stage == "done" and on_heart_blade.is_valid():
+		on_heart_blade.call(true)
 	_refresh()
 
 
@@ -75,7 +113,8 @@ func _refresh() -> void:
 	_update_tracker()
 
 
-func _update_tracker() -> void:
+## The original quest's tracker text ("" once it is done; Quests shows the rest).
+func original_tracker() -> String:
 	var t := ""
 	match stage:
 		"intro":
@@ -88,9 +127,31 @@ func _update_tracker() -> void:
 			t = quest_cfg.title + "\nReturn to Elder Tobin"
 		"forge":
 			t = quest_cfg.title + "\nVisit Bram the Blacksmith"
-		"done":
-			t = ""
-	hud.set_quest(t)
+	return t
+
+
+## Where the original quest wants you to go next (for the objective marker).
+func original_target() -> Vector3:
+	match stage:
+		"intro", "return":
+			return by_id["elder"].global_position if by_id.has("elder") else Vector3.INF
+		"forge":
+			return by_id["smith"].global_position if by_id.has("smith") else Vector3.INF
+		"hunt":
+			var best := Vector3.INF
+			for id in stones:
+				var p: Vector3 = stones[id].global_position
+				if best == Vector3.INF or p.distance_to(player.global_position) < best.distance_to(player.global_position):
+					best = p
+			return best
+	return Vector3.INF
+
+
+func _update_tracker() -> void:
+	if quests:
+		quests.refresh_tracker()
+	else:
+		hud.set_quest(original_tracker())
 
 
 func _make_stone(st: Dictionary) -> Node3D:
@@ -159,24 +220,48 @@ func _process(delta: float) -> void:
 	_cull -= delta
 	if _cull <= 0.0:
 		_cull = 0.5
-		var far: float = npc_cfg.active_distance
-		for v in villagers:
-			var on := v.global_position.distance_to(player.global_position) < far
-			v.visible = on
-			v.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
-	if dialogue_index >= 0:
+		_cull_villagers()
+	if line_i >= 0:
 		return
 	_find_focus()
+
+
+## Hides far villagers, animates mid-distance ones less often, and on phones
+## keeps only the nearest ones awake.
+func _cull_villagers() -> void:
+	var far: float = npc_cfg.active_distance
+	var p := player.global_position
+	var list := []
+	for v in villagers:
+		list.append([v.global_position.distance_squared_to(p), v])
+	list.sort_custom(func(a, b): return a[0] < b[0])
+	var cap := 18 if mobile else 60
+	for i in list.size():
+		var v: Villager = list[i][1]
+		var d := sqrt(list[i][0])
+		var on: bool = d < far and i < cap
+		if v.hiding and not v.visible:
+			on = false
+		v.visible = on or (v.hiding and v.visible)
+		v.process_mode = Node.PROCESS_MODE_INHERIT if (on or v.hiding) else Node.PROCESS_MODE_DISABLED
+		v.lod = 0 if d < 35.0 else 1
+		if v.body:
+			for mi: GeometryInstance3D in v.body.find_children("*", "MeshInstance3D", true, false):
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if d < 30.0 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if on and quests:
+			v.set_marker(quests.marker_for(v))
 
 
 func _find_focus() -> void:
 	focus = null
 	var label := ""
-	if player.dead:
+	if player.dead or get_tree().paused:
 		hud.set_prompt("", touch)
 		return
 	var best: float = npc_cfg.talk_distance
 	for v in villagers:
+		if not v.visible:
+			continue
 		var d := v.global_position.distance_to(player.global_position)
 		if d < best:
 			best = d
@@ -187,25 +272,38 @@ func _find_focus() -> void:
 		if d < quest_cfg.pickup_distance:
 			focus = id
 			label = "Pick up " + stones[id].get_meta("stone").name
+	var best_i := INF
+	for it: Interactable in get_tree().get_nodes_in_group("interactables"):
+		if not it.enabled or not it.is_visible_in_tree():
+			continue
+		var d := it.global_position.distance_to(player.global_position)
+		if d < it.radius and d < best_i:
+			best_i = d
+			if d < best + 0.5 or not focus is Villager:
+				focus = it
+				label = it.label
 	hud.set_prompt(label, touch)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
-		if dialogue_index >= 0:
-			_advance()
+		if line_i >= 0:
+			if not hud.has_choices():
+				_advance()
 		else:
 			interact()
 
 
-## Talks to the focused villager or picks up the focused heart-stone.
+## Talks to the focused villager, picks up a heart-stone or uses an Interactable.
 func interact() -> void:
-	if focus == null or dialogue_index >= 0:
+	if focus == null or line_i >= 0 or player.dead:
 		return
 	if focus is Villager:
 		_start_dialogue(focus)
 	elif focus is String and stones.has(focus):
 		_pick_up(focus)
+	elif focus is Interactable and is_instance_valid(focus):
+		focus.use()
 
 
 func _pick_up(id: String) -> void:
@@ -220,44 +318,121 @@ func _pick_up(id: String) -> void:
 	progress_changed.emit()
 
 
-func _start_dialogue(v: Villager) -> void:
-	dialogue_with = v
-	dialogue_lines = v.lines_for(stage)
-	if dialogue_lines.is_empty():
+# ---------- Conversations ----------
+
+## Opens a conversation (also used by quests and world features for
+## narration: speaker "" shows no name).
+func open(c: Dictionary, with: Villager = null) -> void:
+	if c.is_empty() or c.get("lines", []).is_empty():
+		if c.has("on_end") and c.on_end.is_valid():
+			c.on_end.call()
 		return
-	dialogue_index = 0
-	v.set_talking(true)
+	convo = c
+	line_i = 0
+	dialogue_with = with
+	if with:
+		with.set_talking(true)
 	player.in_conversation = true
 	hud.set_prompt("", touch)
-	hud.show_dialogue(v.display_name, dialogue_lines[0])
+	if not touch:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE   # so choices can be clicked
+	_show_line()
+
+
+func _show_line() -> void:
+	var lines: Array = convo.lines
+	var last := line_i == lines.size() - 1
+	var speaker: String = convo.get("speaker", dialogue_with.display_name if dialogue_with else "")
+	hud.show_dialogue(speaker, lines[line_i], convo.get("choices", []) if last else [])
+
+
+func _start_dialogue(v: Villager) -> void:
+	var c: Dictionary = {}
+	if quests:
+		c = quests.handle_talk(v)
+	if c.is_empty():
+		c = _original_talk(v)
+	if c.is_empty() and services.is_valid():
+		c = services.call(v)
+	if c.is_empty():
+		var lines := v.lines_for(stage if v.cfg.get("lines", {}).has(stage) else "default")
+		c = {"lines": lines}
+	c["speaker"] = v.display_name
+	open(c, v)
+
+
+## The Elder's and Bram's lines for the original quest while it is running.
+func _original_talk(v: Villager) -> Dictionary:
+	if stage == "done":
+		return {}
+	if v.id in ["elder", "smith", "baker", "lina", "kid"] and v.cfg.lines.has(stage):
+		return {"lines": v.cfg.lines[stage], "on_end": func() -> void: _after_dialogue(v)}
+	return {}
 
 
 func _advance() -> void:
-	if dialogue_index < 0:
+	if line_i < 0:
 		return
-	dialogue_index += 1
-	if dialogue_index < dialogue_lines.size():
-		hud.show_dialogue(dialogue_with.display_name, dialogue_lines[dialogue_index])
+	if line_i == convo.lines.size() - 1 and not convo.get("choices", []).is_empty():
+		return   # waiting for a choice
+	line_i += 1
+	if line_i < convo.lines.size():
+		_show_line()
 		return
-	dialogue_index = -1
+	_finish({})
+
+
+func _choose(i: int) -> void:
+	if line_i < 0 or convo.get("choices", []).is_empty():
+		return
+	var next: Dictionary = {}
+	if convo.has("on_choice") and convo.on_choice.is_valid():
+		var r = convo.on_choice.call(i)
+		if r is Dictionary:
+			next = r
+	_finish(next)
+
+
+func _finish(next: Dictionary) -> void:
+	var ended := convo
+	var with := dialogue_with
+	line_i = -1
+	convo = {}
 	hud.hide_dialogue()
-	dialogue_with.set_talking(false)
+	if not next.is_empty() and not next.get("lines", []).is_empty():
+		if with and not next.has("speaker"):
+			next["speaker"] = with.display_name
+		open(next, with)
+		return
+	if with:
+		with.set_talking(false)
 	player.in_conversation = false
-	_after_dialogue(dialogue_with)
+	dialogue_with = null
+	if not touch and not get_tree().paused and DisplayServer.get_name() != "headless":
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if ended.has("on_end") and ended.on_end.is_valid():
+		ended.on_end.call()
+	if not next.is_empty() and next.has("on_end") and next.on_end.is_valid():
+		next.on_end.call()
+	if with:
+		talked.emit(with)
 
 
 ## Quest stage changes happen when a conversation ends.
 func _after_dialogue(v: Villager) -> void:
 	var role: String = v.cfg.get("role", "")
 	var before := stage
-	if role == "quest_giver" and stage == "intro":
+	if role == "quest_giver" and v.id == "elder" and stage == "intro":
 		stage = "hunt"
 		hud.show_notice("New quest: " + quest_cfg.title + "\nFind the three heart-stones.")
-	elif role == "quest_giver" and stage == "return":
+	elif role == "quest_giver" and v.id == "elder" and stage == "return":
 		stage = "forge"
 	elif role == "smith" and stage == "forge":
 		stage = "done"
-		player.set_sword_upgrade(quest_cfg.reward_damage_multiplier, _color(quest_cfg.reward_blade_color))
+		if on_heart_blade.is_valid():
+			on_heart_blade.call(false)
+		else:
+			player.set_sword_upgrade(quest_cfg.reward_damage_multiplier, _color(quest_cfg.reward_blade_color))
 		hud.show_notice("Quest complete!\nYour sword now carries the island's heart.")
 	if stage != before:
 		_refresh()
@@ -266,7 +441,7 @@ func _after_dialogue(v: Villager) -> void:
 
 ## True while a conversation is open (the player shouldn't attack then).
 func in_dialogue() -> bool:
-	return dialogue_index >= 0
+	return line_i >= 0
 
 
 static func _color(a: Array) -> Color:

@@ -23,6 +23,13 @@ var shot_hour := -1.0
 var shot_act := ""
 var hud: Hud
 var story: Story
+var town: Town
+var state: GameState
+var quests: Quests
+var features: WorldFeatures
+var journal: Journal
+var services: Services
+var audio: GameAudio
 var menu: GameMenu
 var quality: Quality
 var settings: Dictionary = {}
@@ -141,6 +148,10 @@ func _boot() -> void:
 		village = Village.new()
 		add_child(village)
 		village.setup(data)
+	if await _step("town streets"):
+		town = Town.new()
+		add_child(town)
+		town.setup(data, village)
 	_mark("player")
 	await get_tree().process_frame
 	_spawn_player()
@@ -152,6 +163,13 @@ func _boot() -> void:
 	player.hurt.connect(hud.flash_hurt)
 	player.died.connect(_on_player_died)
 	hud.set_health(player.health, player.max_health)
+	state = GameState.new()
+	add_child(state)
+	state.player = player
+	state.notify.connect(func(t: String, kind: String) -> void: hud.toast(t, kind))
+	state.changed.connect(_update_stats)
+	player.use_potion = state.use_potion
+	state.load_state({})
 	if await _step("grass"):
 		grass = GrassField.new()
 		add_child(grass)
@@ -163,14 +181,62 @@ func _boot() -> void:
 		wildlife.setup(data, player, mobile)
 		creatures = wildlife.animals
 	if await _step("sound"):
-		var audio := GameAudio.new()
+		audio = GameAudio.new()
 		add_child(audio)
 		audio.setup(data, player, creatures)
 	if await _step("villagers"):
 		story = Story.new()
 		add_child(story)
-		story.setup(data, player, hud, touch)
+		story.state = state
+		story.on_heart_blade = func(quiet: bool) -> void:
+			state.add_item("heart_blade", 1, quiet)
+		story.setup(data, player, hud, touch, town, mobile)
 		story.progress_changed.connect(save_game)
+	if audio:
+		player.swung.connect(func(i: int) -> void: get_tree().create_timer(0.12).timeout.connect(func() -> void: audio.sfx("sword_swing_%d" % (i % 3), -6.0, randf_range(0.95, 1.05))))
+		player.struck.connect(func(_t: Node3D, _p: Vector3) -> void: audio.sfx("sword_hit", -2.0, randf_range(0.9, 1.1)))
+		player.blocked_hit.connect(func() -> void: audio.sfx("block", -4.0))
+		player.dodged.connect(func() -> void: audio.sfx("roll", -6.0))
+		hud.banner_shown.connect(func(t: String) -> void:
+			if t.begins_with("Discovered"):
+				audio.sfx("discover", -6.0)
+			elif t.contains("Quest") or t.contains("defeated") or t.contains("awakened") or t.contains("Treasure"):
+				audio.sfx("quest", -6.0))
+		state.notify.connect(func(_t: String, kind: String) -> void:
+			if kind == "coins":
+				audio.sfx("coins", -8.0)
+			elif kind == "level":
+				audio.sfx("quest", -4.0)
+			elif _t.begins_with("Drank"):
+				audio.sfx("potion", -6.0))
+	if story and await _step("quests"):
+		quests = Quests.new()
+		add_child(quests)
+		quests.setup(data, player, hud, story, state)
+		quests.sky = sky
+		quests.quest_changed.connect(func() -> void:
+			_update_stats()
+			_queue_save())
+	if quests and await _step("world features"):
+		features = WorldFeatures.new()
+		add_child(features)
+		quests.features = features
+		quests.spawn_creature = features.spawn_creature
+		features.setup(data, player, hud, story, state, quests, village, sky, audio, mobile)
+		services = Services.new()
+		add_child(services)
+		services.state = state
+		services.quests = quests
+		services.features = features
+		services.story = story
+		story.services = services.for_villager
+		journal = Journal.new()
+		add_child(journal)
+		journal.quests = quests
+		journal.state = state
+		journal.features = features
+		journal.data = data
+		journal.player = player
 	if await _step("weather effects"):
 		effects = ZoneEffects.new()
 		add_child(effects)
@@ -233,8 +299,15 @@ func _apply_settings(s: Dictionary) -> void:
 
 func _new_game() -> void:
 	SaveGame.delete_save()
+	if state:
+		state.load_state({})
 	if story:
 		story.load_state({})
+	if quests:
+		quests.load_state({})
+	if features:
+		features.end_event()
+		features.refresh()
 	var sp: Array = config.get("spawn", [0, 0, 40])
 	player.respawn(Vector3(sp[0], data.height(sp[0], sp[2]) + 0.3, sp[2]))
 	player.yaw = 0.0
@@ -253,8 +326,14 @@ func _continue_game() -> void:
 		player.yaw = s.get("yaw", 0.0)
 		player.health = s.get("health", player.max_health)
 		player.health_changed.emit(player.health, player.max_health)
+	if state:
+		state.load_state(s.get("progress", {"items": {"potion": 3}}))
 	if story:
 		story.load_state(s.get("story", {}))
+	if quests:
+		quests.load_state(s.get("quests", {}))
+	if features:
+		features.refresh()
 	if sky and s.has("hour"):
 		sky.time_of_day = s.hour
 	_resume()
@@ -295,8 +374,28 @@ func save_game() -> void:
 	SaveGame.save({
 		"player": [p.x, p.y, p.z], "yaw": player.yaw, "health": player.health,
 		"story": story.save_state() if story else {},
+		"progress": state.save_state() if state else {},
+		"quests": quests.save_state() if quests else {},
 		"hour": sky.time_of_day if sky else 8.0,
 	})
+
+
+var _save_soon := false
+
+
+## Saves at the end of the frame (several quest changes can arrive together).
+func _queue_save() -> void:
+	if _save_soon:
+		return
+	_save_soon = true
+	await get_tree().process_frame
+	_save_soon = false
+	save_game()
+
+
+func _update_stats() -> void:
+	if hud and state:
+		hud.set_stats(state.coins, state.level, state.xp, state.xp_for_next(), state.count("potion") + state.count("elixir"))
 
 
 func _on_player_died() -> void:
@@ -368,6 +467,8 @@ func _on_night(amount: float) -> void:
 		grass.set_night(amount)
 	if village:
 		village.set_night(amount)
+	if town:
+		town.set_night(amount)
 
 
 func _label(pos: Vector2, size: int) -> Label:
@@ -398,6 +499,8 @@ func _build_ui() -> void:
 		var tc := TouchControls.new()
 		tc.player = player
 		tc.on_pause = _pause
+		if journal:
+			tc.on_journal = journal.open_journal
 		layer.add_child(tc)
 
 
@@ -439,6 +542,12 @@ func _process(delta: float) -> void:
 					story.interact()
 				"hurt":
 					player.take_damage(35.0, player.global_position + Vector3(1, 0, 0))
+				"journal", "map":
+					journal.open_journal()
+					get_tree().paused = false   # keep the screenshot counter running
+					if shot_act == "map":
+						journal.tabs.current_tab = 1
+					journal.refresh()
 		if shot_frames == 50:
 			for l in [hud_fps, hud_clock, hud_zone]:
 				l.visible = false

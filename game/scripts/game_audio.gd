@@ -216,6 +216,36 @@ func _footsteps(delta: float) -> void:
 		step_player.play()
 
 
+var sfx_pool: Array[AudioStreamPlayer] = []
+var sfx_cache := {}
+
+
+## Plays a short effect from assets/audio/sfx (several can overlap).
+func sfx(name: String, db := -4.0, pitch := 1.0) -> void:
+	if not sfx_cache.has(name):
+		var path := "res://assets/audio/sfx/%s.ogg" % name
+		sfx_cache[name] = load(path) if ResourceLoader.exists(path) else null
+	if sfx_cache[name] == null:
+		return
+	var p: AudioStreamPlayer = null
+	for q in sfx_pool:
+		if not q.playing:
+			p = q
+			break
+	if p == null:
+		if sfx_pool.size() >= 8:
+			p = sfx_pool[0]
+		else:
+			p = AudioStreamPlayer.new()
+			p.bus = "Effects"
+			add_child(p)
+			sfx_pool.append(p)
+	p.stream = sfx_cache[name]
+	p.volume_db = db
+	p.pitch_scale = pitch
+	p.play()
+
+
 func _fx(path: String, db: float) -> void:
 	fx_player.stream = load(path)
 	fx_player.volume_db = db

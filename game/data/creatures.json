@@ -30,7 +30,8 @@
    },
    "health": 50,
    "radius": 0.45,
-   "respawn_time": 90
+   "respawn_time": 90,
+   "mass": 0.8
   },
   "boar": {
    "model": "res://assets/creatures/WildBoar.glb",
@@ -70,7 +71,34 @@
    "chase_time": 8.0,
    "leash": 40.0,
    "cooldown": 10.0,
-   "aggro_radius": 0.0
+   "aggro_radius": 0.0,
+   "mass": 1.2,
+   "attacks": [
+    {
+     "name": "tusk_charge",
+     "windup": 0.45,
+     "strike": 0.35,
+     "recover": 0.5,
+     "reach": 1.3,
+     "arc": 60,
+     "damage": 1.15,
+     "lunge": 2.6,
+     "max_range": 4.0,
+     "min_range": 1.4,
+     "weight": 1.0
+    },
+    {
+     "name": "gore",
+     "windup": 0.3,
+     "strike": 0.2,
+     "recover": 0.4,
+     "reach": 1.7,
+     "arc": 70,
+     "damage": 0.9,
+     "max_range": 1.9,
+     "weight": 1.2
+    }
+   ]
   },
   "wolf": {
    "model": "res://assets/creatures/GreyWolf.glb",
@@ -110,7 +138,34 @@
    "chase_time": 8.0,
    "leash": 50.0,
    "cooldown": 10.0,
-   "aggro_radius": 0.0
+   "aggro_radius": 0.0,
+   "mass": 0.8,
+   "attacks": [
+    {
+     "name": "pounce",
+     "windup": 0.4,
+     "strike": 0.32,
+     "recover": 0.45,
+     "reach": 1.3,
+     "arc": 70,
+     "damage": 1.2,
+     "lunge": 2.2,
+     "max_range": 3.6,
+     "min_range": 1.4,
+     "weight": 1.0
+    },
+    {
+     "name": "bite",
+     "windup": 0.25,
+     "strike": 0.15,
+     "recover": 0.35,
+     "reach": 1.7,
+     "arc": 70,
+     "damage": 0.9,
+     "max_range": 1.9,
+     "weight": 1.4
+    }
+   ]
   },
   "ice_troll": {
    "model": "res://assets/creatures/IceTroll.glb",
@@ -158,7 +213,42 @@
    "damage": 22,
    "attack_range": 2.6,
    "attack_rate": 2.2,
-   "attack_time": 1.1
+   "attack_time": 1.1,
+   "element": "frost",
+   "mass": 3.0,
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 0.75,
+     "strike": 0.22,
+     "recover": 0.65,
+     "reach": 2.8,
+     "arc": 70,
+     "damage": 1.25,
+     "telegraph": true,
+     "weight": 1.0
+    },
+    {
+     "name": "hook",
+     "windup": 0.5,
+     "strike": 0.25,
+     "recover": 0.5,
+     "reach": 2.7,
+     "arc": 130,
+     "damage": 0.9,
+     "weight": 1.4
+    },
+    {
+     "name": "punch",
+     "windup": 0.35,
+     "strike": 0.16,
+     "recover": 0.4,
+     "reach": 2.5,
+     "arc": 50,
+     "damage": 0.75,
+     "weight": 1.0
+    }
+   ]
   },
   "frost_spirit": {
    "model": "res://assets/creatures/FrostSpirit.glb",
@@ -207,7 +297,34 @@
    "damage": 12,
    "attack_range": 2.0,
    "attack_rate": 1.5,
-   "attack_time": 0.8
+   "attack_time": 0.8,
+   "element": "frost",
+   "mass": 0.5,
+   "attacks": [
+    {
+     "name": "claw_swipe",
+     "windup": 0.45,
+     "strike": 0.22,
+     "recover": 0.45,
+     "reach": 2.2,
+     "arc": 110,
+     "damage": 1.0,
+     "weight": 1.2
+    },
+    {
+     "name": "wail_lunge",
+     "windup": 0.55,
+     "strike": 0.3,
+     "recover": 0.5,
+     "reach": 1.6,
+     "arc": 60,
+     "damage": 1.2,
+     "lunge": 2.2,
+     "max_range": 4.0,
+     "min_range": 1.8,
+     "weight": 0.8
+    }
+   ]
   },
   "lava_golem": {
    "model": "res://assets/creatures/LavaGolem.glb",
@@ -256,7 +373,54 @@
    "damage": 26,
    "attack_range": 2.6,
    "attack_rate": 2.5,
-   "attack_time": 1.2
+   "attack_time": 1.2,
+   "element": "fire",
+   "mass": 4.0,
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 0.9,
+     "strike": 0.24,
+     "recover": 0.75,
+     "reach": 2.8,
+     "arc": 70,
+     "damage": 1.2,
+     "telegraph": true,
+     "weight": 1.0
+    },
+    {
+     "name": "ground_pound",
+     "windup": 1.0,
+     "strike": 0.26,
+     "recover": 0.85,
+     "reach": 2.6,
+     "aoe": 2.6,
+     "damage": 1.0,
+     "telegraph": true,
+     "weight": 1.0,
+     "roar": true
+    },
+    {
+     "name": "hook",
+     "windup": 0.6,
+     "strike": 0.28,
+     "recover": 0.55,
+     "reach": 2.7,
+     "arc": 130,
+     "damage": 0.85,
+     "weight": 1.2
+    },
+    {
+     "name": "punch",
+     "windup": 0.45,
+     "strike": 0.18,
+     "recover": 0.5,
+     "reach": 2.6,
+     "arc": 50,
+     "damage": 0.8,
+     "weight": 0.8
+    }
+   ]
   },
   "fire_salamander": {
    "model": "res://assets/creatures/FireSalamander.glb",
@@ -307,7 +471,34 @@
    "damage": 7,
    "attack_range": 1.3,
    "attack_rate": 1.0,
-   "attack_time": 0.5
+   "attack_time": 0.5,
+   "element": "fire",
+   "mass": 0.6,
+   "attacks": [
+    {
+     "name": "lunge_bite",
+     "windup": 0.3,
+     "strike": 0.2,
+     "recover": 0.4,
+     "reach": 1.0,
+     "arc": 70,
+     "damage": 1.0,
+     "lunge": 1.0,
+     "max_range": 2.2,
+     "weight": 1.4
+    },
+    {
+     "name": "tail_whip",
+     "windup": 0.35,
+     "strike": 0.25,
+     "recover": 0.4,
+     "reach": 1.4,
+     "aoe": 1.3,
+     "damage": 0.9,
+     "max_range": 1.3,
+     "weight": 0.8
+    }
+   ]
   },
   "mushroom_beetle": {
    "model": "res://assets/creatures/MushroomBeetle.glb",
@@ -357,7 +548,34 @@
    "damage": 16,
    "attack_range": 2.2,
    "attack_rate": 1.8,
-   "attack_time": 0.9
+   "attack_time": 0.9,
+   "mass": 2.0,
+   "attacks": [
+    {
+     "name": "horn_lunge",
+     "windup": 0.65,
+     "strike": 0.35,
+     "recover": 0.6,
+     "reach": 1.7,
+     "arc": 60,
+     "damage": 1.1,
+     "lunge": 2.4,
+     "max_range": 5.0,
+     "min_range": 1.6,
+     "weight": 1.2
+    },
+    {
+     "name": "bite",
+     "windup": 0.3,
+     "strike": 0.18,
+     "recover": 0.45,
+     "reach": 2.0,
+     "arc": 70,
+     "damage": 0.8,
+     "max_range": 2.3,
+     "weight": 1.0
+    }
+   ]
   }
  },
  "spawns": [
@@ -507,5 +725,6 @@
   }
  ],
  "max_active_mobile": 10,
- "active_distance": 140.0
+ "active_distance": 140.0,
+ "_comment_attacks": "attacks: each move has windup/strike/recover seconds, reach m, arc degrees covered in front (or aoe m radius), damage (times the species damage), lunge m travelled during the strike, min/max_range to choose it, telegraph shows a ground warning. element frost/fire is reduced by matching gear."
 }

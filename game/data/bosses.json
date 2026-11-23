@@ -1,0 +1,840 @@
+{
+ "_comment": "Bosses: base species (model and walk/run tuning) with overrides. Moves as in creatures.json plus volley / quake (centre self) / burrow / summon / charge; pose picks which animation a special move uses. phases: at health fraction -> speed multiplier, new moves, summons.",
+ "bosses": {
+  "ancient_guardian": {
+   "name": "The Ancient Guardian",
+   "base": "lava_golem",
+   "scale": [
+    2.3,
+    2.3
+   ],
+   "health": 2200,
+   "damage": 30,
+   "radius": 1.5,
+   "arena": 40,
+   "glow_color": [
+    0.75,
+    0.35,
+    1.0
+   ],
+   "glow_energy": 3.5,
+   "crystals": [
+    0.72,
+    0.35,
+    1.0
+   ],
+   "run_speed": 3.4,
+   "attack_rate": 1.8,
+   "min_height": -100,
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 0.95,
+     "strike": 0.25,
+     "recover": 0.7,
+     "reach": 3.0,
+     "arc": 80,
+     "damage": 1.2,
+     "telegraph": true
+    },
+    {
+     "name": "hook",
+     "windup": 0.65,
+     "strike": 0.3,
+     "recover": 0.55,
+     "reach": 3.0,
+     "arc": 150,
+     "damage": 0.9
+    },
+    {
+     "name": "quake",
+     "pose": "ground_pound",
+     "centre": "self",
+     "windup": 1.1,
+     "strike": 0.3,
+     "recover": 0.8,
+     "reach": 3.0,
+     "aoe": 3.6,
+     "damage": 1.0,
+     "telegraph": true,
+     "min_range": 0,
+     "max_range": 4.0
+    },
+    {
+     "name": "volley",
+     "pose": "overhead_smash",
+     "windup": 0.8,
+     "strike": 0.2,
+     "recover": 0.8,
+     "reach": 3.0,
+     "count": 5,
+     "aoe": 1.8,
+     "damage": 0.6,
+     "min_range": 4.0,
+     "max_range": 18.0
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.66,
+     "speed": 1.15,
+     "summon": [
+      "frost_spirit",
+      2
+     ]
+    },
+    {
+     "at": 0.33,
+     "speed": 1.3,
+     "summon": [
+      "fire_salamander",
+      3
+     ],
+     "add": [
+      {
+       "name": "charge",
+       "pose": "punch",
+       "windup": 0.9,
+       "strike": 0.5,
+       "recover": 0.7,
+       "reach": 2.4,
+       "arc": 70,
+       "damage": 1.3,
+       "lunge": 4.0,
+       "min_range": 5.0,
+       "max_range": 16.0
+      }
+     ]
+    }
+   ],
+   "summon": [
+    "frost_spirit",
+    2
+   ],
+   "reward": {
+    "items": {
+     "trophy_guardian": 1
+    }
+   }
+  },
+  "beetle_queen": {
+   "name": "The Beetle Queen",
+   "base": "mushroom_beetle",
+   "scale": [
+    3.0,
+    3.0
+   ],
+   "health": 1700,
+   "damage": 24,
+   "radius": 1.8,
+   "arena": 40,
+   "glow_color": [
+    0.85,
+    0.3,
+    1.0
+   ],
+   "glow_energy": 3.0,
+   "crystals": [
+    0.85,
+    0.3,
+    1.0
+   ],
+   "run_speed": 3.6,
+   "min_height": -100,
+   "attacks": [
+    {
+     "name": "horn_lunge",
+     "windup": 0.75,
+     "strike": 0.4,
+     "recover": 0.7,
+     "reach": 1.9,
+     "arc": 70,
+     "damage": 1.1,
+     "lunge": 2.2,
+     "min_range": 2.0,
+     "max_range": 9.0
+    },
+    {
+     "name": "bite",
+     "windup": 0.4,
+     "strike": 0.2,
+     "recover": 0.5,
+     "reach": 2.1,
+     "arc": 80,
+     "damage": 0.9,
+     "max_range": 3.0
+    },
+    {
+     "name": "quake",
+     "pose": "horn_lunge",
+     "centre": "self",
+     "windup": 0.9,
+     "strike": 0.3,
+     "recover": 0.7,
+     "reach": 2.0,
+     "aoe": 3.2,
+     "damage": 0.9,
+     "telegraph": true,
+     "max_range": 3.5
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.7,
+     "speed": 1.1,
+     "summon": [
+      "mushroom_beetle",
+      3
+     ],
+     "add": [
+      {
+       "name": "burrow",
+       "windup": 1.4,
+       "strike": 0.4,
+       "recover": 0.8,
+       "reach": 2.0,
+       "aoe": 2.8,
+       "damage": 1.3,
+       "telegraph": true,
+       "min_range": 3.0,
+       "max_range": 25.0,
+       "weight": 1.5
+      }
+     ]
+    },
+    {
+     "at": 0.35,
+     "speed": 1.3,
+     "summon": [
+      "mushroom_beetle",
+      2
+     ],
+     "add": [
+      {
+       "name": "volley",
+       "pose": "spit",
+       "windup": 0.7,
+       "strike": 0.2,
+       "recover": 0.7,
+       "reach": 2.0,
+       "count": 6,
+       "aoe": 1.7,
+       "damage": 0.6,
+       "min_range": 4.0,
+       "max_range": 20.0
+      }
+     ]
+    }
+   ],
+   "reward": {
+    "items": {
+     "trophy_queen": 1
+    }
+   }
+  },
+  "mutated_guardian": {
+   "name": "The Mutated Guardian",
+   "base": "ice_troll",
+   "scale": [
+    1.7,
+    1.7
+   ],
+   "health": 950,
+   "damage": 22,
+   "radius": 1.1,
+   "arena": 30,
+   "glow_color": [
+    0.7,
+    0.35,
+    1.0
+   ],
+   "glow_energy": 2.4,
+   "crystals": [
+    0.72,
+    0.35,
+    1.0
+   ],
+   "min_height": -100,
+   "element": "",
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 0.85,
+     "strike": 0.24,
+     "recover": 0.7,
+     "reach": 2.9,
+     "arc": 80,
+     "damage": 1.2,
+     "telegraph": true
+    },
+    {
+     "name": "hook",
+     "windup": 0.55,
+     "strike": 0.28,
+     "recover": 0.5,
+     "reach": 2.8,
+     "arc": 140,
+     "damage": 0.9
+    },
+    {
+     "name": "volley",
+     "pose": "overhead_smash",
+     "windup": 0.8,
+     "strike": 0.2,
+     "recover": 0.8,
+     "reach": 2.8,
+     "count": 3,
+     "aoe": 1.6,
+     "damage": 0.6,
+     "min_range": 4.0,
+     "max_range": 16.0
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.2,
+     "summon": [
+      "frost_spirit",
+      2
+     ]
+    }
+   ],
+   "reward": {
+    "items": {
+     "rare_crystal": 1
+    }
+   }
+  },
+  "greymane": {
+   "name": "Greymane",
+   "base": "wolf",
+   "scale": [
+    1.9,
+    1.9
+   ],
+   "health": 650,
+   "damage": 18,
+   "radius": 0.8,
+   "arena": 35,
+   "temper": "threaten",
+   "glow_color": [
+    0.8,
+    0.85,
+    1.0
+   ],
+   "glow_energy": 0.6,
+   "crystals": [
+    0.85,
+    0.9,
+    1.0
+   ],
+   "run_speed": 8.5,
+   "min_height": -100,
+   "attacks": [
+    {
+     "name": "pounce",
+     "windup": 0.5,
+     "strike": 0.36,
+     "recover": 0.5,
+     "reach": 1.6,
+     "arc": 80,
+     "damage": 1.2,
+     "lunge": 2.4,
+     "min_range": 2.0,
+     "max_range": 6.0
+    },
+    {
+     "name": "bite",
+     "windup": 0.3,
+     "strike": 0.16,
+     "recover": 0.4,
+     "reach": 1.9,
+     "arc": 80,
+     "damage": 0.9,
+     "max_range": 2.4
+    },
+    {
+     "name": "charge",
+     "pose": "pounce",
+     "windup": 0.8,
+     "strike": 0.5,
+     "recover": 0.6,
+     "reach": 1.6,
+     "arc": 70,
+     "damage": 1.3,
+     "lunge": 4.5,
+     "min_range": 5.0,
+     "max_range": 14.0
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.2,
+     "summon": [
+      "wolf",
+      2
+     ]
+    }
+   ],
+   "reward": {
+    "items": {
+     "trophy_greymane": 1
+    }
+   }
+  },
+  "cinderhulk": {
+   "name": "Cinderhulk, the Ancient Golem",
+   "base": "lava_golem",
+   "scale": [
+    2.5,
+    2.5
+   ],
+   "health": 1600,
+   "damage": 32,
+   "radius": 1.6,
+   "arena": 35,
+   "element": "fire",
+   "glow_color": [
+    1.0,
+    0.35,
+    0.05
+   ],
+   "glow_energy": 4.5,
+   "crystals": [
+    1.0,
+    0.5,
+    0.1
+   ],
+   "min_height": -100,
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 1.0,
+     "strike": 0.26,
+     "recover": 0.8,
+     "reach": 3.0,
+     "arc": 80,
+     "damage": 1.2,
+     "telegraph": true
+    },
+    {
+     "name": "ground_pound",
+     "windup": 1.1,
+     "strike": 0.3,
+     "recover": 0.9,
+     "reach": 3.0,
+     "aoe": 3.0,
+     "damage": 1.1,
+     "telegraph": true
+    },
+    {
+     "name": "quake",
+     "pose": "ground_pound",
+     "centre": "self",
+     "windup": 1.2,
+     "strike": 0.3,
+     "recover": 0.9,
+     "reach": 3.0,
+     "aoe": 4.0,
+     "damage": 1.0,
+     "telegraph": true,
+     "max_range": 4.5
+    },
+    {
+     "name": "volley",
+     "pose": "overhead_smash",
+     "windup": 0.9,
+     "strike": 0.2,
+     "recover": 0.8,
+     "reach": 3.0,
+     "count": 5,
+     "aoe": 2.0,
+     "damage": 0.6,
+     "min_range": 5.0,
+     "max_range": 20.0
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.25,
+     "summon": [
+      "fire_salamander",
+      3
+     ]
+    }
+   ],
+   "reward": {}
+  },
+  "gloomhorn": {
+   "name": "Gloomhorn",
+   "base": "mushroom_beetle",
+   "scale": [
+    2.6,
+    2.6
+   ],
+   "health": 1200,
+   "damage": 26,
+   "radius": 1.6,
+   "arena": 35,
+   "glow_color": [
+    0.2,
+    1.0,
+    0.7
+   ],
+   "glow_energy": 3.0,
+   "crystals": [
+    0.2,
+    1.0,
+    0.7
+   ],
+   "run_speed": 3.8,
+   "min_height": -100,
+   "attacks": [
+    {
+     "name": "charge",
+     "pose": "horn_lunge",
+     "windup": 1.0,
+     "strike": 0.55,
+     "recover": 0.8,
+     "reach": 1.8,
+     "arc": 70,
+     "damage": 1.3,
+     "lunge": 5.0,
+     "min_range": 4.0,
+     "max_range": 18.0,
+     "weight": 1.4
+    },
+    {
+     "name": "horn_lunge",
+     "windup": 0.7,
+     "strike": 0.38,
+     "recover": 0.6,
+     "reach": 1.8,
+     "arc": 70,
+     "damage": 1.1,
+     "lunge": 2.0,
+     "max_range": 6.0
+    },
+    {
+     "name": "quake",
+     "pose": "horn_lunge",
+     "centre": "self",
+     "windup": 0.9,
+     "strike": 0.3,
+     "recover": 0.7,
+     "reach": 2.0,
+     "aoe": 3.2,
+     "damage": 0.9,
+     "telegraph": true,
+     "max_range": 3.5
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.3,
+     "add": [
+      {
+       "name": "volley",
+       "pose": "spit",
+       "windup": 0.7,
+       "strike": 0.2,
+       "recover": 0.7,
+       "reach": 2.0,
+       "count": 5,
+       "aoe": 1.7,
+       "damage": 0.6,
+       "min_range": 4.0,
+       "max_range": 18.0
+      }
+     ]
+    }
+   ],
+   "reward": {}
+  },
+  "rimeclaw": {
+   "name": "Rimeclaw, the Frost Titan",
+   "base": "ice_troll",
+   "scale": [
+    2.2,
+    2.2
+   ],
+   "health": 1450,
+   "damage": 30,
+   "radius": 1.5,
+   "arena": 35,
+   "element": "frost",
+   "glow_color": [
+    0.5,
+    0.85,
+    1.0
+   ],
+   "glow_energy": 3.0,
+   "crystals": [
+    0.6,
+    0.9,
+    1.0
+   ],
+   "min_height": -100,
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 0.9,
+     "strike": 0.25,
+     "recover": 0.75,
+     "reach": 3.0,
+     "arc": 80,
+     "damage": 1.2,
+     "telegraph": true
+    },
+    {
+     "name": "hook",
+     "windup": 0.6,
+     "strike": 0.3,
+     "recover": 0.55,
+     "reach": 3.0,
+     "arc": 150,
+     "damage": 0.9
+    },
+    {
+     "name": "volley",
+     "pose": "overhead_smash",
+     "windup": 0.8,
+     "strike": 0.2,
+     "recover": 0.8,
+     "reach": 3.0,
+     "count": 5,
+     "aoe": 1.8,
+     "damage": 0.6,
+     "min_range": 4.0,
+     "max_range": 18.0
+    },
+    {
+     "name": "quake",
+     "pose": "ground_pound",
+     "centre": "self",
+     "windup": 1.0,
+     "strike": 0.3,
+     "recover": 0.8,
+     "reach": 3.0,
+     "aoe": 3.6,
+     "damage": 1.0,
+     "telegraph": true,
+     "max_range": 4.0
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.2,
+     "summon": [
+      "frost_spirit",
+      2
+     ]
+    }
+   ],
+   "reward": {}
+  },
+  "hollow_sentinel": {
+   "name": "The Hollow Sentinel",
+   "base": "frost_spirit",
+   "scale": [
+    2.0,
+    2.0
+   ],
+   "health": 1000,
+   "damage": 24,
+   "radius": 1.0,
+   "arena": 30,
+   "glow_color": [
+    0.75,
+    0.35,
+    1.0
+   ],
+   "glow_energy": 2.5,
+   "crystals": [
+    0.72,
+    0.35,
+    1.0
+   ],
+   "hover": 0.6,
+   "attacks": [
+    {
+     "name": "claw_swipe",
+     "windup": 0.55,
+     "strike": 0.25,
+     "recover": 0.5,
+     "reach": 2.6,
+     "arc": 130,
+     "damage": 1.0
+    },
+    {
+     "name": "wail_lunge",
+     "windup": 0.7,
+     "strike": 0.35,
+     "recover": 0.55,
+     "reach": 1.8,
+     "arc": 70,
+     "damage": 1.2,
+     "lunge": 3.0,
+     "min_range": 3.0,
+     "max_range": 9.0
+    },
+    {
+     "name": "volley",
+     "pose": "claw_swipe",
+     "windup": 0.7,
+     "strike": 0.2,
+     "recover": 0.7,
+     "reach": 2.0,
+     "count": 4,
+     "aoe": 1.7,
+     "damage": 0.6,
+     "min_range": 4.0,
+     "max_range": 18.0
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.2,
+     "summon": [
+      "frost_spirit",
+      2
+     ]
+    }
+   ],
+   "reward": {}
+  },
+  "night_terror": {
+   "name": "The Night Terror",
+   "base": "ice_troll",
+   "scale": [
+    1.8,
+    1.8
+   ],
+   "health": 900,
+   "damage": 24,
+   "radius": 1.2,
+   "arena": 40,
+   "glow_color": [
+    1.0,
+    0.25,
+    0.2
+   ],
+   "glow_energy": 2.5,
+   "crystals": [
+    1.0,
+    0.3,
+    0.25
+   ],
+   "min_height": -100,
+   "element": "",
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 0.85,
+     "strike": 0.24,
+     "recover": 0.7,
+     "reach": 2.9,
+     "arc": 80,
+     "damage": 1.2,
+     "telegraph": true
+    },
+    {
+     "name": "hook",
+     "windup": 0.55,
+     "strike": 0.28,
+     "recover": 0.5,
+     "reach": 2.8,
+     "arc": 140,
+     "damage": 0.9
+    },
+    {
+     "name": "charge",
+     "pose": "punch",
+     "windup": 0.8,
+     "strike": 0.45,
+     "recover": 0.6,
+     "reach": 2.3,
+     "arc": 70,
+     "damage": 1.2,
+     "lunge": 3.5,
+     "min_range": 4.0,
+     "max_range": 12.0
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.2,
+     "summon": [
+      "wolf",
+      2
+     ]
+    }
+   ],
+   "reward": {}
+  },
+  "frost_sentinel": {
+   "name": "The Frozen Sentinel",
+   "base": "ice_troll",
+   "scale": [
+    1.5,
+    1.5
+   ],
+   "health": 700,
+   "damage": 22,
+   "radius": 1.0,
+   "arena": 25,
+   "element": "frost",
+   "glow_color": [
+    0.75,
+    0.95,
+    1.0
+   ],
+   "glow_energy": 2.5,
+   "crystals": [
+    0.85,
+    0.95,
+    1.0
+   ],
+   "min_height": -100,
+   "attacks": [
+    {
+     "name": "overhead_smash",
+     "windup": 0.8,
+     "strike": 0.24,
+     "recover": 0.7,
+     "reach": 2.8,
+     "arc": 80,
+     "damage": 1.2,
+     "telegraph": true
+    },
+    {
+     "name": "punch",
+     "windup": 0.4,
+     "strike": 0.18,
+     "recover": 0.45,
+     "reach": 2.6,
+     "arc": 50,
+     "damage": 0.8
+    }
+   ],
+   "phases": [
+    {
+     "at": 0.5,
+     "speed": 1.2
+    }
+   ],
+   "reward": {
+    "items": {
+     "fragment_frost": 1
+    }
+   }
+  }
+ }
+}

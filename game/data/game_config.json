@@ -10,7 +10,11 @@
   "start_hour": 7.6,
   "target_fps_pc": 58,
   "target_fps_mobile": 40,
-  "spawn": [0, 0, 40],
+  "spawn": [
+    0,
+    0,
+    40
+  ],
   "combat": {
     "_comment": "Health points, damage per hit, seconds, metres, degrees.",
     "max_health": 100.0,
@@ -18,14 +22,55 @@
     "regen_delay": 6.0,
     "sword_damage": 34.0,
     "sword_range": 2.6,
-    "sword_arc_degrees": 80.0,
-    "sword_anim_speed": 1.5,
-    "sword_hit_fraction": 0.38,
+    "sword_anim_speed": 1.0,
     "attack_move_factor": 0.3,
     "sheathe_after": 6.0,
     "lava_damage_per_second": 12.0,
     "lava_speed_factor": 0.75,
     "knockback": 5.0,
-    "respawn_delay": 3.5
+    "respawn_delay": 3.5,
+    "_comment_combo": "Each swing: animation, live = part of the clip (fractions) when the blade can cut, step = metres stepped in, damage = times sword_damage. Hits land where the blade's real path crosses a creature.",
+    "combo": [
+      {
+        "anim": "Sword_Slash1",
+        "live": [
+          0.27,
+          0.56
+        ],
+        "step": 0.6,
+        "damage": 1.0
+      },
+      {
+        "anim": "Sword_Slash2",
+        "live": [
+          0.26,
+          0.55
+        ],
+        "step": 0.6,
+        "damage": 1.0
+      },
+      {
+        "anim": "Sword_Slash3",
+        "live": [
+          0.36,
+          0.6
+        ],
+        "step": 1.0,
+        "damage": 1.6
+      }
+    ],
+    "combo_chain_at": 0.6,
+    "combo_window": 0.45,
+    "lock_range": 4.5,
+    "ideal_gap": 1.15,
+    "dodge_time": 0.62,
+    "dodge_speed": 7.5,
+    "dodge_anim_speed": 1.5,
+    "dodge_iframes": [
+      0.05,
+      0.4
+    ],
+    "block_factor": 0.25,
+    "potion_heal": 45.0
   }
 }

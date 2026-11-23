@@ -1,78 +1,2153 @@
 {
-  "_comment": "Villagers. home = [x, z] world position on the village street; wander = metres they stroll from home; idle_anim plays when standing. Outfit colours are [r, g, b]. Lines are picked by quest stage: intro (before the quest), hunt (crystals being collected), return (all crystals found), done (after the reward). A villager with a 'quest' role drives the story.",
-  "talk_distance": 3.2,
-  "active_distance": 90.0,
-  "villagers": [
-    {
-      "id": "elder", "name": "Elder Tobin", "role": "quest_giver",
-      "home": [-321, 1], "wander": 1.5, "walk_anim": "Walk_Formal", "walk_speed": 0.7, "idle_anim": "Idle_Talking",
-      "outfit": {"model": "male", "jacket": [0.36, 0.26, 0.18], "pants": [0.24, 0.2, 0.16], "boots": [0.2, 0.14, 0.1], "hair": [0.78, 0.76, 0.72], "accessories": ["beard", "cane"]},
-      "lines": {
-        "intro": [
-          "Ah, a traveller! You came over the hills, didn't you? Few do these days.",
-          "Our island has three heart-stones: a Frost Crystal high in the peaks, an Ember Heart in the volcano, and a Glow Spore deep in the hollow.",
-          "Since they were stirred, the beasts guarding them grow wilder every night. Trolls, golems, beetles the size of carts...",
-          "Bring the three heart-stones back to me and I can calm the island again. Take care, and keep that sword sharp."
-        ],
-        "hunt": ["Frost Crystal in the north, Ember Heart in the east, Glow Spore in the south. Follow the light beams; you'll see them from far away."],
-        "return": [
-          "You found them, all three! I can feel the island breathing easier already.",
-          "Take this to Bram the blacksmith. He'll know what to do with a little of each stone's power. Thank you, friend."
-        ],
-        "forge": ["Go on, Bram is waiting by his anvil at the east end of the street."],
-        "done": ["The island is calmer thanks to you. The beasts still roam, but they're only beasts now."]
-      }
-    },
-    {
-      "id": "baker", "name": "Mara the Baker",
-      "home": [-342, 5], "wander": 4.0, "walk_anim": "Walk", "walk_speed": 1.1, "idle_anim": "Idle",
-      "outfit": {"model": "female", "jacket": [0.62, 0.38, 0.3], "pants": [0.35, 0.25, 0.2], "boots": [0.22, 0.15, 0.1], "hair": [0.3, 0.18, 0.1], "accessories": ["apron", "headscarf"], "apron_color": [0.92, 0.9, 0.84], "scarf_color": [0.75, 0.35, 0.25]},
-      "lines": {
-        "intro": ["Fresh bread! Well, fresh this morning. Have you met Elder Tobin yet? He's been looking for someone brave.", "If you're hungry, the meadow deer will keep you company, but they're quick to run."],
-        "hunt": ["The Glow Hollow is lovely at night, all those blue mushrooms. The beetles, less so. Their horns hurt!"],
-        "return": ["Is it true? You found all three? Go tell the Elder!"],
-        "forge": ["Bram's been grinning all morning. I think he's excited to forge something special."],
-        "done": ["Everyone's talking about you! Here, the next loaf's on me."]
-      }
-    },
-    {
-      "id": "smith", "name": "Bram the Blacksmith", "role": "smith",
-      "home": [-255, -6], "wander": 0.0, "walk_anim": "Walk", "walk_speed": 1.0, "idle_anim": "Interact", "anvil": true,
-      "outfit": {"model": "male", "jacket": [0.2, 0.2, 0.22], "pants": [0.18, 0.16, 0.14], "boots": [0.16, 0.11, 0.08], "hair": [0.12, 0.08, 0.05], "accessories": ["apron", "hammer"], "apron_color": [0.32, 0.2, 0.12]},
-      "lines": {
-        "intro": ["*clang* Hm? A sword on your hip and mud on your boots. Talk to the Elder, he's got work for you."],
-        "hunt": ["Trolls swing slow but hit hard. Strike, then step back before those fists come down.", "Golems? Don't stand still near one. Keep moving."],
-        "return": ["Heart-stones? Bring them to the Elder first, he'll want to see them."],
-        "forge": [
-          "The Elder sent you? Let me see those stones...",
-          "*clang* *clang* *hiss* There. Your blade now carries a sliver of all three. Feel how light it is? It'll cut much deeper."
-        ],
-        "done": ["That blade suits you. Look after it."]
-      }
-    },
-    {
-      "id": "lina", "name": "Lina",
-      "home": [-290, -4], "wander": 6.0, "walk_anim": "Walk_Formal", "walk_speed": 1.0, "idle_anim": "Idle",
-      "outfit": {"model": "female", "jacket": [0.28, 0.4, 0.55], "pants": [0.3, 0.32, 0.4], "boots": [0.25, 0.17, 0.11], "hair": [0.55, 0.35, 0.18], "accessories": ["basket", "bun"]},
-      "lines": {
-        "intro": ["Off to market. Mara's bread and some berries from the meadow edge. Lovely day, isn't it?"],
-        "hunt": ["I saw a strange glow in the sky up north last night. Like a column of light."],
-        "return": ["You look tired. Go rest at the Elder's, he'll be thrilled."],
-        "forge": ["You can hear Bram's hammer from the other end of the village!"],
-        "done": ["Thank you for what you did. The nights are quieter now."]
-      }
-    },
-    {
-      "id": "kid", "name": "Pip", "scale": 0.68,
-      "home": [-300, -3], "wander": 7.0, "walk_anim": "Jog_Fwd", "walk_speed": 2.6, "idle_anim": "Idle",
-      "outfit": {"model": "male", "jacket": [0.75, 0.55, 0.2], "pants": [0.3, 0.28, 0.24], "boots": [0.3, 0.2, 0.12], "hair": [0.35, 0.2, 0.08], "accessories": ["cap"], "cap_color": [0.25, 0.45, 0.3]},
-      "lines": {
-        "intro": ["Whoa, is that a real sword? Can I hold it? ...No? Okay."],
-        "hunt": ["Don't step in the lava! My uncle did once. He was fine but his boots weren't.", "The salamanders are small but they bite!"],
-        "return": ["You got them ALL? You're the best!"],
-        "forge": ["Bram's making you something cool, isn't he? I knew it!"],
-        "done": ["When I grow up I'm going to fight a troll too."]
-      }
-    }
-  ]
+ "_comment": "Villagers. home = [x, z]; mode: wander (around home), stroll (anywhere in town along the streets), patrol (route of [x, z] waypoints), work (stays at a workplace facing `face` degrees, 0 = +z), chat (stands talking), sit. role: quest_giver, merchant (shop), smith, innkeeper (rest), captain / hunter (monster contracts), guard (fights raiders), villager, traveller. Lines are picked by context: original quest stage (intro, hunt, return, forge, done), else default (ambient, one picked at random). Quest dialogue comes from data/quests.json.",
+ "talk_distance": 3.2,
+ "active_distance": 95.0,
+ "villagers": [
+  {
+   "id": "elder",
+   "name": "Elder Tobin",
+   "role": "quest_giver",
+   "home": [
+    -321,
+    1
+   ],
+   "wander": 1.5,
+   "walk_anim": "Walk_Formal",
+   "walk_speed": 0.7,
+   "idle_anim": "Idle_Talking",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.36,
+     0.26,
+     0.18
+    ],
+    "pants": [
+     0.24,
+     0.2,
+     0.16
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.78,
+     0.76,
+     0.72
+    ],
+    "accessories": [
+     "beard",
+     "cane"
+    ]
+   },
+   "lines": {
+    "intro": [
+     "Ah, a traveller! You came over the hills, didn't you? Few do these days.",
+     "Our island has three heart-stones: a Frost Crystal high in the peaks, an Ember Heart in the volcano, and a Glow Spore deep in the hollow.",
+     "Since they were stirred, the beasts guarding them grow wilder every night. Trolls, golems, beetles the size of carts...",
+     "Bring the three heart-stones back to me and I can calm the island again. Take care, and keep that sword sharp."
+    ],
+    "hunt": [
+     "Frost Crystal in the north, Ember Heart in the east, Glow Spore in the south. Follow the light beams; you'll see them from far away."
+    ],
+    "return": [
+     "You found them, all three! I can feel the island breathing easier already.",
+     "Take this to Bram the blacksmith. He'll know what to do with a little of each stone's power. Thank you, friend."
+    ],
+    "forge": [
+     "Go on, Bram is waiting by his anvil at the east end of the street."
+    ],
+    "done": [
+     "The island is calmer thanks to you. The beasts still roam, but they're only beasts now."
+    ],
+    "default": [
+     "The island is calmer thanks to you. The beasts still roam, but they're only beasts now."
+    ]
+   },
+   "mode": "wander"
+  },
+  {
+   "id": "baker",
+   "name": "Mara the Baker",
+   "home": [
+    -342,
+    5
+   ],
+   "wander": 4.0,
+   "walk_anim": "Walk",
+   "walk_speed": 1.1,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.62,
+     0.38,
+     0.3
+    ],
+    "pants": [
+     0.35,
+     0.25,
+     0.2
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.3,
+     0.18,
+     0.1
+    ],
+    "accessories": [
+     "apron",
+     "headscarf"
+    ],
+    "apron_color": [
+     0.92,
+     0.9,
+     0.84
+    ],
+    "scarf_color": [
+     0.75,
+     0.35,
+     0.25
+    ]
+   },
+   "lines": {
+    "intro": [
+     "Fresh bread! Well, fresh this morning. Have you met Elder Tobin yet? He's been looking for someone brave.",
+     "If you're hungry, the meadow deer will keep you company, but they're quick to run."
+    ],
+    "hunt": [
+     "The Glow Hollow is lovely at night, all those blue mushrooms. The beetles, less so. Their horns hurt!"
+    ],
+    "return": [
+     "Is it true? You found all three? Go tell the Elder!"
+    ],
+    "forge": [
+     "Bram's been grinning all morning. I think he's excited to forge something special."
+    ],
+    "done": [
+     "Everyone's talking about you! Here, the next loaf's on me."
+    ]
+   },
+   "mode": "wander"
+  },
+  {
+   "id": "smith",
+   "name": "Bram the Blacksmith",
+   "role": "smith",
+   "home": [
+    -255,
+    -6
+   ],
+   "wander": 0.0,
+   "walk_anim": "Walk",
+   "walk_speed": 1.0,
+   "idle_anim": "Interact",
+   "anvil": true,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.2,
+     0.2,
+     0.22
+    ],
+    "pants": [
+     0.18,
+     0.16,
+     0.14
+    ],
+    "boots": [
+     0.16,
+     0.11,
+     0.08
+    ],
+    "hair": [
+     0.12,
+     0.08,
+     0.05
+    ],
+    "accessories": [
+     "apron",
+     "hammer"
+    ],
+    "apron_color": [
+     0.32,
+     0.2,
+     0.12
+    ]
+   },
+   "lines": {
+    "intro": [
+     "*clang* Hm? A sword on your hip and mud on your boots. Talk to the Elder, he's got work for you."
+    ],
+    "hunt": [
+     "Trolls swing slow but hit hard. Strike, then step back before those fists come down.",
+     "Golems? Don't stand still near one. Keep moving."
+    ],
+    "return": [
+     "Heart-stones? Bring them to the Elder first, he'll want to see them."
+    ],
+    "forge": [
+     "The Elder sent you? Let me see those stones...",
+     "*clang* *clang* *hiss* There. Your blade now carries a sliver of all three. Feel how light it is? It'll cut much deeper."
+    ],
+    "done": [
+     "That blade suits you. Look after it."
+    ]
+   },
+   "mode": "work",
+   "face": 0
+  },
+  {
+   "id": "lina",
+   "name": "Lina",
+   "home": [
+    -290,
+    -4
+   ],
+   "wander": 6.0,
+   "walk_anim": "Walk_Formal",
+   "walk_speed": 1.0,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.28,
+     0.4,
+     0.55
+    ],
+    "pants": [
+     0.3,
+     0.32,
+     0.4
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.11
+    ],
+    "hair": [
+     0.55,
+     0.35,
+     0.18
+    ],
+    "accessories": [
+     "basket",
+     "bun"
+    ]
+   },
+   "lines": {
+    "intro": [
+     "Off to market. Mara's bread and some berries from the meadow edge. Lovely day, isn't it?"
+    ],
+    "hunt": [
+     "I saw a strange glow in the sky up north last night. Like a column of light."
+    ],
+    "return": [
+     "You look tired. Go rest at the Elder's, he'll be thrilled."
+    ],
+    "forge": [
+     "You can hear Bram's hammer from the other end of the village!"
+    ],
+    "done": [
+     "Thank you for what you did. The nights are quieter now."
+    ]
+   },
+   "mode": "wander"
+  },
+  {
+   "id": "kid",
+   "name": "Pip",
+   "scale": 0.68,
+   "home": [
+    -300,
+    -3
+   ],
+   "wander": 7.0,
+   "walk_anim": "Jog_Fwd",
+   "walk_speed": 2.6,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.75,
+     0.55,
+     0.2
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.24
+    ],
+    "boots": [
+     0.3,
+     0.2,
+     0.12
+    ],
+    "hair": [
+     0.35,
+     0.2,
+     0.08
+    ],
+    "accessories": [
+     "cap"
+    ],
+    "cap_color": [
+     0.25,
+     0.45,
+     0.3
+    ]
+   },
+   "lines": {
+    "intro": [
+     "Whoa, is that a real sword? Can I hold it? ...No? Okay."
+    ],
+    "hunt": [
+     "Don't step in the lava! My uncle did once. He was fine but his boots weren't.",
+     "The salamanders are small but they bite!"
+    ],
+    "return": [
+     "You got them ALL? You're the best!"
+    ],
+    "forge": [
+     "Bram's making you something cool, isn't he? I knew it!"
+    ],
+    "done": [
+     "When I grow up I'm going to fight a troll too."
+    ]
+   },
+   "mode": "wander"
+  },
+  {
+   "id": "tilly",
+   "name": "Tilly the Shopkeeper",
+   "role": "merchant",
+   "shop": "merchant",
+   "mode": "work",
+   "home": [
+    -285.5,
+    -47.5
+   ],
+   "face": -90,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.45,
+     0.3,
+     0.45
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.3
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.6,
+     0.4,
+     0.2
+    ],
+    "accessories": [
+     "apron",
+     "bun"
+    ],
+    "apron_color": [
+     0.85,
+     0.82,
+     0.7
+    ]
+   },
+   "lines": {
+    "default": [
+     "Potions, ore, odds and ends! If it's not on my shelf, it's not worth having.",
+     "Hale the merchant usually brings my stock in from the meadow. He's late again.",
+     "Prices are fair, I promise. Mostly."
+    ]
+   }
+  },
+  {
+   "id": "pell",
+   "name": "Old Pell",
+   "role": "villager",
+   "mode": "work",
+   "home": [
+    -320,
+    -57.1
+   ],
+   "face": 0,
+   "idle_anim": "Idle_Talking",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.5,
+     0.42,
+     0.3
+    ],
+    "pants": [
+     0.3,
+     0.27,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.8,
+     0.78,
+     0.75
+    ],
+    "accessories": [
+     "beard",
+     "hat"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Apples! Crisp as a frosty morning.",
+     "Thirty years at this stall. Never seen the town this busy, or this nervous."
+    ]
+   }
+  },
+  {
+   "id": "marta",
+   "name": "Marta",
+   "role": "villager",
+   "mode": "work",
+   "home": [
+    -311,
+    -57.1
+   ],
+   "face": 0,
+   "idle_anim": "Idle_Talking",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.55,
+     0.3,
+     0.25
+    ],
+    "pants": [
+     0.3,
+     0.27,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.35,
+     0.25,
+     0.15
+    ],
+    "accessories": [
+     "headscarf"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Bread, cheese, honey cakes. Mara bakes, I sell. Everyone's happy.",
+     "Did you hear? No caravans for weeks now."
+    ]
+   }
+  },
+  {
+   "id": "joss",
+   "name": "Joss the Clothier",
+   "role": "villager",
+   "mode": "work",
+   "home": [
+    -302,
+    -57.1
+   ],
+   "face": 0,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.35,
+     0.5
+    ],
+    "pants": [
+     0.3,
+     0.27,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.35,
+     0.25,
+     0.15
+    ],
+    "accessories": [
+     "cap"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Wool from the meadow sheep, dyed with Glow Hollow mushrooms. Hard-wearing.",
+     "You'll want furs if you're heading north. The cold up there bites through anything."
+    ]
+   }
+  },
+  {
+   "id": "henna",
+   "name": "Henna",
+   "role": "villager",
+   "mode": "work",
+   "home": [
+    -320,
+    -42.9
+   ],
+   "face": 180,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.4,
+     0.5,
+     0.35
+    ],
+    "pants": [
+     0.3,
+     0.27,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.35,
+     0.25,
+     0.15
+    ],
+    "accessories": [
+     "bun"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Flowers for the shrine, love? No? For your sweetheart, then.",
+     "The moonbells come from Glow Hollow. Wren the herbalist knows where they grow."
+    ]
+   }
+  },
+  {
+   "id": "dorn",
+   "name": "Dorn the Fishmonger",
+   "role": "villager",
+   "mode": "work",
+   "home": [
+    -302,
+    -42.9
+   ],
+   "face": 180,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.25,
+     0.3,
+     0.35
+    ],
+    "pants": [
+     0.3,
+     0.27,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.35,
+     0.25,
+     0.15
+    ],
+    "accessories": [
+     "apron",
+     "cap"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Fresh from the cold streams. Well, fresh-ish.",
+     "My cousin swears he saw lights moving under the ice up north."
+    ]
+   }
+  },
+  {
+   "id": "gerta",
+   "name": "Gerta the Innkeeper",
+   "role": "innkeeper",
+   "mode": "work",
+   "home": [
+    -336.0,
+    -46.5
+   ],
+   "face": 90,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.55,
+     0.25,
+     0.2
+    ],
+    "pants": [
+     0.3,
+     0.22,
+     0.18
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.75,
+     0.55,
+     0.3
+    ],
+    "accessories": [
+     "apron",
+     "bun"
+    ],
+    "apron_color": [
+     0.9,
+     0.88,
+     0.8
+    ]
+   },
+   "lines": {
+    "default": [
+     "Welcome to the Brickton Arms! A warm bed and a hot stew, that's my promise.",
+     "If you need to rest, just ask. I'll wake you whenever you like."
+    ]
+   }
+  },
+  {
+   "id": "ivo",
+   "name": "Ivo the Carpenter",
+   "role": "villager",
+   "mode": "work",
+   "home": [
+    -212.5,
+    -11.3
+   ],
+   "face": 180,
+   "idle_anim": "Interact",
+   "wander": 2.0,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.5,
+     0.4,
+     0.25
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.18
+    ],
+    "boots": [
+     0.25,
+     0.16,
+     0.1
+    ],
+    "hair": [
+     0.4,
+     0.25,
+     0.12
+    ],
+    "accessories": [
+     "apron",
+     "hammer"
+    ],
+    "apron_color": [
+     0.5,
+     0.38,
+     0.22
+    ]
+   },
+   "lines": {
+    "default": [
+     "Mending fences again. Something's been knocking them down at night.",
+     "The palisade at the gate? My work. Sturdy, but I'd rather not test it."
+    ]
+   }
+  },
+  {
+   "id": "sela",
+   "name": "Sela the Tanner",
+   "role": "villager",
+   "mode": "work",
+   "home": [
+    -214.7,
+    14.4
+   ],
+   "face": 0,
+   "idle_anim": "Interact",
+   "wander": 2.0,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.4,
+     0.3,
+     0.22
+    ],
+    "pants": [
+     0.28,
+     0.22,
+     0.16
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.12,
+     0.08
+    ],
+    "accessories": [
+     "apron",
+     "headscarf"
+    ],
+    "apron_color": [
+     0.4,
+     0.3,
+     0.2
+    ],
+    "scarf_color": [
+     0.45,
+     0.3,
+     0.2
+    ]
+   },
+   "lines": {
+    "default": [
+     "Troll hide makes the warmest boots. Bring me some and I'll show you.",
+     "Phew, sorry about the smell. You get used to it. Eventually."
+    ]
+   }
+  },
+  {
+   "id": "nadia",
+   "name": "Nadia Ostrander",
+   "role": "quest_giver",
+   "mode": "work",
+   "home": [
+    -223.0,
+    27.0
+   ],
+   "face": 90,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.35,
+     0.45,
+     0.4
+    ],
+    "pants": [
+     0.25,
+     0.25,
+     0.22
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.1
+    ],
+    "hair": [
+     0.15,
+     0.1,
+     0.07
+    ],
+    "accessories": [
+     "hat",
+     "satchel"
+    ],
+    "hat_color": [
+     0.3,
+     0.25,
+     0.2
+    ]
+   },
+   "lines": {
+    "default": [
+     "My husband's caravan left the Ember Wastes four days ago. It should be here by now."
+    ]
+   }
+  },
+  {
+   "id": "harlan",
+   "name": "Captain Harlan",
+   "role": "captain",
+   "mode": "work",
+   "home": [
+    -201.0,
+    8.0
+   ],
+   "face": 90,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.45,
+     0.18,
+     0.15
+    ],
+    "pants": [
+     0.22,
+     0.22,
+     0.25
+    ],
+    "boots": [
+     0.18,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.45,
+     0.42,
+     0.4
+    ],
+    "accessories": [
+     "helmet",
+     "sword",
+     "beard"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Brickton's gates stay open while I'm captain. But my guards can't be everywhere.",
+     "If you're looking for paid work, I post monster contracts on the board in the square. I hand out a few myself, too."
+    ]
+   }
+  },
+  {
+   "id": "guard_gate1",
+   "name": "Gate Guard Rolf",
+   "role": "guard",
+   "mode": "work",
+   "home": [
+    -191.5,
+    -0.6
+   ],
+   "face": 90,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.32,
+     0.35,
+     0.42
+    ],
+    "pants": [
+     0.22,
+     0.22,
+     0.25
+    ],
+    "boots": [
+     0.18,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "accessories": [
+     "helmet",
+     "sword"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Halt! ...Oh, it's you. Carry on.",
+     "Quiet out there tonight. Too quiet."
+    ]
+   }
+  },
+  {
+   "id": "guard_gate2",
+   "name": "Gate Guard Eda",
+   "role": "guard",
+   "mode": "work",
+   "home": [
+    -191.5,
+    5.2
+   ],
+   "face": 90,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.32,
+     0.35,
+     0.42
+    ],
+    "pants": [
+     0.22,
+     0.22,
+     0.25
+    ],
+    "boots": [
+     0.18,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.5,
+     0.3,
+     0.15
+    ],
+    "accessories": [
+     "helmet",
+     "spear"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Nothing gets past this gate. Nothing with fewer than six legs, anyway.",
+     "The beetles have been digging closer every week."
+    ]
+   }
+  },
+  {
+   "id": "guard_osric",
+   "name": "Guard Osric",
+   "role": "guard",
+   "mode": "patrol",
+   "home": [
+    -380.0,
+    4.0
+   ],
+   "walk_speed": 1.1,
+   "route": [
+    [
+     -385,
+     4
+    ],
+    [
+     -300,
+     -1
+    ],
+    [
+     -212,
+     2
+    ],
+    [
+     -300,
+     -1
+    ]
+   ],
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.32,
+     0.35,
+     0.42
+    ],
+    "pants": [
+     0.22,
+     0.22,
+     0.25
+    ],
+    "boots": [
+     0.18,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "accessories": [
+     "helmet",
+     "sword"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Main street's my beat. Keep your sword sheathed in town, if you please.",
+     "Captain Harlan's at the east gate if you want work."
+    ]
+   }
+  },
+  {
+   "id": "guard_wynn",
+   "name": "Guard Wynn",
+   "role": "guard",
+   "mode": "patrol",
+   "home": [
+    -370.0,
+    -100.0
+   ],
+   "walk_speed": 1.0,
+   "route": [
+    [
+     -370,
+     -100
+    ],
+    [
+     -250,
+     -100
+    ],
+    [
+     -293,
+     -62
+    ],
+    [
+     -328,
+     -62
+    ]
+   ],
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.32,
+     0.35,
+     0.42
+    ],
+    "pants": [
+     0.22,
+     0.22,
+     0.25
+    ],
+    "boots": [
+     0.18,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "accessories": [
+     "helmet",
+     "sword"
+    ]
+   },
+   "lines": {
+    "default": [
+     "North street's quiet. The way I like it.",
+     "Someone's been stealing chickens. Probably a wolf. Probably."
+    ]
+   }
+  },
+  {
+   "id": "guard_dela",
+   "name": "Guard Dela",
+   "role": "guard",
+   "mode": "patrol",
+   "home": [
+    -370.0,
+    50.0
+   ],
+   "walk_speed": 1.05,
+   "route": [
+    [
+     -370,
+     50
+    ],
+    [
+     -250,
+     50
+    ],
+    [
+     -289.5,
+     2
+    ],
+    [
+     -289.5,
+     50
+    ]
+   ],
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.32,
+     0.35,
+     0.42
+    ],
+    "pants": [
+     0.22,
+     0.22,
+     0.25
+    ],
+    "boots": [
+     0.18,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.3,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "helmet",
+     "sword"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Watch your step. The south street gets muddy after rain.",
+     "I hear the Elder's been worried about the travellers who stopped coming."
+    ]
+   }
+  },
+  {
+   "id": "gus",
+   "name": "Farmer Gus",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -360,
+    -100
+   ],
+   "walk_speed": 0.9,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.45,
+     0.5,
+     0.3
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.3,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "hat"
+    ],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "Wolves took two sheep last week. Bold as anything.",
+     "The meadow's good soil. Best on the island."
+    ]
+   }
+  },
+  {
+   "id": "hester",
+   "name": "Old Hester",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -250,
+    -100
+   ],
+   "walk_speed": 0.9500000000000001,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.4,
+     0.35,
+     0.45
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.35,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "headscarf",
+     "cane"
+    ],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "In my day the island was calm. Calm! Now it rumbles like an empty stomach.",
+     "My grandmother spoke of the Wardens. Keepers of something under the island."
+    ]
+   }
+  },
+  {
+   "id": "tobias",
+   "name": "Tobias",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -300,
+    50
+   ],
+   "walk_speed": 1.0,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.4,
+     0.55
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.4,
+     0.2,
+     0.1
+    ],
+    "accessories": [],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "Off to the market. Again. My wife has a long list.",
+     "Have you seen the crystals growing in Glow Hollow? They weren't there last spring."
+    ]
+   }
+  },
+  {
+   "id": "nell",
+   "name": "Nell",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -350,
+    50
+   ],
+   "walk_speed": 1.05,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.65,
+     0.55,
+     0.3
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.45,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "basket"
+    ],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "I'm collecting eggs. The hens are nervous lately, they barely lay.",
+     "Mara's bread is the best on the island. Don't tell Marta I said so."
+    ]
+   }
+  },
+  {
+   "id": "wim",
+   "name": "Wim",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -330,
+    -1
+   ],
+   "walk_speed": 1.1,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.5,
+     0.3,
+     0.3
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.5,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "cap"
+    ],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "I'm saving up for a sword like yours. Only three hundred coins to go.",
+     "The inn serves a stew that'll put hair on your chest."
+    ]
+   }
+  },
+  {
+   "id": "rosa",
+   "name": "Rosa",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -260,
+    4
+   ],
+   "walk_speed": 1.15,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.7,
+     0.35,
+     0.4
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.55,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "bun"
+    ],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "Lovely day for a walk, isn't it?",
+     "My brother went north to trap furs and hasn't written."
+    ]
+   }
+  },
+  {
+   "id": "jory",
+   "name": "Jory",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -311,
+    -30
+   ],
+   "walk_speed": 1.2000000000000002,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.35,
+     0.3,
+     0.25
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.6000000000000001,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "satchel"
+    ],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "I deliver the post. Well, I would, if anyone wrote to us anymore.",
+     "The Ostrander caravan is late. Everyone's talking about it."
+    ]
+   }
+  },
+  {
+   "id": "ayla",
+   "name": "Pilgrim Ayla",
+   "role": "villager",
+   "mode": "stroll",
+   "home": [
+    -290,
+    -50
+   ],
+   "walk_speed": 1.25,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.85,
+     0.82,
+     0.75
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.65,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "hood"
+    ],
+    "hood_color": [
+     0.75,
+     0.72,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "I walk to every shrine on the island once a year. This year they feel... awake.",
+     "The old shrines respond to those who are patient. Look closely at their carvings."
+    ]
+   }
+  },
+  {
+   "id": "kit",
+   "name": "Kit",
+   "role": "villager",
+   "mode": "stroll",
+   "scale": 0.66,
+   "home": [
+    -320,
+    -50
+   ],
+   "walk_anim": "Jog_Fwd",
+   "walk_speed": 2.4,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.3,
+     0.6,
+     0.7
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.24
+    ],
+    "boots": [
+     0.3,
+     0.2,
+     0.12
+    ],
+    "hair": [
+     0.6,
+     0.35,
+     0.15
+    ],
+    "accessories": [
+     "bun"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Tag, you're it! ...You're not playing? Boring.",
+     "Pip says he's going to fight a troll. I'm going to fight TWO."
+    ]
+   }
+  },
+  {
+   "id": "bert",
+   "name": "Bert",
+   "role": "villager",
+   "mode": "chat",
+   "home": [
+    -298.2,
+    -50.0
+   ],
+   "face": 90,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.4,
+     0.45,
+     0.35
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.24
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.25,
+     0.18,
+     0.1
+    ],
+    "accessories": [
+     "cap"
+    ]
+   },
+   "lines": {
+    "default": [
+     "We were just talking about the noises at night. Like rocks grinding underground."
+    ]
+   }
+  },
+  {
+   "id": "lotte",
+   "name": "Lotte",
+   "role": "villager",
+   "mode": "chat",
+   "home": [
+    -296.8,
+    -50.0
+   ],
+   "face": -90,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.6,
+     0.45,
+     0.3
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.55,
+     0.35,
+     0.2
+    ],
+    "accessories": [
+     "bun"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Bert thinks it's ghosts. I think it's beetles. Either way, I'm not sleeping well."
+    ]
+   }
+  },
+  {
+   "id": "mads",
+   "name": "Mads",
+   "role": "villager",
+   "mode": "chat",
+   "home": [
+    -336.6,
+    52.5
+   ],
+   "face": 90,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.35,
+     0.3
+    ],
+    "pants": [
+     0.28,
+     0.26,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.55,
+     0.5,
+     0.45
+    ],
+    "accessories": [
+     "beard"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Forty years I've lived on this street. Never this many guards about."
+    ]
+   }
+  },
+  {
+   "id": "sanne",
+   "name": "Sanne",
+   "role": "villager",
+   "mode": "chat",
+   "home": [
+    -335.4,
+    52.5
+   ],
+   "face": -90,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.45,
+     0.4,
+     0.55
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.25
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.8,
+     0.78,
+     0.72
+    ],
+    "accessories": [
+     "headscarf",
+     "cane"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Mads exaggerates. It's only been thirty-eight years."
+    ]
+   }
+  },
+  {
+   "id": "kael",
+   "name": "Kael the Wanderer",
+   "role": "traveller",
+   "mode": "sit",
+   "home": [
+    -335.75,
+    -58.0
+   ],
+   "face": 90,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.28,
+     0.25
+    ],
+    "pants": [
+     0.22,
+     0.2,
+     0.18
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.1
+    ],
+    "hair": [
+     0.15,
+     0.1,
+     0.08
+    ],
+    "accessories": [
+     "hood",
+     "satchel"
+    ],
+    "hood_color": [
+     0.25,
+     0.22,
+     0.2
+    ]
+   },
+   "lines": {
+    "default": [
+     "I've walked every road on this island. Lately something walks them back at night.",
+     "Brann the hunter in the Frost Peaks always has work for a sword arm.",
+     "If you find ruins with crowned trees carved on them, that's old Caldor. A whole kingdom, gone."
+    ]
+   }
+  },
+  {
+   "id": "bryn",
+   "name": "Bryn the Adventurer",
+   "role": "traveller",
+   "mode": "sit",
+   "home": [
+    -334.25,
+    -57.0
+   ],
+   "face": -90,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.45,
+     0.2,
+     0.2
+    ],
+    "pants": [
+     0.25,
+     0.22,
+     0.2
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.1
+    ],
+    "hair": [
+     0.7,
+     0.4,
+     0.15
+    ],
+    "accessories": [
+     "sword"
+    ]
+   },
+   "lines": {
+    "default": [
+     "I came for the treasure stories. Buried chests, secret caves. So far: mud.",
+     "Rumour has it there's an old map up in the windmill ruins east of the meadow crossroads."
+    ]
+   }
+  },
+  {
+   "id": "mira",
+   "name": "Mira Vane",
+   "role": "quest_giver",
+   "mode": "wander",
+   "wander": 3.0,
+   "home": [
+    -306.0,
+    44.5
+   ],
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.25,
+     0.3,
+     0.45
+    ],
+    "pants": [
+     0.25,
+     0.25,
+     0.3
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.12,
+     0.08,
+     0.06
+    ],
+    "accessories": [
+     "bun"
+    ]
+   },
+   "lines": {
+    "default": [
+     "My brother Edric went to study the ruins in the Frost Peaks. That was a month ago."
+    ]
+   }
+  },
+  {
+   "id": "quill",
+   "name": "Archivist Quill",
+   "role": "quest_giver",
+   "mode": "work",
+   "home": [
+    -308.0,
+    -68.3
+   ],
+   "face": 0,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.35,
+     0.3,
+     0.4
+    ],
+    "pants": [
+     0.25,
+     0.22,
+     0.25
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.7,
+     0.7,
+     0.7
+    ],
+    "accessories": [
+     "book",
+     "beard"
+    ]
+   },
+   "lines": {
+    "default": [
+     "The Town Hall holds Brickton's records. Most are about cabbages. Some are about much older things."
+    ]
+   }
+  },
+  {
+   "id": "hale",
+   "name": "Hale the Merchant",
+   "role": "merchant",
+   "shop": "merchant",
+   "mode": "work",
+   "home": [
+    22.0,
+    -8.0
+   ],
+   "face": -90,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.55,
+     0.45,
+     0.2
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.2
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.1
+    ],
+    "hair": [
+     0.3,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "hat",
+     "satchel"
+    ],
+    "hat_color": [
+     0.45,
+     0.2,
+     0.15
+    ]
+   },
+   "lines": {
+    "default": [
+     "Hale's travelling goods! Potions, provisions, curiosities!"
+    ]
+   }
+  },
+  {
+   "id": "sigrun",
+   "name": "Sigrun the Mountaineer",
+   "role": "quest_giver",
+   "mode": "work",
+   "home": [
+    25.0,
+    -193.0
+   ],
+   "face": 200,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.55,
+     0.55,
+     0.6
+    ],
+    "pants": [
+     0.3,
+     0.3,
+     0.35
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.1
+    ],
+    "hair": [
+     0.85,
+     0.75,
+     0.5
+    ],
+    "accessories": [
+     "hood",
+     "satchel"
+    ],
+    "hood_color": [
+     0.7,
+     0.68,
+     0.65
+    ]
+   },
+   "lines": {
+    "default": [
+     "The peaks don't forgive mistakes. Dress warm, keep moving, watch the spirits."
+    ]
+   }
+  },
+  {
+   "id": "brann",
+   "name": "Brann the Hunter",
+   "role": "hunter",
+   "mode": "work",
+   "home": [
+    95.0,
+    -238.5
+   ],
+   "face": 180,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.4,
+     0.32,
+     0.22
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.2
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.1
+    ],
+    "hair": [
+     0.35,
+     0.22,
+     0.12
+    ],
+    "accessories": [
+     "hood",
+     "spear",
+     "beard"
+    ],
+    "hood_color": [
+     0.45,
+     0.4,
+     0.35
+    ]
+   },
+   "lines": {
+    "default": [
+     "Fresh tracks every morning. The beasts are restless this season.",
+     "I've contracts for anyone who can handle a blade."
+    ]
+   }
+  },
+  {
+   "id": "aurelia",
+   "name": "Aurelia the Scholar",
+   "role": "quest_giver",
+   "mode": "work",
+   "home": [
+    202.0,
+    18.5
+   ],
+   "face": 180,
+   "idle_anim": "Idle_Talking",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.6,
+     0.5,
+     0.3
+    ],
+    "pants": [
+     0.35,
+     0.3,
+     0.25
+    ],
+    "boots": [
+     0.25,
+     0.17,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.12,
+     0.08
+    ],
+    "accessories": [
+     "book",
+     "hat"
+    ],
+    "hat_color": [
+     0.5,
+     0.4,
+     0.25
+    ]
+   },
+   "lines": {
+    "default": [
+     "Fascinating! Every stone out here is older than Brickton. Much older."
+    ]
+   }
+  },
+  {
+   "id": "wren",
+   "name": "Wren the Herbalist",
+   "role": "quest_giver",
+   "mode": "work",
+   "home": [
+    25.0,
+    209.0
+   ],
+   "face": 0,
+   "idle_anim": "Interact",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.3,
+     0.45,
+     0.35
+    ],
+    "pants": [
+     0.28,
+     0.3,
+     0.25
+    ],
+    "boots": [
+     0.22,
+     0.15,
+     0.1
+    ],
+    "hair": [
+     0.75,
+     0.75,
+     0.72
+    ],
+    "accessories": [
+     "basket",
+     "hood"
+    ],
+    "hood_color": [
+     0.35,
+     0.5,
+     0.4
+    ]
+   },
+   "lines": {
+    "default": [
+     "Shh. Listen. The Hollow used to hum at night. Now it whispers."
+    ]
+   }
+  }
+ ]
 }
