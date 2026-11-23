@@ -45,7 +45,7 @@ const AUTOSAVE_EVERY := 30.0
 ## and its name is shown on screen so it can be reported.
 const BOOT_FILE := "user://boot_step.txt"
 const SKIP_FILE := "user://skip_steps.json"
-const ESSENTIAL := ["world data", "quality settings", "sky and lighting", "ground", "player", "first frame", "done"]
+const ESSENTIAL := ["world data", "quality settings", "sky and lighting", "ground", "player", "villagers", "quests", "world features", "first frame", "done"]
 var skip: Array = []
 var boot_label: Label
 var crash_note := ""
@@ -65,6 +65,17 @@ func _read_last_boot() -> void:
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(SKIP_FILE))
 		if parsed is Array:
 			skip = parsed
+		# A new build gets a fresh start: steps skipped after an old crash are retried.
+		var ver := str(ProjectSettings.get_setting("application/config/version", ""))
+		var vf := "user://skip_version.txt"
+		var old := FileAccess.get_file_as_string(vf) if FileAccess.file_exists(vf) else ""
+		if old != ver:
+			skip.clear()
+			var w := FileAccess.open(vf, FileAccess.WRITE)
+			w.store_string(ver)
+			w.close()
+		for e in ESSENTIAL:
+			skip.erase(e)
 	if FileAccess.file_exists(BOOT_FILE):
 		var last := FileAccess.get_file_as_string(BOOT_FILE).strip_edges()
 		if last != "" and last != "done":
