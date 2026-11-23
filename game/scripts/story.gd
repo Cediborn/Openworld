@@ -53,7 +53,14 @@ func setup(world_data: WorldData, p: Player, h: Hud, is_touch: bool, t: Town = n
 	npc_cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/npcs.json"))
 	quest_cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/quest.json"))
 	var i := 0
+	var extras := 0
 	for v: Dictionary in npc_cfg.villagers:
+		# Phones run out of memory with every townsperson: keep everyone with
+		# a role, and only a few background villagers.
+		if mobile and v.get("role", "") in ["villager", "guard"]:
+			extras += 1
+			if extras > 6:
+				continue
 		spawn_villager(v, 77 + i)
 		i += 1
 	hud.interact_pressed.connect(interact)
