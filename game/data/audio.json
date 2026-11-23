@@ -8,9 +8,10 @@
     "village": {"file": "res://assets/audio/ambience/village.ogg", "volume_db": -8.0}
   },
   "ambience_fade": 1.5,
-  "footsteps": {"volume_db": -9.0, "walk_stride": 0.75, "run_stride": 1.15, "takes": 4},
+  "footsteps": {"volume_db": -15.0, "walk_stride": 0.8, "run_stride": 1.3, "takes": 4},
   "jump_db": -12.0,
   "land_db": -8.0,
   "creature_max_distance": 70.0,
-  "creature_unit_size": 8.0
+  "creature_unit_size": 8.0,
+  "music": {"theme": "res://assets/audio/music/theme.ogg", "battle": "res://assets/audio/music/battle.ogg", "volume_db": -10.0, "fade": 2.0, "danger_distance": 40.0}
 }

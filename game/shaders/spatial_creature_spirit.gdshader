@@ -14,6 +14,7 @@ uniform float drift_speed = 0.12;    // how fast the mist pattern rises (UV per 
 uniform float tint = 1.0;
 uniform float base_roughness = 1.0;  // unused; keeps one parameter set for all creatures
 uniform float pulse_offset = 0.0;
+uniform float hit_flash = 0.0;       // 1 when struck, fades to 0
 group_uniforms;
 
 varying vec3 obj_pos;
@@ -31,6 +32,6 @@ void fragment() {
 	// The trailing tail (low in the model) fades out entirely.
 	float fade = smoothstep(0.1, 0.9, obj_pos.y);
 	vec3 col = COLOR.rgb * tint;
-	ALBEDO = mix(col, glow_color, rim) * glow_energy * (0.8 + 0.4 * mist);
+	ALBEDO = mix(mix(col, glow_color, rim) * glow_energy * (0.8 + 0.4 * mist), vec3(1.0, 0.5, 0.5), hit_flash);
 	ALPHA = clamp((body_alpha + rim * 0.8) * (0.55 + 0.6 * mist) * fade + 0.1 * sin(TIME + pulse_offset), 0.0, 1.0);
 }

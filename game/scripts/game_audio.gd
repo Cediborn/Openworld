@@ -2,7 +2,8 @@ class_name GameAudio
 extends Node
 ## All game sound: biome ambience that crossfades as the player travels,
 ## footsteps that match the ground (grass, stone, snow), jump and landing
-## thuds, and 3D calls and roars from creatures. Sounds are synthesized by
+## thuds, 3D calls and roars from creatures, and music that turns tense while
+## something is hunting you. Music and effects have their own volume buses. Sounds are synthesized by
 ## tools/audio/synth_sounds.py; the mix lives in data/audio.json.
 
 const ZONE_KEYS := ["meadow", "frost", "ember", "glow", "village"]
@@ -21,13 +22,39 @@ var was_on_floor := true
 var air := 0.0
 var zone_timer := 0.0
 var rng := RandomNumberGenerator.new()
+var theme: AudioStreamPlayer
+var battle: AudioStreamPlayer
+var battle_mix := 0.0
+var _danger_check := 0.0
+var in_danger := false
+
+
+## Creates the Music and Effects buses once, so settings can change them.
+static func ensure_buses() -> void:
+	for bus in ["Music", "Effects"]:
+		if AudioServer.get_bus_index(bus) == -1:
+			AudioServer.add_bus()
+			var i := AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, bus)
+			AudioServer.set_bus_send(i, "Master")
+
+
+## Applies the settings volumes (0..1).
+static func apply_volumes(music: float, effects: float) -> void:
+	ensure_buses()
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), linear_to_db(maxf(music, 0.0001)))
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Effects"), linear_to_db(maxf(effects, 0.0001)))
 
 
 ## Starts ambience, prepares footsteps and wires every creature's voice.
 func setup(world_data: WorldData, p: Player, creatures: Array) -> void:
 	data = world_data
 	player = p
+	ensure_buses()
 	cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/audio.json"))
+	theme = _music_player(cfg.music.theme, cfg.music.volume_db)
+	battle = _music_player(cfg.music.battle, -80.0)
+	theme.play()
 	for key in ZONE_KEYS:
 		var a: Dictionary = cfg.ambience[key]
 		var s := AudioStreamPlayer.new()
@@ -35,6 +62,7 @@ func setup(world_data: WorldData, p: Player, creatures: Array) -> void:
 		stream.loop = true
 		s.stream = stream
 		s.volume_db = -80.0
+		s.bus = "Effects"
 		s.set_meta("base_db", float(a.volume_db))
 		add_child(s)
 		ambience[key] = s
@@ -48,8 +76,10 @@ func setup(world_data: WorldData, p: Player, creatures: Array) -> void:
 	step_player = AudioStreamPlayer.new()
 	step_player.volume_db = cfg.footsteps.volume_db
 	step_player.max_polyphony = 2
+	step_player.bus = "Effects"
 	add_child(step_player)
 	fx_player = AudioStreamPlayer.new()
+	fx_player.bus = "Effects"
 	add_child(fx_player)
 	for c in creatures:
 		attach_creature(c)
@@ -66,6 +96,7 @@ func attach_creature(c: Creature) -> void:
 	voice.unit_size = cfg.creature_unit_size
 	voice.volume_db = float(snd.get("volume_db", 0.0))
 	voice.position = Vector3(0, 1.0, 0)
+	voice.bus = "Effects"
 	c.add_child(voice)
 	c.vocal.connect(func(kind: String) -> void:
 		var name: String = snd.get(kind, snd.get("call", ""))
@@ -91,6 +122,40 @@ func _process(delta: float) -> void:
 		_update_zone_weights()
 	_fade_ambience(delta)
 	_footsteps(delta)
+	_music(delta)
+
+
+func _music_player(path: String, db: float) -> AudioStreamPlayer:
+	var m := AudioStreamPlayer.new()
+	var st: AudioStreamOggVorbis = load(path)
+	st.loop = true
+	m.stream = st
+	m.volume_db = db
+	m.bus = "Music"
+	add_child(m)
+	return m
+
+
+## Battle music while any monster near you is chasing or attacking.
+func _music(delta: float) -> void:
+	_danger_check -= delta
+	if _danger_check <= 0.0:
+		_danger_check = 0.5
+		in_danger = false
+		var p := player.global_position
+		for c in get_tree().get_nodes_in_group("creatures"):
+			if c.visible and c.state in [Creature.State.CHASE, Creature.State.ATTACK, Creature.State.ROAR] \
+					and c.global_position.distance_to(p) < cfg.music.danger_distance:
+				in_danger = true
+				break
+	battle_mix = move_toward(battle_mix, 1.0 if in_danger else 0.0, delta / float(cfg.music.fade))
+	var base: float = db_to_linear(cfg.music.volume_db)
+	theme.volume_db = linear_to_db(maxf(base * (1.0 - battle_mix), 0.0001))
+	battle.volume_db = linear_to_db(maxf(base * battle_mix, 0.0001))
+	if battle_mix > 0.0 and not battle.playing:
+		battle.play()
+	elif battle_mix <= 0.0 and battle.playing:
+		battle.stop()
 
 
 func _update_zone_weights() -> void:

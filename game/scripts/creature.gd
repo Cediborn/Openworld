@@ -6,7 +6,7 @@ extends Node3D
 ## Behaviour ("temper") is either "flee" (deer, boar, wolf) or "threaten"
 ## (monsters chase and roar, then lose interest). Tuning: data/creatures.json.
 
-enum State { IDLE, GRAZE, WALK, FLEE, CHASE, ROAR, RETURN }
+enum State { IDLE, GRAZE, WALK, FLEE, CHASE, ROAR, RETURN, ATTACK, DEAD }
 
 ## Phase offsets (fraction of a step cycle) per leg group.
 const QUAD_WALK := {"H_L": 0.0, "F_L": 0.25, "H_R": 0.5, "F_R": 0.75}
@@ -40,19 +40,35 @@ var t := 0.0
 var call_timer := 0.0
 var cooldown := 0.0
 
+# Combat
+var model: Node3D
+var mat: ShaderMaterial
+var temper := "flee"
+var health := 60.0
+var attack_cd := 0.0
+var attack_hit_at := -1.0
+var attack_mix := 0.0
+var flash := 0.0
+var dead_time := 0.0
+var size_scale := 1.0
+
 
 ## Builds the creature from its species config. seed_value varies size, tint and timing.
 func setup(species_cfg: Dictionary, seed_value: int) -> void:
 	cfg = species_cfg
 	rng.seed = seed_value
 	body = cfg.get("body", "quad")
-	var model: Node3D = load(cfg.model).instantiate()
+	temper = cfg.get("temper", "flee")
+	health = cfg.get("health", 60.0)
+	add_to_group("creatures")
+	model = load(cfg.model).instantiate()
 	add_child(model)
 	var s: Array = cfg.get("scale", [1.0, 1.0])
-	model.scale = Vector3.ONE * rng.randf_range(s[0], s[1])
+	size_scale = rng.randf_range(s[0], s[1])
+	model.scale = Vector3.ONE * size_scale
 	skeleton = model.find_children("*", "Skeleton3D", true, false)[0]
 	var spirit: bool = cfg.get("shader", "") == "spirit"
-	var mat := ShaderMaterial.new()
+	mat = ShaderMaterial.new()
 	mat.shader = load("res://shaders/spatial_creature_spirit.gdshader" if spirit else "res://shaders/spatial_creature_fur.gdshader")
 	mat.set_shader_parameter("fur_noise", Props.noise())
 	mat.set_shader_parameter("tint", rng.randf_range(0.9, 1.1))
@@ -77,9 +93,99 @@ func _process(delta: float) -> void:
 	if skeleton == null:
 		return
 	t += delta
+	if flash > 0.0:
+		flash = maxf(0.0, flash - delta * 4.0)
+		mat.set_shader_parameter("hit_flash", flash)
+	if state == State.DEAD:
+		_dead_update(delta)
+		return
 	_think(delta)
 	_move(delta)
 	_pose()
+
+
+# ---------- Combat ----------
+
+## True until the creature is killed (it comes back later at home).
+func alive() -> bool:
+	return state != State.DEAD
+
+
+## Rough body radius, so big monsters can be hit from further away.
+func hit_radius() -> float:
+	return float(cfg.get("radius", 0.5)) * size_scale
+
+
+## Called by the player's sword.
+func take_hit(amount: float, from_pos: Vector3) -> void:
+	if state == State.DEAD:
+		return
+	health -= amount
+	flash = 1.0
+	var away := global_position - from_pos
+	away.y = 0
+	global_position += away.normalized() * 0.35
+	if health <= 0.0:
+		_die()
+		return
+	if cfg.get("fights_back", false):
+		temper = "threaten"
+	if temper == "threaten":
+		state = State.CHASE
+		timer = cfg.get("chase_time", 6.0)
+		cooldown = 0.0
+		vocal.emit("roar")
+	else:
+		state = State.FLEE
+
+
+func _die() -> void:
+	state = State.DEAD
+	dead_time = 0.0
+	speed = 0.0
+	attack_hit_at = -1.0
+	vocal.emit("roar")
+
+
+## Topples over, sinks into the ground, then returns home after a while.
+func _dead_update(delta: float) -> void:
+	dead_time += delta
+	var fall := clampf(dead_time / 0.7, 0.0, 1.0)
+	model.rotation.z = lerpf(0.0, PI * 0.5 if body != "float" else 0.0, fall * fall)
+	if body == "float":
+		model.scale = Vector3.ONE * size_scale * maxf(0.01, 1.0 - dead_time * 0.6)
+	if dead_time > 3.0:
+		model.position.y = -(dead_time - 3.0) * 0.8
+	if dead_time > 5.0:
+		visible = false
+	if dead_time > float(cfg.get("respawn_time", 90.0)):
+		health = cfg.get("health", 60.0)
+		temper = cfg.get("temper", "flee")
+		model.rotation = Vector3.ZERO
+		model.position = Vector3.ZERO
+		model.scale = Vector3.ONE * size_scale
+		global_position = home
+		visible = true
+		_choose_idle()
+
+
+func _start_attack() -> void:
+	state = State.ATTACK
+	speed = 0.0
+	timer = cfg.get("attack_time", 0.9)
+	attack_hit_at = timer * 0.55
+	attack_cd = cfg.get("attack_rate", 1.6)
+
+
+func _attack_update(delta: float, d: float) -> void:
+	if attack_hit_at >= 0.0 and timer <= attack_hit_at:
+		attack_hit_at = -1.0
+		if threat and d < float(cfg.get("attack_range", 2.0)) + 0.8 and threat.has_method("take_damage"):
+			threat.take_damage(cfg.get("damage", 10.0), global_position)
+	if timer <= 0.0:
+		# Keep fighting while the player stays close; distance and leash still end it.
+		state = State.CHASE
+		timer = float(cfg.get("chase_time", 6.0)) * 0.6
 
 
 func _threat_distance() -> float:
@@ -94,12 +200,19 @@ func _think(delta: float) -> void:
 	timer -= delta
 	cooldown -= delta
 	call_timer -= delta
+	attack_cd -= delta
 	if call_timer <= 0.0:
 		call_timer = rng.randf_range(10.0, 26.0)
 		if state != State.FLEE and state != State.ROAR:
 			vocal.emit("call")
 	var d := _threat_distance()
-	if cfg.get("temper", "flee") == "flee":
+	if threat and threat.get("dead") == true and state in [State.CHASE, State.ATTACK, State.ROAR]:
+		state = State.RETURN
+		target = home
+	if state == State.ATTACK:
+		_attack_update(delta, d)
+		return
+	if temper == "flee":
 		if d < cfg.flee_radius and state != State.FLEE:
 			state = State.FLEE
 		if state == State.FLEE and threat:
@@ -113,7 +226,7 @@ func _think(delta: float) -> void:
 		var from_home := Vector2(global_position.x - home.x, global_position.z - home.z).length()
 		match state:
 			State.IDLE, State.GRAZE, State.WALK:
-				if d < cfg.aggro_radius and cooldown <= 0.0:
+				if d < cfg.get("aggro_radius", 0.0) and cooldown <= 0.0 and not (threat and threat.get("dead") == true):
 					_start_roar()
 					return
 			State.ROAR:
@@ -128,8 +241,8 @@ func _think(delta: float) -> void:
 					state = State.RETURN
 					target = home
 					cooldown = cfg.get("cooldown", 12.0)
-				elif d < cfg.stop_distance:
-					_start_roar()
+				elif d < float(cfg.get("attack_range", 2.0)) and attack_cd <= 0.0:
+					_start_attack()
 				return
 			State.RETURN:
 				if from_home < 2.0:
@@ -165,14 +278,26 @@ func _move(delta: float) -> void:
 		want = cfg.walk_speed
 	elif state == State.FLEE or state == State.CHASE:
 		want = cfg.run_speed
+		if state == State.CHASE and _threat_distance() < float(cfg.get("attack_range", 2.0)) * 0.8:
+			want = 0.0
+			speed = 0.0   # stop right away instead of sliding into the player
+	if state == State.ATTACK:
+		want = 0.0
 	speed = move_toward(speed, want, delta * (6.0 if want > speed else 5.0))
 	var fast := state == State.FLEE or state == State.CHASE
 	run_mix = move_toward(run_mix, 1.0 if fast else 0.0, delta * 2.5)
 	graze_mix = move_toward(graze_mix, 1.0 if state == State.GRAZE else 0.0, delta * 1.2)
 	roar_mix = move_toward(roar_mix, 1.0 if state == State.ROAR else 0.0, delta * 4.0)
+	# Attack pose: rear back, then lunge at the hit moment.
+	var lunge := 0.0
+	if state == State.ATTACK:
+		var total: float = cfg.get("attack_time", 0.9)
+		var f := 1.0 - timer / total
+		lunge = sin(clampf(f, 0.0, 1.0) * PI) * (1.0 if f > 0.45 else -0.6)
+	attack_mix = move_toward(attack_mix, lunge, delta * 8.0)
 	var to := target - global_position
 	to.y = 0
-	var face_target := state == State.ROAR and threat != null
+	var face_target := (state == State.ROAR or state == State.ATTACK or state == State.CHASE) and threat != null
 	if face_target:
 		to = threat.global_position - global_position
 		to.y = 0
@@ -247,8 +372,9 @@ func _pose_legs(moving: float) -> void:
 	var nod := 0.05 * moving * sin(phase * TAU * 2.0)
 	var look := 0.25 * sin(t * 0.4 + rng.seed % 7) * (1.0 - moving)
 	# Roar: head thrown up and back (four legs) or horn raised (beetle).
-	_rot("Neck", Vector3(-1.0 * graze_mix + nod - 0.15 * run_mix + 0.5 * roar_mix, look * 0.5, 0))
-	_rot("Head", Vector3(-0.45 * graze_mix + 0.1 * run_mix + 0.35 * roar_mix, look * 0.5, 0))
+	_rot("Neck", Vector3(-1.0 * graze_mix + nod - 0.15 * run_mix + 0.5 * roar_mix - 0.6 * attack_mix, look * 0.5, 0))
+	_rot("Head", Vector3(-0.45 * graze_mix + 0.1 * run_mix + 0.35 * roar_mix - 0.3 * attack_mix, look * 0.5, 0))
+	_rot("Spine", Vector3(0.15 * attack_mix, 0, 0))
 	_rot("Tail", Vector3(0.3 * run_mix, 0.25 * sin(t * 2.3) + wiggle * 2.0, 0))
 
 
@@ -266,13 +392,14 @@ func _pose_biped(moving: float) -> void:
 		_rot("L2" + side, Vector3(-lift * up, 0, 0))
 		_rot("L3" + side, Vector3(lift * up * 0.4, 0, 0))
 		# Arms swing opposite to the legs; raised and spread when roaring.
-		var arm_x := -swing * s * 0.8 * (1.0 - roar_mix) - 1.3 * roar_mix
+		# Attack: both arms raised overhead, then slammed down and forward.
+		var arm_x := -swing * s * 0.8 * (1.0 - roar_mix) - 1.3 * roar_mix - 2.2 * maxf(-attack_mix, 0.0) - 1.1 * maxf(attack_mix, 0.0)
 		_rot("A1" + side, Vector3(arm_x, 0, sgn * (0.12 + 0.9 * roar_mix)))
-		_rot("A2" + side, Vector3(-0.3 - 0.25 * moving - 0.4 * roar_mix, 0, 0))
+		_rot("A2" + side, Vector3(-0.3 - 0.25 * moving - 0.4 * roar_mix - 0.6 * absf(attack_mix), 0, 0))
 	var sway := 0.06 * moving * sin(phase * TAU)
 	_rot("Hips", Vector3(0, sway, 0.03 * moving * sin(phase * TAU)))
-	_rot("Spine", Vector3(-0.12 * run_mix + 0.2 * roar_mix, -sway * 0.5, 0))
-	_rot("Chest", Vector3(0.15 * roar_mix + 0.05 * sin(t * 1.1), -sway * 0.5, 0))
+	_rot("Spine", Vector3(-0.12 * run_mix + 0.2 * roar_mix - 0.35 * attack_mix, -sway * 0.5, 0))
+	_rot("Chest", Vector3(0.15 * roar_mix + 0.05 * sin(t * 1.1) - 0.2 * attack_mix, -sway * 0.5, 0))
 	var look := 0.3 * sin(t * 0.35 + rng.seed % 5) * (1.0 - moving)
 	_rot("Neck", Vector3(-0.2 * graze_mix + 0.25 * roar_mix, look * 0.5, 0))
 	_rot("Head", Vector3(0.3 * roar_mix, look * 0.5, 0))
@@ -283,7 +410,7 @@ func _pose_float(moving: float) -> void:
 	for side in ["_L", "_R"]:
 		var sgn := 1.0 if side == "_L" else -1.0
 		var wave := sin(t * 1.7 + (0.0 if side == "_L" else 1.3))
-		_rot("A1" + side, Vector3(0.3 * moving + 0.15 * wave - 1.4 * roar_mix, 0, sgn * (0.2 + 0.1 * wave + 0.7 * roar_mix)))
+		_rot("A1" + side, Vector3(0.3 * moving + 0.15 * wave - 1.4 * roar_mix - 1.6 * absf(attack_mix), 0, sgn * (0.2 + 0.1 * wave + 0.7 * roar_mix)))
 		_rot("A2" + side, Vector3(-0.3 - 0.2 * wave * (1.0 - roar_mix), 0, 0))
 		_rot("A3" + side, Vector3(-0.2 * wave, 0, 0))
 	_rot("Spine", Vector3(0.25 * moving + 0.2 * roar_mix, 0.08 * sin(t * 0.9), 0))

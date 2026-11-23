@@ -10,6 +10,7 @@ Author: Claude (Openworld). Run from the repo root:
              village with distant hammering)
 * steps/     footsteps on grass, stone and snow (several takes each), jump, land
 * creatures/ calls and roars for every species in data/creatures.json
+* music/     calm exploration theme and a tense battle loop
 
 Needs numpy, scipy and ffmpeg with libvorbis.
 """
@@ -251,26 +252,32 @@ def amb_village():
 
 # ---------------------------------------------------------------- footsteps
 
+def _grains(n, count, lo, hi, spread, size=(0.002, 0.008)):
+    """Many tiny filtered noise grains: gravel, snow crunch, dry grass."""
+    x = np.zeros(n)
+    for _ in range(count):
+        g = max(int(rng.uniform(*size) * SR), 8)
+        place(x, bp(noise(g / SR), lo, hi) * np.hanning(g) * rng.uniform(0.3, 1.0), rng.uniform(0.0, spread))
+    return x
+
+
 def step(kind):
-    n = int(0.22 * SR)
+    """A footstep as heard from the third-person camera: a soft heel thump
+    (low-passed noise, no tones) followed by the surface texture."""
+    n = int(0.25 * SR)
     tt = np.arange(n) / SR
+    heel = lp(noise(0.25), 260, 4) * np.exp(-tt * 55) * 1.4
     if kind == "grass":
-        body = bp(noise(0.22), 300, 3500) * np.exp(-tt * 28)
-        rustle = bp(noise(0.22), 2500, 8000) * np.exp(-((tt - 0.03) ** 2) / 0.0008) * 0.6
-        thud = osc(np.full(n, rng.uniform(70, 95))) * np.exp(-tt * 40) * 0.7
-        x = body + rustle + thud
+        tex = bp(noise(0.25), 900, 4500) * np.exp(-((tt - 0.035) ** 2) / 0.0012) * 0.35
+        tex += _grains(n, 10, 2000, 6000, 0.09) * 0.25
     elif kind == "stone":
-        click = hp(noise(0.22), 1800) * np.exp(-tt * 140)
-        thud = osc(np.full(n, rng.uniform(90, 130))) * np.exp(-tt * 45)
-        scuff = bp(noise(0.22), 800, 3000) * np.exp(-((tt - 0.05) ** 2) / 0.0006) * 0.25
-        x = click * 0.8 + thud + scuff
-    else:  # snow: compressed crunch, several tiny grains
-        x = np.zeros(n)
-        for _ in range(14):
-            g = int(rng.uniform(0.003, 0.012) * SR)
-            place(x, bp(noise(g / SR), 1200, 6000) * np.hanning(g), rng.uniform(0.0, 0.12))
-        x += osc(np.full(n, 80)) * np.exp(-tt * 35) * 0.5
-    return norm(x * env(n, 0.002, 0.08), rng.uniform(0.7, 0.9))
+        heel *= 1.2
+        tex = _grains(n, 22, 700, 3500, 0.08, (0.002, 0.006)) * 0.55
+    else:  # snow: packed crunch, slightly longer
+        heel *= 0.8
+        tex = _grains(n, 40, 1000, 4500, 0.13, (0.003, 0.01)) * 0.5
+    x = lp(heel + tex, 6500)
+    return norm(x * env(n, 0.003, 0.1), rng.uniform(0.6, 0.75))
 
 
 def jump():
@@ -406,7 +413,105 @@ def beetle_hiss():
     return norm(x, 0.85)
 
 
-def main():
+
+# ---------------------------------------------------------------- music
+
+NOTE = {n: 440.0 * 2 ** ((i - 9) / 12) for i, n in enumerate(["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"])}
+
+
+def hz(name, octave):
+    return NOTE[name] * 2 ** (octave - 4)
+
+
+def pluck(f, dur, bright=0.5):
+    """Soft plucked string (Karplus-Strong)."""
+    n = int(dur * SR)
+    period = max(int(SR / f), 2)
+    buf = rng.uniform(-1, 1, period) * bright
+    out = np.zeros(n)
+    for i in range(n):
+        out[i] = buf[i % period]
+        buf[i % period] = 0.5 * (buf[i % period] + buf[(i + 1) % period]) * 0.996
+    return lp(out, 3500) * env(n, 0.002, dur * 0.5)
+
+
+def pad(freqs, dur):
+    t = t_axis(dur)
+    x = np.zeros(len(t))
+    for f in freqs:
+        for det in (0.997, 1.003):
+            x += osc(np.full(len(t), f * det), "saw") * 0.12
+    return lp(x, 900) * env(len(t), dur * 0.3, dur * 0.4, 1.5)
+
+
+def music_theme():
+    """Calm exploration theme in A minor / C major: pads, plucked arpeggios and a
+    simple flute-like melody. 8 bars of 4 beats at 72 bpm, looped."""
+    bpm = 72
+    beat = 60 / bpm
+    bars = 16
+    dur = bars * 4 * beat
+    x = np.zeros(int(dur * SR) + SR * 3)
+    chords = [("A", "C", "E"), ("F", "A", "C"), ("C", "E", "G"), ("G", "B", "D")]
+    melody = ["E5", "-", "D5", "C5", "A4", "-", "C5", "D5", "C5", "-", "A4", "G4", "B4", "-", "-", "-",
+              "E5", "-", "G5", "E5", "D5", "-", "C5", "A4", "G4", "-", "C5", "-", "D5", "-", "-", "-"]
+    for bar in range(bars):
+        root, third, fifth = chords[bar % 4]
+        at = bar * 4 * beat
+        place(x, pad([hz(root, 3), hz(third, 3), hz(fifth, 3), hz(root, 2)], 4 * beat + 1.0), at)
+        for k, note in enumerate([root, fifth, third, fifth, root, third, fifth, third]):
+            place(x, pluck(hz(note, 4 if k % 4 else 3), beat * 1.2) * 0.35, at + k * beat * 0.5)
+        if bar >= 4:
+            for k in range(4):
+                m = melody[((bar - 4) * 4 + k) % len(melody)]
+                if m == "-":
+                    continue
+                f = hz(m[:-1], int(m[-1]))
+                d = beat * 1.6
+                tt = t_axis(d)
+                flute = (osc(f * (1 + 0.004 * np.sin(2 * np.pi * 5 * tt))) + 0.15 * osc(np.full(len(tt), f * 2))
+                         + 0.04 * bp(noise(d), f * 0.8, f * 1.3))
+                place(x, flute * env(len(tt), 0.08, d * 0.6) * 0.22, at + k * beat)
+    x = reverb(x, 0.35, 1.5)[: int(dur * SR) + SR * 2]
+    return norm(loopify(x, 2.0), 0.6)
+
+
+def music_battle():
+    """Tense loop: low drums, a pulsing ostinato and a dissonant pad. 120 bpm."""
+    beat = 0.5
+    bars = 8
+    dur = bars * 4 * beat
+    x = np.zeros(int(dur * SR) + SR)
+    for b in range(bars * 4):
+        at = b * beat
+        n = int(0.4 * SR)
+        tt = np.arange(n) / SR
+        kick = osc(60 * np.exp(-tt * 8) + 40) * np.exp(-tt * 9)
+        if b % 4 in (0, 2) or b % 8 == 7:
+            place(x, kick * 0.9, at)
+        if b % 4 == 2:
+            place(x, bp(noise(0.25), 200, 2500) * np.exp(-tt[: int(0.25 * SR)] * 18) * 0.5, at)
+        for k in range(4):   # ostinato on D
+            f = hz("D", 2) if k % 2 == 0 else hz("A", 2)
+            dd = beat / 4
+            place(x, osc(np.full(int(dd * SR), f), "saw") * env(int(dd * SR), 0.005, dd * 0.6) * 0.18, at + k * dd)
+    for bar in range(bars):
+        notes = [hz("D", 3), hz("F", 3), hz("G#", 3)] if bar % 2 == 0 else [hz("C", 3), hz("D#", 3), hz("G", 3)]
+        place(x, pad(notes, 4 * beat + 0.5) * 0.8, bar * 4 * beat)
+    x = reverb(lp(x, 5000), 0.2, 1.0)[: int(dur * SR) + SR]
+    return norm(loopify(x, 1.0), 0.65)
+
+
+def main(only=None):
+    if only == "music":
+        save("music/theme.ogg", music_theme(), 4)
+        save("music/battle.ogg", music_battle(), 4)
+        return
+    if only == "steps":
+        for kind in ("grass", "stone", "snow"):
+            for i in range(4):
+                save(f"steps/{kind}_{i}.ogg", step(kind), 2)
+        return
     save("ambience/meadow.ogg", amb_meadow())
     save("ambience/frost.ogg", amb_frost())
     save("ambience/ember.ogg", amb_ember())
@@ -416,6 +521,8 @@ def main():
         for i in range(4):
             save(f"steps/{kind}_{i}.ogg", step(kind), 2)
     save("steps/jump.ogg", jump(), 2)
+    save("music/theme.ogg", music_theme(), 4)
+    save("music/battle.ogg", music_battle(), 4)
     save("steps/land.ogg", land(), 2)
     for fn in (deer_call, boar_grunt, wolf_howl, troll_grunt, troll_roar, spirit_whisper, spirit_shriek,
                golem_rumble, golem_roar, salamander_hiss, beetle_chitter, beetle_hiss):
@@ -423,4 +530,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1] if len(sys.argv) > 1 else None)

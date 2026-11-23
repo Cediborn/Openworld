@@ -1,0 +1,78 @@
+{
+  "_comment": "Villagers. home = [x, z] world position on the village street; wander = metres they stroll from home; idle_anim plays when standing. Outfit colours are [r, g, b]. Lines are picked by quest stage: intro (before the quest), hunt (crystals being collected), return (all crystals found), done (after the reward). A villager with a 'quest' role drives the story.",
+  "talk_distance": 3.2,
+  "active_distance": 90.0,
+  "villagers": [
+    {
+      "id": "elder", "name": "Elder Tobin", "role": "quest_giver",
+      "home": [-321, 1], "wander": 1.5, "walk_anim": "Walk_Formal", "walk_speed": 0.7, "idle_anim": "Idle_Talking",
+      "outfit": {"model": "male", "jacket": [0.36, 0.26, 0.18], "pants": [0.24, 0.2, 0.16], "boots": [0.2, 0.14, 0.1], "hair": [0.78, 0.76, 0.72], "accessories": ["beard", "cane"]},
+      "lines": {
+        "intro": [
+          "Ah, a traveller! You came over the hills, didn't you? Few do these days.",
+          "Our island has three heart-stones: a Frost Crystal high in the peaks, an Ember Heart in the volcano, and a Glow Spore deep in the hollow.",
+          "Since they were stirred, the beasts guarding them grow wilder every night. Trolls, golems, beetles the size of carts...",
+          "Bring the three heart-stones back to me and I can calm the island again. Take care, and keep that sword sharp."
+        ],
+        "hunt": ["Frost Crystal in the north, Ember Heart in the east, Glow Spore in the south. Follow the light beams; you'll see them from far away."],
+        "return": [
+          "You found them, all three! I can feel the island breathing easier already.",
+          "Take this to Bram the blacksmith. He'll know what to do with a little of each stone's power. Thank you, friend."
+        ],
+        "forge": ["Go on, Bram is waiting by his anvil at the east end of the street."],
+        "done": ["The island is calmer thanks to you. The beasts still roam, but they're only beasts now."]
+      }
+    },
+    {
+      "id": "baker", "name": "Mara the Baker",
+      "home": [-342, 5], "wander": 4.0, "walk_anim": "Walk", "walk_speed": 1.1, "idle_anim": "Idle",
+      "outfit": {"model": "female", "jacket": [0.62, 0.38, 0.3], "pants": [0.35, 0.25, 0.2], "boots": [0.22, 0.15, 0.1], "hair": [0.3, 0.18, 0.1], "accessories": ["apron", "headscarf"], "apron_color": [0.92, 0.9, 0.84], "scarf_color": [0.75, 0.35, 0.25]},
+      "lines": {
+        "intro": ["Fresh bread! Well, fresh this morning. Have you met Elder Tobin yet? He's been looking for someone brave.", "If you're hungry, the meadow deer will keep you company, but they're quick to run."],
+        "hunt": ["The Glow Hollow is lovely at night, all those blue mushrooms. The beetles, less so. Their horns hurt!"],
+        "return": ["Is it true? You found all three? Go tell the Elder!"],
+        "forge": ["Bram's been grinning all morning. I think he's excited to forge something special."],
+        "done": ["Everyone's talking about you! Here, the next loaf's on me."]
+      }
+    },
+    {
+      "id": "smith", "name": "Bram the Blacksmith", "role": "smith",
+      "home": [-255, -6], "wander": 0.0, "walk_anim": "Walk", "walk_speed": 1.0, "idle_anim": "Interact", "anvil": true,
+      "outfit": {"model": "male", "jacket": [0.2, 0.2, 0.22], "pants": [0.18, 0.16, 0.14], "boots": [0.16, 0.11, 0.08], "hair": [0.12, 0.08, 0.05], "accessories": ["apron", "hammer"], "apron_color": [0.32, 0.2, 0.12]},
+      "lines": {
+        "intro": ["*clang* Hm? A sword on your hip and mud on your boots. Talk to the Elder, he's got work for you."],
+        "hunt": ["Trolls swing slow but hit hard. Strike, then step back before those fists come down.", "Golems? Don't stand still near one. Keep moving."],
+        "return": ["Heart-stones? Bring them to the Elder first, he'll want to see them."],
+        "forge": [
+          "The Elder sent you? Let me see those stones...",
+          "*clang* *clang* *hiss* There. Your blade now carries a sliver of all three. Feel how light it is? It'll cut much deeper."
+        ],
+        "done": ["That blade suits you. Look after it."]
+      }
+    },
+    {
+      "id": "lina", "name": "Lina",
+      "home": [-290, -4], "wander": 6.0, "walk_anim": "Walk_Formal", "walk_speed": 1.0, "idle_anim": "Idle",
+      "outfit": {"model": "female", "jacket": [0.28, 0.4, 0.55], "pants": [0.3, 0.32, 0.4], "boots": [0.25, 0.17, 0.11], "hair": [0.55, 0.35, 0.18], "accessories": ["basket", "bun"]},
+      "lines": {
+        "intro": ["Off to market. Mara's bread and some berries from the meadow edge. Lovely day, isn't it?"],
+        "hunt": ["I saw a strange glow in the sky up north last night. Like a column of light."],
+        "return": ["You look tired. Go rest at the Elder's, he'll be thrilled."],
+        "forge": ["You can hear Bram's hammer from the other end of the village!"],
+        "done": ["Thank you for what you did. The nights are quieter now."]
+      }
+    },
+    {
+      "id": "kid", "name": "Pip", "scale": 0.68,
+      "home": [-300, -3], "wander": 7.0, "walk_anim": "Jog_Fwd", "walk_speed": 2.6, "idle_anim": "Idle",
+      "outfit": {"model": "male", "jacket": [0.75, 0.55, 0.2], "pants": [0.3, 0.28, 0.24], "boots": [0.3, 0.2, 0.12], "hair": [0.35, 0.2, 0.08], "accessories": ["cap"], "cap_color": [0.25, 0.45, 0.3]},
+      "lines": {
+        "intro": ["Whoa, is that a real sword? Can I hold it? ...No? Okay."],
+        "hunt": ["Don't step in the lava! My uncle did once. He was fine but his boots weren't.", "The salamanders are small but they bite!"],
+        "return": ["You got them ALL? You're the best!"],
+        "forge": ["Bram's making you something cool, isn't he? I knew it!"],
+        "done": ["When I grow up I'm going to fight a troll too."]
+      }
+    }
+  ]
+}

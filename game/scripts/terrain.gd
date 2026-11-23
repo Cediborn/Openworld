@@ -6,6 +6,8 @@ extends Node3D
 
 const TILE := 128.0
 const VENDOR := "res://assets/vendor/polyhaven/textures/"
+## How deep the player wades into lava before standing on the hidden floor (m).
+const LAVA_WADE_DEPTH := 0.45
 ## Poly Haven texture per layer, and how many times it repeats per metre.
 const LAYERS := [
 	["sparse_grass", 0.22], ["snow_02", 0.15], ["dark_rock_02", 0.12], ["forest_floor", 0.2],
@@ -99,27 +101,29 @@ func _layer_array(map: String) -> Texture2DArray:
 
 
 func _build_tiles() -> void:
-	var near_res: float = 4.0 if mobile else 2.0
-	var far_res := 8.0 if mobile else 4.0
-	var near_end: float = 150.0 if mobile else 230.0
-	var lo := _plane(far_res)
-	var hi := _plane(near_res)
+	# Close to the player the mesh uses the same 2 m grid as the collision
+	# heightmap, so feet never sink into (or float above) the visible ground.
+	var res: Array = [2.0, 4.0, 8.0] if mobile else [2.0, 2.0, 4.0]
+	var ends: Array = [70.0, 150.0, INF] if mobile else [120.0, 230.0, INF]
+	var meshes: Array = []
+	for r in res:
+		meshes.append(_plane(r))
 	var n := int(WorldData.SIZE / TILE)
 	for j in n:
 		for i in n:
 			var c := Vector3(-WorldData.SIZE * 0.5 + (i + 0.5) * TILE, 0, -WorldData.SIZE * 0.5 + (j + 0.5) * TILE)
-			for lod in 2:
+			for lod in 3:
 				var mi := MeshInstance3D.new()
-				mi.mesh = hi if lod == 0 else lo
+				mi.mesh = meshes[lod]
 				mi.material_override = material
 				mi.position = c
 				mi.custom_aabb = AABB(Vector3(-TILE * 0.5, -20, -TILE * 0.5), Vector3(TILE, 420, TILE))
-				if lod == 0:
-					mi.visibility_range_end = near_end
-					mi.visibility_range_end_margin = 10.0
-				else:
-					mi.visibility_range_begin = near_end
+				if lod > 0:
+					mi.visibility_range_begin = ends[lod - 1]
 					mi.visibility_range_begin_margin = 10.0
+				if ends[lod] < INF:
+					mi.visibility_range_end = ends[lod]
+					mi.visibility_range_end_margin = 10.0
 				mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 				add_child(mi)
 
@@ -155,6 +159,16 @@ func _build_lava() -> void:
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
+	# A hidden floor just under the lava surface: you wade (and burn) instead
+	# of sinking into the crater and getting stuck below its steep walls.
+	var floor_body := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(300, 0.4, 520)
+	col.shape = box
+	floor_body.add_child(col)
+	floor_body.position = Vector3(360, WorldData.LAVA_LEVEL - LAVA_WADE_DEPTH - 0.2, 0)
+	add_child(floor_body)
 
 
 ## Huge mountains far beyond the island so the horizon is never empty.

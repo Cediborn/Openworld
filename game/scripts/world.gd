@@ -1,6 +1,7 @@
 extends Node3D
 ## The open world: loads the baked island and builds the ground, plants,
-## village, sky, effects, creatures, sound, player and on-screen controls.
+## village, sky, effects, creatures, sound, villagers, quest, player, HUD,
+## menus and on-screen controls; saves progress.
 
 var data := WorldData.new()
 var config: Dictionary = {}
@@ -18,6 +19,18 @@ var last_zone := -1
 var shot_path := ""
 var shot_frames := 0
 var shot_hour := -1.0
+## Debug action for screenshots: "attack", "talk" or "hurt".
+var shot_act := ""
+var hud: Hud
+var story: Story
+var menu: GameMenu
+var quality: Quality
+var settings: Dictionary = {}
+var touch := false
+var in_title := false
+var autosave := 30.0
+## Seconds between automatic saves.
+const AUTOSAVE_EVERY := 30.0
 
 
 ## Loading steps, in order. Each is recorded before it runs; if the game
@@ -98,6 +111,7 @@ func _boot() -> void:
 		var q := Quality.new()
 		add_child(q)
 		q.setup(mobile, config)
+		quality = q
 	if await _step("sky and lighting"):
 		sky = SkyCycle.new()
 		add_child(sky)
@@ -130,6 +144,14 @@ func _boot() -> void:
 	_mark("player")
 	await get_tree().process_frame
 	_spawn_player()
+	touch = DisplayServer.is_touchscreen_available() or mobile
+	hud = Hud.new()
+	add_child(hud)
+	player.data = data
+	player.health_changed.connect(hud.set_health)
+	player.hurt.connect(hud.flash_hurt)
+	player.died.connect(_on_player_died)
+	hud.set_health(player.health, player.max_health)
 	if await _step("grass"):
 		grass = GrassField.new()
 		add_child(grass)
@@ -144,6 +166,11 @@ func _boot() -> void:
 		var audio := GameAudio.new()
 		add_child(audio)
 		audio.setup(data, player, creatures)
+	if await _step("villagers"):
+		story = Story.new()
+		add_child(story)
+		story.setup(data, player, hud, touch)
+		story.progress_changed.connect(save_game)
 	if await _step("weather effects"):
 		effects = ZoneEffects.new()
 		add_child(effects)
@@ -170,6 +197,128 @@ func _boot() -> void:
 		cam.position = Vector3(float(fly[0]), float(fly[1]), float(fly[2]))
 		cam.rotation_degrees = Vector3(float(fly[4]), float(fly[3]), 0)
 		cam.current = true
+	settings = SaveGame.load_settings()
+	_apply_settings(settings)
+	menu = GameMenu.new()
+	add_child(menu)
+	menu.new_game.connect(_new_game)
+	menu.continue_game.connect(_continue_game)
+	menu.resumed.connect(_resume)
+	menu.save_and_quit.connect(_save_and_quit)
+	menu.settings_changed.connect(func(s: Dictionary) -> void:
+		_apply_settings(s)
+		SaveGame.save_settings(s))
+	if shot_act == "title":
+		hud.visible = false
+		menu.show_title(true, settings)
+	if shot_path == "" and tour.is_empty():
+		in_title = true
+		hud.visible = false
+		get_tree().paused = true
+		menu.show_title(SaveGame.has_save(), settings)
+
+
+# ---------- Menus, saving and respawning ----------
+
+func _apply_settings(s: Dictionary) -> void:
+	settings = s
+	GameAudio.apply_volumes(s.music, s.effects)
+	if quality:
+		quality.set_preset(s.quality)
+	if player:
+		player.look_mult = s.sensitivity
+	if hud_fps:
+		hud_fps.visible = s.show_fps
+
+
+func _new_game() -> void:
+	SaveGame.delete_save()
+	if story:
+		story.load_state({})
+	var sp: Array = config.get("spawn", [0, 0, 40])
+	player.respawn(Vector3(sp[0], data.height(sp[0], sp[2]) + 0.3, sp[2]))
+	player.yaw = 0.0
+	if sky:
+		sky.time_of_day = config.get("start_hour", 7.6)
+	_resume()
+	hud.show_notice("Find the village to the west.\nSomeone there needs your help.")
+	save_game()
+
+
+func _continue_game() -> void:
+	var s := SaveGame.load_save()
+	if s.has("player"):
+		var p: Array = s.player
+		player.respawn(Vector3(p[0], maxf(p[1], data.height(p[0], p[2]) + 0.1), p[2]))
+		player.yaw = s.get("yaw", 0.0)
+		player.health = s.get("health", player.max_health)
+		player.health_changed.emit(player.health, player.max_health)
+	if story:
+		story.load_state(s.get("story", {}))
+	if sky and s.has("hour"):
+		sky.time_of_day = s.hour
+	_resume()
+
+
+func _resume() -> void:
+	in_title = false
+	menu.hide_menu()
+	hud.visible = true
+	get_tree().paused = false
+
+
+func _pause() -> void:
+	if not booted or in_title or get_tree().paused:
+		return
+	save_game()
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	hud.visible = false
+	menu.show_pause(settings)
+
+
+func _save_and_quit() -> void:
+	save_game()
+	if OS.has_feature("mobile"):
+		get_tree().quit()
+	else:
+		in_title = true
+		hud.visible = false
+		menu.show_title(true, settings)
+
+
+## Writes progress to the save file (position, health, quest, time of day).
+func save_game() -> void:
+	if player == null or player.dead or shot_path != "":
+		return
+	var p := player.global_position
+	SaveGame.save({
+		"player": [p.x, p.y, p.z], "yaw": player.yaw, "health": player.health,
+		"story": story.save_state() if story else {},
+		"hour": sky.time_of_day if sky else 8.0,
+	})
+
+
+func _on_player_died() -> void:
+	hud.show_defeated(true)
+	await get_tree().create_timer(player.combat.get("respawn_delay", 3.5)).timeout
+	var sp: Array = config.get("spawn", [0, 0, 40])
+	player.respawn(Vector3(sp[0], data.height(sp[0], sp[2]) + 0.3, sp[2]))
+	hud.show_defeated(false)
+	hud.show_notice("You wake up in the meadow.")
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE, KEY_P]:
+		if get_tree().paused and not in_title:
+			_resume()
+		else:
+			_pause()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		save_game()
 
 
 func _parse_args() -> void:
@@ -186,6 +335,8 @@ func _parse_args() -> void:
 			tour = a.substr(7).split(";")
 		elif a.begins_with("--fly="):
 			fly = a.substr(6).split(",")
+		elif a.begins_with("--act="):
+			shot_act = a.substr(6)
 		elif a == "--mobile":
 			mobile = true
 
@@ -246,12 +397,17 @@ func _build_ui() -> void:
 	if DisplayServer.is_touchscreen_available() or mobile:
 		var tc := TouchControls.new()
 		tc.player = player
+		tc.on_pause = _pause
 		layer.add_child(tc)
 
 
 func _process(delta: float) -> void:
 	if player == null or sky == null or hud_fps == null:
 		return
+	autosave -= delta
+	if autosave <= 0.0:
+		autosave = AUTOSAVE_EVERY
+		save_game()
 	var p := player.global_position
 	var w := data.zone(p.x, p.z)
 	sky.set_zone(w)
@@ -275,6 +431,14 @@ func _process(delta: float) -> void:
 		return
 	if shot_path != "":
 		shot_frames += 1
+		if shot_frames == 40:
+			match shot_act:
+				"attack":
+					player.attack_pressed = true
+				"talk":
+					story.interact()
+				"hurt":
+					player.take_damage(35.0, player.global_position + Vector3(1, 0, 0))
 		if shot_frames == 50:
 			for l in [hud_fps, hud_clock, hud_zone]:
 				l.visible = false

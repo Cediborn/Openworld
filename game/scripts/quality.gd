@@ -42,3 +42,27 @@ func _process(delta: float) -> void:
 	elif fps > target_fps + 10.0 and scale < max_scale:
 		scale = minf(max_scale, scale + 0.04)
 	get_viewport().scaling_3d_scale = scale
+
+
+## Player-chosen graphics preset: battery (30 fps, lower resolution),
+## balanced (default) or sharp (higher resolution, may run warmer).
+func set_preset(preset: String) -> void:
+	var base := 0.62 if mobile else 1.0
+	match preset:
+		"battery":
+			max_scale = 0.6 if mobile else 0.8
+			min_scale = 0.4 if mobile else 0.5
+			Engine.max_fps = 30
+			target_fps = 28.0
+		"sharp":
+			max_scale = 1.0
+			min_scale = 0.6 if mobile else 0.75
+			Engine.max_fps = 60
+			target_fps = 40.0 if mobile else 55.0
+		_:
+			max_scale = 0.8 if mobile else 1.0
+			min_scale = 0.45 if mobile else 0.6
+			Engine.max_fps = 60 if mobile else 0
+			target_fps = 40.0 if mobile else 58.0
+	scale = clampf(base, min_scale, max_scale)
+	get_viewport().scaling_3d_scale = scale

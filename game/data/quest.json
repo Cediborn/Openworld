@@ -1,0 +1,12 @@
+{
+  "_comment": "The Elder's quest. Heart-stones sit at [x, z] in their biome, guarded by that biome's monsters, with a beam of light visible from afar. reward_damage_multiplier upgrades the sword when Bram forges it.",
+  "title": "The Island's Heart",
+  "pickup_distance": 2.6,
+  "stones": [
+    {"id": "frost", "name": "Frost Crystal", "pos": [8, -312], "color": [0.6, 0.9, 1.0]},
+    {"id": "ember", "name": "Ember Heart", "pos": [306, 12], "color": [1.0, 0.45, 0.1]},
+    {"id": "glow", "name": "Glow Spore", "pos": [6, 312], "color": [0.4, 1.0, 0.9]}
+  ],
+  "reward_damage_multiplier": 1.6,
+  "reward_blade_color": [0.5, 0.95, 1.0]
+}

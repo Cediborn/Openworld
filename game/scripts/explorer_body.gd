@@ -1,12 +1,29 @@
 class_name ExplorerBody
 extends Node3D
-## Realistic explorer: Quaternius CC0 base body dressed in a field jacket, cargo
-## pants and boots (clothes are painted per body part and slightly inflated),
-## with a scarf and backpack attached to bones. Plays retargeted UAL animations.
+## Realistic person: Quaternius CC0 base body dressed by painting clothes onto
+## body regions (smoothed and slightly inflated), plus accessories attached to
+## bones. Used for the explorer and, with a different `outfit`, every villager.
+## Plays retargeted UAL animations.
 
-const MODEL := "res://assets/character/Superhero_Male_FullBody.gltf"
+const MODELS := {
+	"male": "res://assets/character/Superhero_Male_FullBody.gltf",
+	"female": "res://assets/character/Superhero_Female_FullBody.gltf",
+}
 const ANIM_DIR := "res://assets/character/anims/"
-const ANIMS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Jump_Start", "Jump", "Jump_Land", "Swim_Idle", "Swim_Fwd"]
+const ANIMS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Jump_Start", "Jump", "Jump_Land", "Swim_Idle", "Swim_Fwd",
+	"Sword_Attack", "Sword_Idle", "Hit_Chest", "Death01", "Idle_Talking", "Walk_Formal", "PickUp_Table", "Punch_Jab", "Sitting_Talking", "Interact"]
+## Animations that play once and then hand control back to locomotion.
+const ONE_SHOTS := ["Jump_Start", "Jump", "Jump_Land", "Sword_Attack", "Hit_Chest", "Death01", "PickUp_Table", "Punch_Jab"]
+## The explorer's look; villagers pass their own outfit before being added.
+const EXPLORER := {
+	"model": "male", "jacket": Color(0.29, 0.29, 0.19), "pants": Color(0.16, 0.16, 0.13),
+	"boots": Color(0.27, 0.17, 0.10), "hair": Color(0.07, 0.05, 0.035),
+	"accessories": ["scarf", "explorer", "sword"],
+}
+## Upper-chest width factor (1.0 = base superhero build).
+const SHOULDER_SLIM := 0.86
+## Dressed meshes are expensive to build, so each body model is dressed once.
+static var _mesh_cache := {}
 
 enum Region { SKIN, JACKET, PANTS, BOOTS, HAIR }
 
@@ -23,16 +40,38 @@ const FOOT_BONES := ["LeftFoot", "RightFoot", "LeftToes", "RightToes"]
 var anim: AnimationPlayer
 var skeleton: Skeleton3D
 var current := ""
+var outfit: Dictionary = EXPLORER
+var outfit_mat: ShaderMaterial
+var sword_hand: Node3D
+var sword_hip: Node3D
+var blade_mat: StandardMaterial3D
+var _busy_until := 0.0   # seconds (engine time) until a one-shot animation ends
 var smooth_normals := PackedVector3Array()
 
 
 func _ready() -> void:
-	var model: Node3D = load(MODEL).instantiate()
+	var model_path: String = MODELS[outfit.get("model", "male")]
+	var model: Node3D = load(model_path).instantiate()
 	add_child(model)
 	skeleton = model.find_children("*", "Skeleton3D", true, false)[0]
 	for mi: MeshInstance3D in skeleton.find_children("*", "MeshInstance3D", false, false):
-		_dress(mi)
+		var key := model_path + ":" + mi.name
+		if not _mesh_cache.has(key):
+			_dress(mi)
+			_mesh_cache[key] = mi.mesh
+		mi.mesh = _mesh_cache[key]
+		for s in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(s)
+			if m is ShaderMaterial:
+				# Per-person colours on a copy of the shared outfit material.
+				outfit_mat = m.duplicate()
+				for k in ["jacket", "pants", "boots", "hair"]:
+					outfit_mat.set_shader_parameter(k + "_color", outfit.get(k, EXPLORER[k]))
+				mi.set_surface_override_material(s, outfit_mat)
+		if outfit.get("hide_hair_mesh", false) and mi.name.to_lower().contains("hair"):
+			mi.visible = false
 	_add_accessories()
+	_slim_shoulders()
 	anim = AnimationPlayer.new()
 	add_child(anim)
 	anim.root_node = anim.get_path_to(model)
@@ -41,18 +80,72 @@ func _ready() -> void:
 		var path: String = ANIM_DIR + n + ".res"
 		if ResourceLoader.exists(path):
 			var a: Animation = load(path).duplicate()
-			a.loop_mode = Animation.LOOP_NONE if n.begins_with("Jump") else Animation.LOOP_LINEAR
+			a.loop_mode = Animation.LOOP_NONE if n in ONE_SHOTS else Animation.LOOP_LINEAR
 			lib.add_animation(n, a)
 	anim.add_animation_library("", lib)
 	play("Idle")
 
 
+## Loops or continues a locomotion animation. Ignored while a one-shot plays.
 func play(name: String, blend := 0.2, speed := 1.0) -> void:
+	if busy():
+		return
 	anim.speed_scale = speed
 	if name == current or not anim.has_animation(name):
 		return
 	current = name
 	anim.play(name, blend)
+
+
+## Plays an action (attack, hit, death, pick up) once; locomotion waits for it.
+func play_once(name: String, blend := 0.1, speed := 1.0) -> float:
+	if not anim.has_animation(name):
+		return 0.0
+	anim.speed_scale = speed
+	current = name
+	anim.play(name, blend)
+	anim.seek(0.0, true)
+	var length := anim.get_animation(name).length / speed
+	_busy_until = Time.get_ticks_msec() / 1000.0 + length
+	return length
+
+
+## True while a one-shot action is still playing.
+func busy() -> bool:
+	return Time.get_ticks_msec() / 1000.0 < _busy_until
+
+
+## Ends a one-shot early (used when respawning).
+func cancel_action() -> void:
+	_busy_until = 0.0
+	current = ""
+
+
+## Makes both copies of the blade glow (quest reward).
+func set_blade_glow(c: Color) -> void:
+	if blade_mat:
+		blade_mat.emission_enabled = true
+		blade_mat.emission = c
+		blade_mat.emission_energy_multiplier = 1.6
+
+
+## Shows the sword in the hand (fighting) or in its scabbard (exploring).
+func set_sword_drawn(drawn: bool) -> void:
+	if sword_hand:
+		sword_hand.visible = drawn
+		sword_hip.visible = not drawn
+
+
+## The base body is built like a superhero; narrow the upper chest a little so
+## the explorer and villagers look like ordinary people.
+func _slim_shoulders() -> void:
+	var i := skeleton.find_bone("UpperChest")
+	if i == -1:
+		return
+	var rest := skeleton.get_bone_rest(i)
+	rest.basis = rest.basis.scaled_local(Vector3(SHOULDER_SLIM, 1.0, 0.96))
+	skeleton.set_bone_rest(i, rest)
+	skeleton.set_bone_pose_scale(i, Vector3(SHOULDER_SLIM, 1.0, 0.96))
 
 
 # ---------- Clothing ----------
@@ -267,7 +360,18 @@ static func _fabric(c: Color, rough := 0.9) -> StandardMaterial3D:
 
 
 func _add_accessories() -> void:
-	# Scarf around the neck.
+	var acc: Array = outfit.get("accessories", [])
+	_add_boots()
+	if "scarf" in acc:
+		_add_scarf()
+	if "explorer" in acc:
+		_add_explorer_kit()
+	if "sword" in acc:
+		_add_sword()
+	_add_villager_props(acc)
+
+
+func _add_scarf() -> void:
 	var neck := _attach("Neck")
 	var scarf := MeshInstance3D.new()
 	var tor := TorusMesh.new()
@@ -289,7 +393,9 @@ func _add_accessories() -> void:
 	tail.rotation.z = 0.25
 	neck.add_child(tail)
 
-	# Boot soles and laced cuffs (the boots themselves are painted on the feet).
+
+## Boot soles, laced cuffs and toe caps (the boots themselves are painted on the feet).
+func _add_boots() -> void:
 	for side in ["Left", "Right"]:
 		var foot := _attach(side + "Foot")
 		var leather := _fabric(Color(0.25, 0.16, 0.09), 0.6)
@@ -317,6 +423,9 @@ func _add_accessories() -> void:
 		cap.height = 0.12
 		_piece(foot, cap, leather, Vector3(0, 0.13, -0.035), Vector3.ZERO, Vector3(0.95, 1.45, 0.7))
 
+
+## The explorer's backpack, sleeping mat, pockets and jacket details.
+func _add_explorer_kit() -> void:
 	# Backpack with a rolled sleeping mat on top.
 	var chest := _attach("UpperChest")
 	var pack := MeshInstance3D.new()
@@ -412,3 +521,128 @@ static func _torus(inner: float, outer: float) -> TorusMesh:
 	t.rings = 24
 	t.ring_segments = 8
 	return t
+
+
+# ---------- Weapons and villager props ----------
+
+## Builds a short sword. Blade points along +Y of the returned node.
+func _sword_mesh() -> Node3D:
+	var root := Node3D.new()
+	if blade_mat == null:
+		blade_mat = StandardMaterial3D.new()
+	var steel := blade_mat
+	steel.albedo_color = Color(0.72, 0.74, 0.78)
+	steel.metallic = 0.9
+	steel.roughness = 0.28
+	var leather := _fabric(Color(0.22, 0.14, 0.08), 0.7)
+	var brass := StandardMaterial3D.new()
+	brass.albedo_color = Color(0.62, 0.48, 0.22)
+	brass.metallic = 0.8
+	brass.roughness = 0.4
+	_piece(root, _box(Vector3(0.045, 0.62, 0.008)), steel, Vector3(0, 0.42, 0))
+	var tip := PrismMesh.new()
+	tip.size = Vector3(0.045, 0.07, 0.008)
+	_piece(root, tip, steel, Vector3(0, 0.765, 0))
+	_piece(root, _box(Vector3(0.16, 0.025, 0.03)), brass, Vector3(0, 0.1, 0))
+	var grip := CylinderMesh.new()
+	grip.top_radius = 0.016
+	grip.bottom_radius = 0.016
+	grip.height = 0.14
+	_piece(root, grip, leather, Vector3(0, 0.02, 0))
+	var pommel := SphereMesh.new()
+	pommel.radius = 0.024
+	pommel.height = 0.048
+	_piece(root, pommel, brass, Vector3(0, -0.06, 0))
+	return root
+
+
+func _add_sword() -> void:
+	var hand := _attach("RightHand")
+	sword_hand = _sword_mesh()
+	# Hand bone: +Y runs along the fingers; the grip crosses the palm.
+	sword_hand.position = Vector3(-0.01, 0.08, 0.02)
+	sword_hand.rotation = Vector3(0, 0, PI * 0.5)
+	hand.add_child(sword_hand)
+	var hips := _attach("Hips")
+	sword_hip = Node3D.new()
+	hips.add_child(sword_hip)
+	var sheathed := _sword_mesh()
+	sword_hip.add_child(sheathed)
+	var scab := _box(Vector3(0.06, 0.62, 0.025))
+	_piece(sheathed, scab, _fabric(Color(0.2, 0.13, 0.08), 0.7), Vector3(0, 0.42, 0))
+	sword_hip.position = Vector3(0.19, -0.02, 0.04)
+	sword_hip.rotation = Vector3(0.35, 0, PI * 0.88)
+	set_sword_drawn(false)
+
+
+## Props for villagers: apron, chef hat, beard, cane, basket, hammer, hair bun.
+func _add_villager_props(acc: Array) -> void:
+	var head := _attach("Head") if acc.any(func(a): return a in ["chef_hat", "beard", "bun", "headscarf", "cap"]) else null
+	if "apron" in acc:
+		var spine := _attach("Spine")
+		var col: Color = outfit.get("apron_color", Color(0.9, 0.88, 0.82))
+		_piece(spine, _box(Vector3(0.34, 0.6, 0.02)), _fabric(col), Vector3(0, -0.12, 0.165), Vector3(-0.05, 0, 0))
+	if "chef_hat" in acc:
+		var c := CylinderMesh.new()
+		c.top_radius = 0.13
+		c.bottom_radius = 0.1
+		c.height = 0.2
+		_piece(head, c, _fabric(Color(0.95, 0.94, 0.9)), Vector3(0, 0.22, -0.01))
+	if "cap" in acc:
+		var sph := SphereMesh.new()
+		sph.radius = 0.11
+		sph.height = 0.12
+		_piece(head, sph, _fabric(outfit.get("cap_color", Color(0.3, 0.2, 0.15))), Vector3(0, 0.16, -0.01), Vector3.ZERO, Vector3(1.05, 0.8, 1.1))
+	if "headscarf" in acc:
+		var sph2 := SphereMesh.new()
+		sph2.radius = 0.12
+		sph2.height = 0.2
+		_piece(head, sph2, _fabric(outfit.get("scarf_color", Color(0.6, 0.25, 0.2))), Vector3(0, 0.13, -0.02), Vector3.ZERO, Vector3(1.05, 0.9, 1.1))
+	if "beard" in acc:
+		var b := SphereMesh.new()
+		b.radius = 0.07
+		b.height = 0.16
+		_piece(head, b, _fabric(Color(0.82, 0.8, 0.76), 1.0), Vector3(0, 0.0, 0.09), Vector3(0.25, 0, 0), Vector3(1.0, 1.25, 0.7))
+	if "bun" in acc:
+		var bun := SphereMesh.new()
+		bun.radius = 0.06
+		bun.height = 0.12
+		_piece(head, bun, _fabric(outfit.get("hair", Color(0.2, 0.12, 0.06))), Vector3(0, 0.17, -0.1))
+	if "cane" in acc:
+		# Held upright at the right side (character's right is -X).
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.017
+		cyl.bottom_radius = 0.014
+		cyl.height = 0.92
+		_piece(self, cyl, _fabric(Color(0.32, 0.2, 0.1), 0.8), Vector3(-0.3, 0.46, 0.12), Vector3(0.05, 0, 0.06))
+	if "hammer" in acc:
+		var hand2 := _attach("RightHand")
+		var handle := CylinderMesh.new()
+		handle.top_radius = 0.016
+		handle.bottom_radius = 0.016
+		handle.height = 0.4
+		var h := Node3D.new()
+		h.position = Vector3(0, 0.08, 0.02)
+		h.rotation = Vector3(0, 0, PI * 0.5)
+		hand2.add_child(h)
+		_piece(h, handle, _fabric(Color(0.35, 0.22, 0.12)), Vector3(0, 0.1, 0))
+		var iron := StandardMaterial3D.new()
+		iron.albedo_color = Color(0.25, 0.25, 0.27)
+		iron.metallic = 0.8
+		iron.roughness = 0.5
+		_piece(h, _box(Vector3(0.14, 0.06, 0.06)), iron, Vector3(0, 0.3, 0))
+	if "basket" in acc:
+		var hand3 := Node3D.new()   # carried at the left hip
+		hand3.position = Vector3(0.33, 0.78, 0.05)
+		add_child(hand3)
+		var bk := CylinderMesh.new()
+		bk.top_radius = 0.16
+		bk.bottom_radius = 0.12
+		bk.height = 0.14
+		var wicker := _fabric(Color(0.55, 0.4, 0.22), 1.0)
+		_piece(hand3, bk, wicker, Vector3.ZERO)
+		_piece(hand3, _torus(0.12, 0.135), wicker, Vector3(0, 0.12, 0), Vector3(0, 0, PI * 0.5))
+		var bread := CapsuleMesh.new()
+		bread.radius = 0.04
+		bread.height = 0.18
+		_piece(hand3, bread, _fabric(Color(0.75, 0.52, 0.25)), Vector3(0.0, 0.07, 0.03), Vector3(0, 0, PI * 0.5))

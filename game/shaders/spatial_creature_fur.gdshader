@@ -20,6 +20,7 @@ uniform vec3 glow_color : source_color = vec3(1.0, 0.5, 0.1);
 uniform float glow_energy = 0.0;     // 0 = no emission (ordinary animals)
 uniform float pulse_speed = 1.6;     // radians per second of the slow throb
 uniform float pulse_offset = 0.0;    // per-creature phase so herds don't throb in sync
+uniform float hit_flash = 0.0;       // 1 when struck, fades to 0
 group_uniforms;
 
 const float GAMMA_DECODE = 1.6;      // 1.6 not 2.2: keeps dark coats readable in shade
@@ -48,5 +49,5 @@ void fragment() {
 	RIM = sheen;
 	RIM_TINT = 0.6;
 	float pulse = 0.75 + 0.25 * sin(TIME * pulse_speed + pulse_offset + obj_pos.y * 3.0);
-	EMISSION = glow_color * glow * glow_energy * pulse * (0.7 + 0.6 * n);
+	EMISSION = glow_color * glow * glow_energy * pulse * (0.7 + 0.6 * n) + vec3(1.0, 0.35, 0.25) * hit_flash * 0.8;
 }
