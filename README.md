@@ -37,6 +37,8 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 | Block | Hold right mouse | Hold grey shield button |
 | Drink potion | H | Flask button (top right) |
 | Talk / use | E | Tap the prompt |
+| Get on / off a horse | E next to the horse | Tap the prompt |
+| Gallop (on a horse) | Shift | Orange button |
 | Dialogue choices | 1, 2, 3 or click | Tap |
 | Journal (quests, map, gear, progress) | J | Book button (top right) |
 
@@ -45,6 +47,8 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 - **Main story, The Shattered Island** (after the Elder's first quest): six chapters across all five regions, ending in the Ancient Sanctuary against the Ancient Guardian.
 - **10 side quests and 5 special quests** from townsfolk and travellers, or found in the world (an old map, a hole in the ground, a singing crystal).
 - **Monster contracts** from Captain Harlan, Brann the hunter and the board in the market square. New ones keep coming; pay grows with your level.
+- **Horses**: a white, a black and a brown horse wait at the hitching rail beside the path, just ahead of where you start. Ride at a walk, trot or gallop (about three times running speed). They stay where you leave them, and the save remembers where.
+- **Yellow "!"** floats over anyone (or anything, like the contract board or a found map) with a mission for you, and stays visible through buildings and from far away. A blue "?" means someone to report back to.
 - **Exploring**: 22 named places (some hidden), 12 treasures (chests, buried caches that need their map, a locked cellar, guarded hoards), 6 shrines with different puzzles, 4 rare bosses with unique weapons, random world events (raids, a travelling merchant, rare creatures, eruptions, travellers in need).
 - **Progress**: coins, experience and levels, Brickton reputation, weapons and armour (frost and fire resistance), blacksmith upgrades. Everything saves.
 

@@ -37,6 +37,22 @@ func _ready() -> void:
 	add_child(beacon)
 
 
+## A mission marker ("!" to start a quest here, "" for none) floating above it.
+var quest_mark: Label3D
+## Height of the quest mark above the object (metres).
+var quest_mark_y := 2.3
+
+
+func set_quest_mark(kind: String) -> void:
+	if quest_mark == null:
+		if kind == "":
+			return
+		quest_mark = Villager.make_marker()
+		quest_mark.position.y = quest_mark_y
+		add_child(quest_mark)
+	Villager.paint_marker(quest_mark, kind)
+
+
 func set_beacon(on: bool) -> void:
 	if beacon:
 		beacon.visible = on
@@ -48,6 +64,11 @@ func use() -> void:
 
 
 func _process(delta: float) -> void:
+	if quest_mark and quest_mark.visible:
+		quest_mark.position.y = quest_mark_y + 0.12 * sin(Time.get_ticks_msec() * 0.004)
+		var cam := get_viewport().get_camera_3d()
+		if cam:
+			Villager.fit_marker(quest_mark, cam.global_position.distance_to(quest_mark.global_position))
 	if bob and visual:
 		_t += delta
 		visual.position.y = 0.5 + 0.12 * sin(_t * 2.2)

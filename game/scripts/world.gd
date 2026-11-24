@@ -32,6 +32,7 @@ var services: Services
 var audio: GameAudio
 var menu: GameMenu
 var quality: Quality
+var stable: Stable
 var settings: Dictionary = {}
 var touch := false
 var in_title := false
@@ -191,6 +192,10 @@ func _boot() -> void:
 		add_child(wildlife)
 		wildlife.setup(data, player, mobile)
 		creatures = wildlife.animals
+	if await _step("horses"):
+		stable = Stable.new()
+		add_child(stable)
+		stable.setup(data, player)
 	if await _step("sound"):
 		audio = GameAudio.new()
 		add_child(audio)
@@ -322,6 +327,8 @@ func _new_game() -> void:
 	var sp: Array = config.get("spawn", [0, 0, 40])
 	player.respawn(Vector3(sp[0], data.height(sp[0], sp[2]) + 0.3, sp[2]))
 	player.yaw = 0.0
+	if stable:
+		stable.reset()
 	if sky:
 		sky.time_of_day = config.get("start_hour", 7.6)
 	_resume()
@@ -345,6 +352,8 @@ func _continue_game() -> void:
 		quests.load_state(s.get("quests", {}))
 	if features:
 		features.refresh()
+	if stable:
+		stable.load_state(s.get("horses", {}))
 	if sky and s.has("hour"):
 		sky.time_of_day = s.hour
 	_resume()
@@ -388,6 +397,7 @@ func save_game() -> void:
 		"progress": state.save_state() if state else {},
 		"quests": quests.save_state() if quests else {},
 		"hour": sky.time_of_day if sky else 8.0,
+		"horses": stable.save_state() if stable else {},
 	})
 
 
@@ -545,6 +555,17 @@ func _process(delta: float) -> void:
 		return
 	if shot_path != "":
 		shot_frames += 1
+		if shot_act.begins_with("ride") and stable:
+			# Debug: climb on the nearest horse and ride ("ride_run" gallops).
+			if shot_frames == 20:
+				var near: Horse = null
+				for h in stable.horses:
+					if near == null or h.global_position.distance_to(player.global_position) < near.global_position.distance_to(player.global_position):
+						near = h
+				player.mount(near)
+			if shot_frames > 20 and shot_act != "ride":
+				player.move_input = Vector2(0, -1)
+				player.sprint_held = shot_act == "ride_run"
 		if shot_frames == 40:
 			match shot_act:
 				"attack":

@@ -15,6 +15,8 @@ signal talked(v: Villager)
 
 const STAGES := ["intro", "hunt", "return", "forge", "done"]
 
+## How far away (metres) a mission giver's "!" can still be seen.
+const MARKER_RANGE := 600.0
 var data: WorldData
 var player: Player
 var hud: Hud
@@ -249,14 +251,21 @@ func _cull_villagers() -> void:
 		var on: bool = d < far and i < cap
 		if v.hiding and not v.visible:
 			on = false
-		v.visible = on or (v.hiding and v.visible)
+		# Someone with a mission for you keeps their "!" in view from afar,
+		# even when they are too far away to be drawn themselves.
+		var mark: String = quests.marker_for(v) if quests else ""
+		var beacon: bool = mark != "" and not v.hiding and d < MARKER_RANGE
+		v.visible = on or (v.hiding and v.visible) or beacon
+		if v.body:
+			v.body.visible = on or v.hiding
 		v.process_mode = Node.PROCESS_MODE_INHERIT if (on or v.hiding) else Node.PROCESS_MODE_DISABLED
+		v.set_marker(mark if (on or beacon) else "")
+		var cam := get_viewport().get_camera_3d()
+		Villager.fit_marker(v.marker, v.marker.global_position.distance_to(cam.global_position) if cam else d)
 		v.lod = 0 if d < 35.0 else 1
 		if v.body:
 			for mi: GeometryInstance3D in v.body.find_children("*", "MeshInstance3D", true, false):
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if d < 30.0 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		if on and quests:
-			v.set_marker(quests.marker_for(v))
 
 
 func _find_focus() -> void:

@@ -445,6 +445,10 @@ func _contract_board() -> void:
 		var c := quests.contract_convo("board")
 		c["speaker"] = "Contract Board"
 		story.open(c)
+	# A "!" over the board whenever a new contract can be taken.
+	var refresh := func() -> void: it.set_quest_mark("!" if quests.active_contract() == "" else "")
+	refresh.call()
+	quests.quest_changed.connect(refresh)
 
 
 # ---------- Treasure ----------

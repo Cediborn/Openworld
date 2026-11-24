@@ -3,3 +3,4 @@ build/
 game/assets/polyhaven/
 game/assets/vendor/
 game/android/
+__pycache__/

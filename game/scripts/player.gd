@@ -87,6 +87,18 @@ signal swung(index: int)
 signal dodged
 var trail: SwordTrail
 
+# Riding (see Horse and Stable; tuning in data/horses.json "ride").
+## The horse being ridden, or null.
+var horse: Horse
+## Riding tuning, set by the Stable.
+var ride: Dictionary = {}
+var ride_speed := 0.0
+var ride_yaw := 0.0
+var _foot_shape: CollisionShape3D
+var _horse_shape: CollisionShape3D
+## Emitted when getting on (true) or off (false) a horse.
+signal ridden(on: bool)
+
 
 func setup(config: Dictionary) -> void:
 	walk_speed = config.get("walk_speed", walk_speed)
@@ -108,6 +120,16 @@ func _ready() -> void:
 	col.shape = cap
 	col.position.y = 0.9
 	add_child(col)
+	_foot_shape = col
+	# The horse's body while riding: a capsule lying along its back.
+	_horse_shape = CollisionShape3D.new()
+	var hc := CapsuleShape3D.new()
+	hc.radius = 0.3
+	hc.height = 1.9
+	_horse_shape.shape = hc
+	_horse_shape.position.y = 1.15
+	_horse_shape.disabled = true
+	add_child(_horse_shape)
 	floor_snap_length = 0.6
 	floor_max_angle = deg_to_rad(58)
 
@@ -186,6 +208,11 @@ func _physics_process(delta: float) -> void:
 		want_block = false
 		want_potion = false
 	var wish: Vector3 = Basis(Vector3.UP, yaw) * Vector3(stick.x, 0, stick.y)
+	if horse:
+		_update_combat(delta, false, false, false, want_potion, wish)
+		if horse:   # (a fall into lava can end the ride)
+			_ride(delta, stick, wish, running, walking, want_jump)
+		return
 	_update_combat(delta, want_attack, want_dodge, want_block, want_potion, wish)
 
 	# Push the stick a little to walk, all the way to jog; sprint button to run.
@@ -465,9 +492,9 @@ func take_damage(amount: float, from_pos: Vector3, burn := false, element := "")
 	health -= amount
 	since_damage = 0.0
 	if not burn:
-		if swing < 0 and dodge_t < 0.0 and not blocking:
+		if swing < 0 and dodge_t < 0.0 and not blocking and horse == null:
 			body.play_once("Hit_Chest", 0.05)
-		if from_pos != Vector3.INF:
+		if from_pos != Vector3.INF and horse == null:
 			var away := global_position - from_pos
 			away.y = 0
 			var kb: float = combat.get("knockback", 5.0) * (0.35 if blocking else 1.0)
@@ -480,6 +507,8 @@ func take_damage(amount: float, from_pos: Vector3, burn := false, element := "")
 	if health <= 0.0:
 		health = 0.0
 		dead = true
+		if horse:
+			dismount()
 		_end_swing()
 		blocking = false
 		dodge_t = -1.0
@@ -496,6 +525,8 @@ func set_sword_upgrade(mult: float, glow: Color) -> void:
 
 ## Brings the explorer back to life at a safe spot.
 func respawn(at: Vector3) -> void:
+	if horse:
+		dismount()
 	dead = false
 	health = max_health
 	since_damage = 99.0
@@ -529,3 +560,108 @@ func _animate(speed: float, delta: float) -> void:
 		body.play("Jog_Fwd", 0.2, speed / ANIM_SPEED.Jog_Fwd)
 	else:
 		body.play("Sprint", 0.2, speed / ANIM_SPEED.Sprint)
+
+
+# ---------- Riding ----------
+
+## Climbs onto a horse: the explorer sits in the saddle and the stick now
+## steers the horse (walk, trot; sprint to gallop).
+func mount(h: Horse) -> void:
+	if horse != null or dead:
+		return
+	horse = h
+	_end_swing()
+	blocking = false
+	dodge_t = -1.0
+	body.cancel_action()
+	body.set_sword_drawn(false)
+	ride_speed = 0.0
+	ride_yaw = h.rotation.y
+	global_position = h.global_position
+	velocity = Vector3.ZERO
+	body.rotation.y = ride_yaw + PI
+	body.position.y = float(ride.get("saddle_height", 1.56)) - float(ride.get("rider_hips", 0.62))
+	body.play("Ride", 0.25)
+	spring.spring_length = float(ride.get("camera_distance", 6.0))
+	_horse_shape.disabled = false
+	h.set_ridden(self)
+	ridden.emit(true)
+
+
+## Gets off beside the horse, which stays where it is.
+func dismount() -> void:
+	if horse == null:
+		return
+	var h := horse
+	horse = null
+	h.speed = 0.0
+	h.set_ridden(null)
+	_horse_shape.disabled = true
+	body.position.y = 0.0
+	spring.spring_length = camera_distance
+	# Step down on the horse's left side (or right, if the left is a wall).
+	var left := Vector3(-cos(ride_yaw), 0, sin(ride_yaw))
+	var spot := h.global_position + left * 1.0
+	var space := get_world_3d().direct_space_state
+	var ray := PhysicsRayQueryParameters3D.create(h.global_position + Vector3.UP, spot + Vector3.UP)
+	ray.exclude = [get_rid()]
+	if not space.intersect_ray(ray).is_empty():
+		spot = h.global_position - left * 1.0
+	var ground: float = data.height(spot.x, spot.z) if data else spot.y
+	global_position = Vector3(spot.x, maxf(ground, h.global_position.y) + 0.1, spot.z)
+	velocity = Vector3.ZERO
+	body.rotation.y = ride_yaw + PI
+	body.play("Idle", 0.2)
+	ridden.emit(false)
+
+
+func _ride(delta: float, stick: Vector2, wish: Vector3, running: bool, walking: bool, want_jump: bool) -> void:
+	var amount := stick.length()
+	var want := 0.0
+	if amount > 0.05:
+		if running:
+			want = float(ride.get("gallop_speed", 13.0))
+		elif walking:
+			want = float(ride.get("walk_speed", 2.4))
+		elif amount < 0.6:
+			want = float(ride.get("walk_speed", 2.4)) * clampf(amount / 0.6, 0.5, 1.0)
+		else:
+			want = float(ride.get("trot_speed", 6.5))
+		# The horse turns towards where the stick points (no spinning on the spot at a gallop).
+		var goal := atan2(-wish.x, -wish.z)
+		var diff := wrapf(goal - ride_yaw, -PI, PI)
+		var rate: float = float(ride.get("turn_rate", 3.2)) * lerpf(1.4, 0.8, clampf(ride_speed / 13.0, 0.0, 1.0))
+		ride_yaw += clampf(diff, -rate * delta, rate * delta)
+		# Pulling hard round slows the horse down instead of skidding.
+		want *= clampf(1.0 - absf(diff) / PI * 0.8, 0.25, 1.0)
+	if in_conversation or dead:
+		want = 0.0
+	if _in_lava():
+		want *= combat.get("lava_speed_factor", 0.75)
+	var rate2: float = float(ride.get("accel", 5.0)) if want > ride_speed else float(ride.get("brake", 9.0))
+	ride_speed = move_toward(ride_speed, want, rate2 * delta)
+	var fwd := Vector3(-sin(ride_yaw), 0, -cos(ride_yaw))
+	velocity.x = fwd.x * ride_speed
+	velocity.z = fwd.z * ride_speed
+	if is_on_floor():
+		air_time = 0.0
+		if want_jump and ride_speed > 0.5:
+			velocity.y = float(ride.get("jump_velocity", 6.2))
+	else:
+		air_time += delta
+		velocity.y -= gravity * delta
+	_horse_shape.basis = Basis(Vector3.UP, ride_yaw) * Basis(Vector3.RIGHT, PI * 0.5)
+	move_and_slide()
+	# Bumping into a wall stops the horse rather than letting it run on the spot.
+	var real := Vector2(get_real_velocity().x, get_real_velocity().z).length()
+	if is_on_wall() and real < ride_speed * 0.5:
+		ride_speed = move_toward(ride_speed, real, 20.0 * delta)
+	horse.global_position = global_position
+	horse.rotation.y = ride_yaw
+	horse.speed = ride_speed
+	body.rotation.y = ride_yaw + PI
+	body.position.y = float(ride.get("saddle_height", 1.56)) - float(ride.get("rider_hips", 0.62)) + horse.saddle_bob() * 1.6
+	body.play("Ride", 0.25)
+	var follow := global_position + Vector3(0, float(ride.get("camera_height", 2.5)), 0)
+	cam_pivot.global_position = cam_pivot.global_position.lerp(follow, 1.0 - exp(-14.0 * delta))
+	cam_pivot.rotation = Vector3(pitch, yaw, 0)

@@ -1,0 +1,38 @@
+{
+  "_comment": "Riding horses. Speeds in metres per second, turn rate in radians per second, distances in metres. pos is [x, z] on the island; yaw in degrees (0 faces north, -Z). Models from tools/creatures/build_horses.py.",
+  "gait": {
+    "walk_speed": 1.5,
+    "run_speed": 13.0,
+    "walk_stride": 1.7,
+    "run_stride": 4.2,
+    "swing": 0.5,
+    "lift": 1.0,
+    "bob": 0.035,
+    "idle_time": [4.0, 10.0],
+    "graze_chance": 0.55,
+    "wander_radius": 5.0,
+    "scale": [1.0, 1.0],
+    "radius": 0.6,
+    "roughness": 0.55
+  },
+  "ride": {
+    "walk_speed": 2.4,
+    "trot_speed": 6.5,
+    "gallop_speed": 13.0,
+    "accel": 5.0,
+    "brake": 9.0,
+    "turn_rate": 3.2,
+    "jump_velocity": 6.2,
+    "saddle_height": 1.56,
+    "rider_hips": 0.53,
+    "camera_distance": 6.0,
+    "camera_height": 2.5,
+    "mount_distance": 2.4
+  },
+  "rail": [[3.4, 31.7], [10.6, 31.7]],
+  "horses": [
+    {"id": "white", "name": "white horse", "model": "res://assets/creatures/HorseWhite.glb", "pos": [4.5, 33.3], "yaw": 0},
+    {"id": "black", "name": "black horse", "model": "res://assets/creatures/HorseBlack.glb", "pos": [7.0, 33.5], "yaw": 6},
+    {"id": "brown", "name": "brown horse", "model": "res://assets/creatures/HorseBrown.glb", "pos": [9.5, 33.3], "yaw": -5}
+  ]
+}

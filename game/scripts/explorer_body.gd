@@ -12,7 +12,7 @@ const MODELS := {
 const ANIM_DIR := "res://assets/character/anims/"
 const ANIMS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Jump_Start", "Jump", "Jump_Land", "Swim_Idle", "Swim_Fwd",
 	"Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Sword_Idle", "Sword_Block", "Hit_Chest", "Death01", "Idle_Talking",
-	"PickUp_Table", "Interact", "Roll", "Sitting_Idle", "Crouch_Idle", "Dance"]
+	"PickUp_Table", "Interact", "Roll", "Sitting_Idle", "Crouch_Idle", "Dance", "Ride"]
 ## Animations that play once and then hand control back to locomotion.
 const ONE_SHOTS := ["Jump_Start", "Jump", "Jump_Land", "Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Hit_Chest", "Death01", "PickUp_Table", "Roll"]
 ## The explorer's look; villagers pass their own outfit before being added.

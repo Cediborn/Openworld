@@ -45,7 +45,10 @@ func _init() -> void:
 	for s in ["Left", "Right"]:
 		foot_rest[s] = g[_b(s + "Foot")].origin
 	var made := []
+	var only := OS.get_cmdline_user_args()   # bake just these names, if given
 	for spec in _specs():
+		if not only.is_empty() and not spec.name in only:
+			continue
 		var a := _bake(spec)
 		ResourceSaver.save(a, OUT + spec.name + ".res")
 		made.append("%s (%.2fs)" % [spec.name, a.length])
@@ -168,6 +171,17 @@ func _specs() -> Array:
 		_k(0.55, "smooth", stand, {"hips": [0, -0.38, -0.12], "hips_rot": [28, 0, 0], "spine": [22, 0, 0], "chest": [16, 0, 0], "head": [-10, 0, 0],
 			"r_upper": [-0.15, -0.65, 0.74], "r_fore": [0.1, -0.7, 0.7], "l_upper": [0.3, -0.7, 0.6], "l_fore": [0.2, -0.6, 0.8], "foot_r": [-0.02, 0, 0.25]}),
 		_k(0.95, "smooth", stand),
+	]})
+	# Riding a horse: seated in the saddle, knees bent around the horse's sides,
+	# feet in the stirrups, both hands forward holding the reins (loops; a
+	# gentle sway that the game adds the horse's own bounce to).
+	var ride := _merge(stand, {"hips": [0, -0.30, -0.04], "hips_rot": [6, 0, 0], "spine": [4, 0, 0], "chest": [2, 0, 0], "head": [-6, 0, 0],
+		"r_upper": [-0.12, -0.88, 0.45], "r_fore": [0.2, -0.55, 0.81], "l_upper": [0.12, -0.88, 0.45], "l_fore": [-0.2, -0.55, 0.81],
+		"blade": [0.05, -0.2, 0.98], "foot_l": [0.3, -0.09, 0.06], "foot_r": [-0.3, -0.09, 0.06]})
+	specs.append({"name": "Ride", "loop": true, "keys": [
+		_k(0.0, "smooth", ride),
+		_k(1.2, "smooth", ride, {"spine": [6, 0, 0], "head": [-4, 3, 0]}),
+		_k(2.4, "smooth", ride),
 	]})
 	return specs
 

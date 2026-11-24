@@ -74,14 +74,8 @@ func setup(villager_cfg: Dictionary, seed_value: int) -> void:
 	col.position.y = cap.height * 0.5
 	blocker.add_child(col)
 	add_child(blocker)
-	marker = Label3D.new()
-	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	marker.font_size = 120
-	marker.pixel_size = 0.004
-	marker.outline_size = 16
-	marker.position.y = 2.35 * body.scale.x
-	marker.no_depth_test = false
-	marker.visible = false
+	marker = make_marker()
+	marker.position.y = MARKER_Y * body.scale.x
 	add_child(marker)
 	if mode == "sit":
 		body.position.y = -0.05
@@ -109,20 +103,61 @@ func _add_anvil() -> void:
 	add_child(stand)
 
 
+## Height of the marker above a villager's feet (metres).
+const MARKER_Y := 2.55
+## World size of the marker's glyph box up close (metres per pixel at font_size).
+const MARKER_PIXEL := 0.0042
+## Beyond this distance (metres) a marker stops shrinking on screen.
+const MARKER_FAR := 12.0
+const MARKER_YELLOW := Color(1.0, 0.82, 0.08)
+const MARKER_BLUE := Color(0.55, 0.85, 1.0)
+static var _marker_font: FontVariation
+
+
+## A big bold billboard "!" (hidden until set): drawn on top of walls and
+## trees so mission givers can be spotted from across town.
+static func make_marker(kind := "") -> Label3D:
+	if _marker_font == null:
+		_marker_font = FontVariation.new()
+		_marker_font.base_font = ThemeDB.fallback_font
+		_marker_font.variation_embolden = 1.4
+	var m := Label3D.new()
+	m.font = _marker_font
+	m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	m.font_size = 200
+	m.pixel_size = MARKER_PIXEL
+	m.outline_size = 34
+	m.outline_modulate = Color(0.18, 0.1, 0.0, 0.95)
+	m.no_depth_test = true
+	m.render_priority = 10
+	m.outline_render_priority = 9
+	m.double_sided = true
+	m.visible = false
+	paint_marker(m, kind)
+	return m
+
+
+## Shows kind ("!" yellow, "?" blue) on a marker, or hides it for "".
+static func paint_marker(m: Label3D, kind: String) -> void:
+	m.visible = kind != ""
+	m.text = kind
+	m.modulate = MARKER_YELLOW if kind == "!" else (MARKER_BLUE if kind == "?" else Color(0.85, 0.85, 0.85))
+
+
+## Keeps a marker readable at any distance d (metres from the camera): real
+## size up close, then a constant size on screen so far ones don't vanish.
+static func fit_marker(m: Label3D, d: float) -> void:
+	var far := d > MARKER_FAR
+	m.fixed_size = far
+	m.pixel_size = MARKER_PIXEL / MARKER_FAR if far else MARKER_PIXEL
+
+
 ## "!" (quest to offer), "?" (quest to hand in / talk to), "$" (shop) or "" (nothing).
 func set_marker(kind: String) -> void:
 	if kind == marker_kind:
 		return
 	marker_kind = kind
-	marker.visible = kind != ""
-	marker.text = kind
-	match kind:
-		"!":
-			marker.modulate = Color(1.0, 0.85, 0.2)
-		"?":
-			marker.modulate = Color(0.55, 0.85, 1.0)
-		_:
-			marker.modulate = Color(0.85, 0.85, 0.85)
+	paint_marker(marker, kind)
 
 
 ## Dialogue lines for a context key (original quest stage names, "default",
@@ -158,6 +193,8 @@ func set_hiding(on: bool, spot := Vector3.INF) -> void:
 func _process(delta: float) -> void:
 	if body == null:
 		return
+	if marker.visible:
+		marker.position.y = MARKER_Y * body.scale.x + 0.12 * sin(Time.get_ticks_msec() * 0.004 + home.x)
 	if lod > 0:
 		# Far away: update a third as often, with three frames' worth of time.
 		_lod_skip = (_lod_skip + 1) % 3

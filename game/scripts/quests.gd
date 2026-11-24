@@ -327,6 +327,9 @@ func marker_for(v: Villager) -> String:
 		var d: Dictionary = defs[id]
 		if d.get("giver", "") == v.id and status(id) == "available" and not d.has("trigger"):
 			return "!"
+	# The captain and the hunter always have a monster contract when you have none.
+	if v.role in ["captain", "hunter"] and active_contract() == "":
+		return "!"
 	return ""
 
 
@@ -773,6 +776,7 @@ func _starters() -> void:
 			add_child(it)
 			it.global_position = _v3(tr.pos)
 			_build_model(it, tr.get("model", "marker" if id != "queen_beneath" else "burrow"), tr)
+			it.set_quest_mark("!")
 			var qid: String = id
 			it.action = func(_n: Interactable) -> void: _offer_trigger(qid)
 			triggers[id] = it
