@@ -36,7 +36,10 @@ pointing/emulate_touch_from_mouse=false
 
 [rendering]
 
-rendering_device/driver.windows="d3d12"
+rendering_device/driver.windows="vulkan"
+rendering_device/fallback_to_vulkan=true
+rendering_device/fallback_to_d3d12=true
+rendering_device/fallback_to_opengl3=true
 renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="mobile"
 textures/vram_compression/import_etc2_astc=true
