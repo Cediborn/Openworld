@@ -50,7 +50,11 @@ func _cell(x: float, z: float) -> Vector2:
 	return Vector2(clampf((x + SIZE * 0.5) / STEP, 0.0, RES - 1.001), clampf((z + SIZE * 0.5) / STEP, 0.0, RES - 1.001))
 
 
-## Ground height at a point, bilinear between samples.
+## Ground height at a point, on the same two triangles per cell that the
+## collision heightmap and the terrain mesh use (split along the diagonal from
+## the cell's +x/-z corner to its -x/+z corner), so anything placed with it
+## stands exactly on the ground the player sees and walks on. (Bilinear
+## blending differed from that surface by up to a metre on rough ground.)
 func height(x: float, z: float) -> float:
 	var c := _cell(x, z)
 	var i := int(c.x)
@@ -58,9 +62,10 @@ func height(x: float, z: float) -> float:
 	var fx := c.x - i
 	var fz := c.y - j
 	var k := j * RES + i
-	var a := lerpf(heights[k], heights[k + 1], fx)
-	var b := lerpf(heights[k + RES], heights[k + RES + 1], fx)
-	return lerpf(a, b, fz)
+	if fx + fz <= 1.0:
+		return heights[k] + (heights[k + 1] - heights[k]) * fx + (heights[k + RES] - heights[k]) * fz
+	var h11: float = heights[k + RES + 1]
+	return h11 + (heights[k + RES] - h11) * (1.0 - fx) + (heights[k + 1] - h11) * (1.0 - fz)
 
 
 func normal(x: float, z: float) -> Vector3:

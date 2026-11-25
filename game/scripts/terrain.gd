@@ -25,6 +25,8 @@ const FALLBACK := [
 
 var data: WorldData
 var mobile := false
+## How far the camera can sit from the player (orbit distance plus height), metres.
+const CAMERA_REACH := 14.0
 var material: ShaderMaterial
 
 
@@ -103,29 +105,56 @@ func _layer_array(map: String) -> Texture2DArray:
 func _build_tiles() -> void:
 	# Close to the player the mesh uses the same 2 m grid as the collision
 	# heightmap, so feet never sink into (or float above) the visible ground.
+	# Godot picks a level of detail by the distance from the camera to each
+	# tile's bounding-box centre, so every tile gets a box that hugs its real
+	# heights (a tall shared box put the centre ~190 m up, and phones drew the
+	# coarse 8 m mesh under the player) and a near range that always covers the
+	# whole tile wherever the player stands in it.
 	var res: Array = [2.0, 4.0, 8.0] if mobile else [2.0, 2.0, 4.0]
 	var ends: Array = [70.0, 150.0, INF] if mobile else [120.0, 230.0, INF]
 	var meshes: Array = []
 	for r in res:
 		meshes.append(_plane(r))
 	var n := int(WorldData.SIZE / TILE)
+	var half_diag := TILE * 0.5 * sqrt(2.0)
 	for j in n:
 		for i in n:
 			var c := Vector3(-WorldData.SIZE * 0.5 + (i + 0.5) * TILE, 0, -WorldData.SIZE * 0.5 + (j + 0.5) * TILE)
+			var span := _tile_heights(c)
+			var aabb := AABB(Vector3(-TILE * 0.5, span.x - 1.0, -TILE * 0.5), Vector3(TILE, span.y - span.x + 2.0, TILE))
+			# Worst case: player in a corner, camera a few metres further out, at either height extreme.
+			var reach := Vector2(half_diag + CAMERA_REACH, (span.y - span.x) * 0.5 + CAMERA_REACH).length()
+			var lod_end := [maxf(ends[0], reach), maxf(ends[1], reach + 60.0), INF]
 			for lod in 3:
 				var mi := MeshInstance3D.new()
 				mi.mesh = meshes[lod]
 				mi.material_override = material
 				mi.position = c
-				mi.custom_aabb = AABB(Vector3(-TILE * 0.5, -20, -TILE * 0.5), Vector3(TILE, 420, TILE))
+				mi.custom_aabb = aabb
 				if lod > 0:
-					mi.visibility_range_begin = ends[lod - 1]
+					mi.visibility_range_begin = lod_end[lod - 1]
 					mi.visibility_range_begin_margin = 10.0
-				if ends[lod] < INF:
-					mi.visibility_range_end = ends[lod]
+				if lod_end[lod] < INF:
+					mi.visibility_range_end = lod_end[lod]
 					mi.visibility_range_end_margin = 10.0
 				mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 				add_child(mi)
+
+
+## Lowest and highest ground in the tile centred on `c` (x = min, y = max).
+func _tile_heights(c: Vector3) -> Vector2:
+	var lo := INF
+	var hi := -INF
+	var steps := int(TILE / WorldData.STEP)
+	var i0 := int((c.x - TILE * 0.5 + WorldData.SIZE * 0.5) / WorldData.STEP)
+	var j0 := int((c.z - TILE * 0.5 + WorldData.SIZE * 0.5) / WorldData.STEP)
+	for j in range(j0, mini(j0 + steps + 1, WorldData.RES)):
+		var row := j * WorldData.RES
+		for i in range(i0, mini(i0 + steps + 1, WorldData.RES)):
+			var h: float = data.heights[row + i]
+			lo = minf(lo, h)
+			hi = maxf(hi, h)
+	return Vector2(lo, hi)
 
 
 func _plane(res: float) -> PlaneMesh:
