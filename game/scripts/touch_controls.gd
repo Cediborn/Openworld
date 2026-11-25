@@ -18,6 +18,9 @@ var dodge_btn := Rect2()
 var block_btn := Rect2()
 var potion_btn := Rect2()
 var journal_btn := Rect2()
+var gun_btn := Rect2()
+var reload_btn := Rect2()
+var whistle_btn := Rect2()
 var sprint_on := false
 var block_touch := -1
 ## Called when the pause button is tapped.
@@ -43,6 +46,9 @@ func _layout() -> void:
 	block_btn = Rect2(Vector2(s.x - 470 * u, s.y - 290 * u), Vector2(100, 100) * u)
 	potion_btn = Rect2(Vector2(s.x - 96 * u, 110 * u), Vector2(76, 76) * u)
 	journal_btn = Rect2(Vector2(s.x - 190 * u, 16 * u), Vector2(76, 76) * u)
+	gun_btn = Rect2(Vector2(s.x - 96 * u, 204 * u), Vector2(76, 76) * u)
+	whistle_btn = Rect2(Vector2(s.x - 96 * u, 298 * u), Vector2(76, 76) * u)
+	reload_btn = Rect2(Vector2(s.x - 470 * u, s.y - 170 * u), Vector2(100, 100) * u)
 
 
 func _input(event: InputEvent) -> void:
@@ -66,6 +72,12 @@ func _input(event: InputEvent) -> void:
 				player.block_held = true
 			elif potion_btn.has_point(event.position):
 				player.potion_pressed = true
+			elif gun_btn.has_point(event.position) and player.gun and player.gun.owned():
+				player.gun_toggle_pressed = true
+			elif whistle_btn.has_point(event.position):
+				player.whistle_pressed = true
+			elif reload_btn.has_point(event.position) and player.gun and player.gun.drawn:
+				player.reload_pressed = true
 			elif journal_btn.has_point(event.position):
 				if on_journal.is_valid():
 					on_journal.call()
@@ -134,6 +146,22 @@ func _draw() -> void:
 	draw_rect(Rect2(jc + Vector2(-18, -20) * u, Vector2(36, 40) * u), Color(0.75, 0.55, 0.3))
 	draw_line(jc + Vector2(-10, -8) * u, jc + Vector2(10, -8) * u, Color(1, 1, 1), 3 * u)
 	draw_line(jc + Vector2(-10, 2) * u, jc + Vector2(10, 2) * u, Color(1, 1, 1), 3 * u)
+	# Pistol (draw / holster), reload (while drawn) and the horse whistle.
+	if player and player.gun and player.gun.owned():
+		var gc := gun_btn.get_center()
+		draw_circle(gc, gun_btn.size.x * 0.5, Color(0.55, 0.35, 0.15, 0.85) if player.gun.drawn else Color(0, 0, 0, 0.35))
+		draw_rect(Rect2(gc + Vector2(-22, -10) * u, Vector2(36, 9) * u), Color(0.85, 0.85, 0.85))
+		draw_colored_polygon(PackedVector2Array([gc + Vector2(-22, -2) * u, gc + Vector2(-8, -2) * u, gc + Vector2(-14, 20) * u, gc + Vector2(-26, 18) * u]), Color(0.6, 0.4, 0.2))
+		if player.gun.drawn:
+			var rc := reload_btn.get_center()
+			draw_circle(rc, reload_btn.size.x * 0.5, Color(0.3, 0.3, 0.3, 0.7))
+			draw_arc(rc, 22 * u, 0.4, TAU - 0.4, 20, Color(1, 1, 1), 6 * u)
+			draw_colored_polygon(PackedVector2Array([rc + Vector2(22, -14) * u, rc + Vector2(30, 4) * u, rc + Vector2(12, 2) * u]), Color(1, 1, 1))
+	var wc := whistle_btn.get_center()
+	draw_circle(wc, whistle_btn.size.x * 0.5, Color(0, 0, 0, 0.35))
+	draw_arc(wc + Vector2(0, 4) * u, 18 * u, PI * 1.1, PI * 1.9 + TAU * 0.5, 14, Color(0.95, 0.85, 0.6), 7 * u)
+	draw_line(wc + Vector2(-18, 4) * u, wc + Vector2(-18, 18) * u, Color(0.95, 0.85, 0.6), 7 * u)
+	draw_line(wc + Vector2(18, 4) * u, wc + Vector2(18, 18) * u, Color(0.95, 0.85, 0.6), 7 * u)
 	# Pause button.
 	var pc := pause_btn.get_center()
 	draw_circle(pc, pause_btn.size.x * 0.5, Color(0, 0, 0, 0.35))

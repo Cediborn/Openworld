@@ -17,6 +17,16 @@ var info: Label
 var buy_ids: Array = []
 var sell_ids: Array = []
 var shop_kind := "merchant"
+## What the barkeep has heard (one per ask).
+const RUMOURS := [
+	"Father Aldric's relic went missing from the altar. He won't say so, but he's beside himself.",
+	"A pilgrim left here for the old shrine in Glow Hollow. Never came back for her pack.",
+	"Sister Maud swears something scratches at the church windows after dark.",
+	"Brann the hunter says the deer bolt at a gunshot from half a mile off. Shoot once and make it count.",
+	"The archivist says the church chronicle has pages torn out. Old pages. Older than Brickton.",
+	"Whistle and a good horse will come running. Bad ones too, if they like you.",
+	"Hale's prices went up again. Says the roads are dangerous. Says that every year.",
+]
 
 
 func _ready() -> void:
@@ -85,9 +95,27 @@ func for_villager(v: Villager) -> Dictionary:
 		"innkeeper":
 			return {"lines": lines, "choices": ["I'd like to rest", "Goodbye"], "on_choice": func(i: int) -> Dictionary:
 				return features.rest_menu(v.display_name) if i == 0 else {}}
+		"bartender":
+			return {"lines": lines, "choices": ["Something to eat or drink", "Heard any rumours?", "Any work going?", "Goodbye"], "on_choice": func(i: int) -> Dictionary:
+				match i:
+					0:
+						open_shop("tavern", v.display_name)
+					1:
+						return {"lines": [RUMOURS[randi() % RUMOURS.size()]]}
+					2:
+						var c := quests.contract_convo("board")
+						return c if not c.is_empty() else {"lines": ["Father Aldric up at the church was asking for help. And the contract board in the square always has something."]}
+				return {}}
 		"captain", "hunter":
-			return {"lines": lines, "choices": ["Any monster contracts?", "Goodbye"], "on_choice": func(i: int) -> Dictionary:
-				return quests.contract_convo(v.id) if i == 0 else {}}
+			var opts := ["Any monster contracts?", "Goodbye"]
+			if v.role == "hunter":
+				opts.insert(1, "Pistol shot and powder")
+			return {"lines": lines, "choices": opts, "on_choice": func(i: int) -> Dictionary:
+				if i == 0:
+					return quests.contract_convo(v.id)
+				if v.role == "hunter" and i == 1:
+					open_shop("hunter", v.display_name)
+				return {}}
 		"smith":
 			if story.stage != "done":
 				return {}

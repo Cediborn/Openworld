@@ -2148,6 +2148,637 @@
      "Shh. Listen. The Hollow used to hum at night. Now it whispers."
     ]
    }
+  },
+  {
+   "id": "aldric",
+   "name": "Father Aldric",
+   "role": "quest_giver",
+   "home": [
+    -290.0,
+    162.6
+   ],
+   "mode": "work",
+   "face": 180,
+   "idle_anim": "Idle_Talking",
+   "wander": 0.0,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.12,
+     0.12,
+     0.14
+    ],
+    "pants": [
+     0.1,
+     0.1,
+     0.12
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.75,
+     0.73,
+     0.7
+    ],
+    "accessories": [
+     "beard"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Peace to you, traveller. This church was built on the stones of the Wardens' hall, did you know?",
+     "If you have a moment, the library at the back holds what we remember of the Shattering."
+    ]
+   }
+  },
+  {
+   "id": "cuthbert",
+   "name": "Brother Cuthbert",
+   "role": "villager",
+   "home": [
+    -290.0,
+    151.0
+   ],
+   "mode": "wander",
+   "wander": 3.0,
+   "walk_anim": "Walk_Formal",
+   "walk_speed": 0.6,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.35,
+     0.25,
+     0.16
+    ],
+    "pants": [
+     0.3,
+     0.22,
+     0.15
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.4,
+     0.3,
+     0.2
+    ],
+    "accessories": [
+     "hood"
+    ],
+    "hood_color": [
+     0.3,
+     0.25,
+     0.2
+    ]
+   },
+   "lines": {
+    "default": [
+     "The bells? I ring them myself, every hour from seven until nine at night.",
+     "Father Aldric hardly sleeps since the relic went missing. Or since the noises at night began."
+    ]
+   }
+  },
+  {
+   "id": "anselm",
+   "name": "Brother Anselm",
+   "role": "villager",
+   "home": [
+    -295.5,
+    163.5
+   ],
+   "mode": "work",
+   "face": 0,
+   "idle_anim": "Interact",
+   "wander": 0.0,
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.35,
+     0.25,
+     0.16
+    ],
+    "pants": [
+     0.3,
+     0.22,
+     0.15
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.3,
+     0.25,
+     0.2
+    ],
+    "accessories": [
+     "hood"
+    ],
+    "hood_color": [
+     0.3,
+     0.25,
+     0.2
+    ]
+   },
+   "lines": {
+    "default": [
+     "Shh. I am copying the chronicle, and my hand is not what it was.",
+     "Some pages are missing. Torn out, long before my time."
+    ]
+   }
+  },
+  {
+   "id": "maud",
+   "name": "Sister Maud",
+   "role": "villager",
+   "home": [
+    -287.8,
+    160.0
+   ],
+   "mode": "work",
+   "face": 180,
+   "idle_anim": "Interact",
+   "wander": 0.0,
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.25,
+     0.25,
+     0.3
+    ],
+    "pants": [
+     0.2,
+     0.2,
+     0.24
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.6,
+     0.45,
+     0.3
+    ],
+    "accessories": [
+     "headscarf"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Two hundred candles a week, and every one lit by hand.",
+     "At night I hear scratching outside the east windows. Father says it is the wind."
+    ]
+   }
+  },
+  {
+   "id": "edda",
+   "name": "Edda",
+   "role": "villager",
+   "home": [
+    -291.4,
+    158.3
+   ],
+   "mode": "sit",
+   "face": 0,
+   "wander": 0.0,
+   "idle_anim": "Sitting_Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.5,
+     0.3,
+     0.35
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.3
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.35,
+     0.22,
+     0.12
+    ],
+    "accessories": []
+   },
+   "lines": {
+    "default": [
+     "I come every morning. My husband is a fisherman."
+    ]
+   }
+  },
+  {
+   "id": "rolf_w",
+   "name": "Old Rolf",
+   "role": "villager",
+   "home": [
+    -287.5,
+    156.2
+   ],
+   "mode": "sit",
+   "face": 0,
+   "wander": 0.0,
+   "idle_anim": "Sitting_Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.32,
+     0.25
+    ],
+    "pants": [
+     0.25,
+     0.22,
+     0.2
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.8,
+     0.8,
+     0.8
+    ],
+    "accessories": [
+     "beard"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Mm? Oh. Just resting my eyes. And praying. Mostly praying."
+    ]
+   }
+  },
+  {
+   "id": "wenna",
+   "name": "Wenna",
+   "role": "villager",
+   "home": [
+    -290.8,
+    160.4
+   ],
+   "mode": "work",
+   "face": 0,
+   "wander": 0.0,
+   "idle_anim": "Kneel_Pray",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.3,
+     0.4,
+     0.55
+    ],
+    "pants": [
+     0.25,
+     0.25,
+     0.3
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.85,
+     0.7,
+     0.35
+    ],
+    "accessories": []
+   },
+   "lines": {
+    "default": [
+     "...and keep my brother safe in the Frost Peaks. Oh! Forgive me, I didn't hear you."
+    ]
+   }
+  },
+  {
+   "id": "hugh",
+   "name": "Hugh",
+   "role": "villager",
+   "home": [
+    -288.4,
+    154.6
+   ],
+   "mode": "work",
+   "face": 0,
+   "wander": 0.0,
+   "idle_anim": "Pray",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.45,
+     0.35,
+     0.2
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.2
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.3,
+     0.2,
+     0.1
+    ],
+    "accessories": [
+     "cap"
+    ]
+   },
+   "lines": {
+    "default": [
+     "A quiet place. The only quiet place on the island these days."
+    ]
+   }
+  },
+  {
+   "id": "visitor_ilse",
+   "name": "Ilse the Traveller",
+   "role": "villager",
+   "home": [
+    -283.6,
+    159.6
+   ],
+   "mode": "work",
+   "face": 0,
+   "wander": 0.0,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.4,
+     0.45,
+     0.3
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.15,
+     0.1
+    ],
+    "accessories": [
+     "scarf"
+    ]
+   },
+   "lines": {
+    "default": [
+     "They say the Mender held the island together with her bare hands. Look at her. You can almost believe it."
+    ]
+   }
+  },
+  {
+   "id": "rowan",
+   "name": "Rowan the Barkeep",
+   "role": "bartender",
+   "home": [
+    -342.1,
+    -55.15
+   ],
+   "mode": "work",
+   "face": 0,
+   "wander": 0.0,
+   "idle_anim": "Idle_Talking",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.55,
+     0.35,
+     0.2
+    ],
+    "pants": [
+     0.25,
+     0.2,
+     0.18
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.55,
+     0.3,
+     0.15
+    ],
+    "accessories": [
+     "apron",
+     "beard"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Welcome to the Brickton Arms! Sit anywhere that isn't Old Fennick's chair."
+    ]
+   }
+  },
+  {
+   "id": "fennick",
+   "name": "Old Fennick",
+   "role": "villager",
+   "home": [
+    -343.05,
+    -47.93
+   ],
+   "mode": "sit",
+   "face": 90,
+   "wander": 0.0,
+   "idle_anim": "Sitting_Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.3,
+     0.32
+    ],
+    "pants": [
+     0.25,
+     0.22,
+     0.2
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.85,
+     0.85,
+     0.85
+    ],
+    "accessories": [
+     "beard",
+     "cap"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Forty years I've sat in this chair. Seen three bridges washed away and one built.",
+     "The church bells sound different since the relic went. Hollow, like."
+    ]
+   }
+  },
+  {
+   "id": "brida",
+   "name": "Brida",
+   "role": "villager",
+   "home": [
+    -341.6,
+    -47.93
+   ],
+   "mode": "sit",
+   "face": 270,
+   "wander": 0.0,
+   "idle_anim": "Sitting_Idle",
+   "outfit": {
+    "model": "female",
+    "jacket": [
+     0.6,
+     0.25,
+     0.2
+    ],
+    "pants": [
+     0.3,
+     0.22,
+     0.2
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.3,
+     0.15,
+     0.08
+    ],
+    "accessories": []
+   },
+   "lines": {
+    "default": [
+     "Don't mind Fennick, he tells everyone that.",
+     "A pilgrim came through a week back, heading for the old shrine in Glow Hollow. Never came back for her pack."
+    ]
+   }
+  },
+  {
+   "id": "traveller_jory",
+   "name": "Torvald the Drover",
+   "role": "villager",
+   "home": [
+    -340.9,
+    -53.4
+   ],
+   "mode": "work",
+   "face": 180,
+   "wander": 0.0,
+   "idle_anim": "Idle_Talking",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.35,
+     0.4,
+     0.3
+    ],
+    "pants": [
+     0.3,
+     0.28,
+     0.22
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.6,
+     0.45,
+     0.25
+    ],
+    "accessories": [
+     "hood"
+    ],
+    "hood_color": [
+     0.35,
+     0.3,
+     0.25
+    ]
+   },
+   "lines": {
+    "default": [
+     "Drove sheep down from the north road. Saw lights in the hollow at night, violet ones. Not going back that way."
+    ]
+   }
+  },
+  {
+   "id": "mott",
+   "name": "Mott",
+   "role": "villager",
+   "home": [
+    -339.0,
+    -51.15
+   ],
+   "mode": "sit",
+   "face": 180,
+   "wander": 0.0,
+   "idle_anim": "Sitting_Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.25,
+     0.35,
+     0.45
+    ],
+    "pants": [
+     0.25,
+     0.22,
+     0.2
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.15,
+     0.1
+    ],
+    "accessories": []
+   },
+   "lines": {
+    "default": [
+     "Best stew on the island. Don't tell my mother."
+    ]
+   }
   }
  ]
 }

@@ -16,6 +16,8 @@ var heights := PackedFloat32Array()
 var biome := PackedByteArray()
 var mask := PackedByteArray()
 var houses: Array = []
+var _floors := {}            # Vector2i cell -> [[centre, yaw, half size, y], ...]
+const FLOOR_CELL := 16.0
 
 
 ## Zone weights [meadow, snow, lava, glow, village] for a point. Sums to 1.
@@ -35,6 +37,14 @@ static func biome_weights(x: float, z: float) -> Array:
 	return out
 
 
+## True where molten lava covers the ground (the crater in Ember Wastes).
+## Horses never path into it, and a horse left there is led out.
+func is_lava(x: float, z: float) -> bool:
+	if absf(x - 360.0) > 150.0 or absf(z) > 260.0:
+		return false
+	return height(x, z) < LAVA_LEVEL + 0.35 and zone(x, z)[2] > 0.3
+
+
 func load_data() -> bool:
 	if not FileAccess.file_exists("res://data/height.bin"):
 		return false
@@ -43,6 +53,15 @@ func load_data() -> bool:
 	mask = FileAccess.get_file_as_bytes("res://data/mask.bin")
 	var js := FileAccess.get_file_as_string("res://data/village.json")
 	houses = JSON.parse_string(js) if js != "" else []
+	# Landmarks (your house, the church) reserve their ground too, so trees,
+	# rocks and lamps keep clear. Village skips "reserved" entries when building.
+	var lm = JSON.parse_string(FileAccess.get_file_as_string("res://data/landmarks.json")) if FileAccess.file_exists("res://data/landmarks.json") else null
+	if lm is Dictionary:
+		for e: Dictionary in lm.landmarks:
+			var r := e.duplicate()
+			r["reserved"] = true
+			r["y"] = height(float(e.x), float(e.z))
+			houses.append(r)
 	return heights.size() == RES * RES
 
 
@@ -56,6 +75,33 @@ func _cell(x: float, z: float) -> Vector2:
 ## stands exactly on the ground the player sees and walks on. (Bilinear
 ## blending differed from that surface by up to a metre on rough ground.)
 func height(x: float, z: float) -> float:
+	var g := terrain_height(x, z)
+	if _floors.is_empty():
+		return g
+	var key := Vector2i(floori(x / FLOOR_CELL), floori(z / FLOOR_CELL))
+	for f: Array in _floors.get(key, []):
+		var l := Vector3(x - f[0].x, 0, z - f[0].y).rotated(Vector3.UP, -f[1])
+		if absf(l.x) <= f[2].x and absf(l.z) <= f[2].y:
+			g = maxf(g, f[3])
+	return g
+
+
+## Building floors (walk-in houses, the church): height() returns the floor
+## inside their footprint, so people and things placed there stand on it.
+## centre (x, z), yaw (radians), size (m), floor height.
+func add_floor(centre: Vector2, yaw: float, size: Vector2, y: float) -> void:
+	var r := size.length() * 0.5
+	var f := [centre, yaw, size * 0.5, y]
+	for j in range(floori((centre.y - r) / FLOOR_CELL), floori((centre.y + r) / FLOOR_CELL) + 1):
+		for i in range(floori((centre.x - r) / FLOOR_CELL), floori((centre.x + r) / FLOOR_CELL) + 1):
+			var key := Vector2i(i, j)
+			if not _floors.has(key):
+				_floors[key] = []
+			_floors[key].append(f)
+
+
+## Ground height of the terrain alone (ignores building floors).
+func terrain_height(x: float, z: float) -> float:
 	var c := _cell(x, z)
 	var i := int(c.x)
 	var j := int(c.y)

@@ -1,5 +1,5 @@
 {
- "_comment": "Island creatures. Speeds m/s, distances m, times s. stride = metres per full step cycle. min_height keeps a species out of lava. temper: flee (runs from the player) or threaten (roars, chases for chase_time, then returns home). zone: 0 meadow, 1 frost, 2 ember, 3 glow. sounds name files in assets/audio/creatures. Combat: health (hit points), damage per hit, attack_range m, attack_rate s between attacks, radius m (body size for sword reach), respawn_time s, fights_back (a fleeing animal turns on you once hit).",
+ "_comment": "Island creatures. Speeds m/s, distances m, times s. stride = metres per full step cycle. min_height keeps a species out of lava. temper: flee (runs from the player) or threaten (roars, chases for chase_time, then returns home). zone: 0 meadow, 1 frost, 2 ember, 3 glow. sounds name files in assets/audio/creatures. Combat: health (hit points), damage per hit, attack_range m, attack_rate s between attacks, radius m (body size for sword reach), respawn_time s, fights_back (a fleeing animal turns on you once hit). drops: item -> [min, max] given when the explorer brings it down (hunting).",
  "species": {
   "deer": {
    "model": "res://assets/creatures/RedDeer.glb",
@@ -31,7 +31,17 @@
    "health": 50,
    "radius": 0.45,
    "respawn_time": 90,
-   "mass": 0.8
+   "mass": 0.8,
+   "drops": {
+    "venison": [
+     1,
+     2
+    ],
+    "deer_hide": [
+     1,
+     1
+    ]
+   }
   },
   "boar": {
    "model": "res://assets/creatures/WildBoar.glb",
@@ -98,7 +108,17 @@
      "max_range": 1.9,
      "weight": 1.2
     }
-   ]
+   ],
+   "drops": {
+    "boar_meat": [
+     1,
+     2
+    ],
+    "boar_tusk": [
+     0,
+     1
+    ]
+   }
   },
   "wolf": {
    "model": "res://assets/creatures/GreyWolf.glb",
@@ -165,7 +185,13 @@
      "max_range": 1.9,
      "weight": 1.4
     }
-   ]
+   ],
+   "drops": {
+    "wolf_pelt": [
+     1,
+     1
+    ]
+   }
   },
   "ice_troll": {
    "model": "res://assets/creatures/IceTroll.glb",
@@ -248,7 +274,17 @@
      "damage": 0.75,
      "weight": 1.0
     }
-   ]
+   ],
+   "drops": {
+    "troll_hide": [
+     0,
+     1
+    ],
+    "frost_shard": [
+     1,
+     2
+    ]
+   }
   },
   "frost_spirit": {
    "model": "res://assets/creatures/FrostSpirit.glb",
@@ -324,7 +360,13 @@
      "min_range": 1.8,
      "weight": 0.8
     }
-   ]
+   ],
+   "drops": {
+    "frost_shard": [
+     1,
+     2
+    ]
+   }
   },
   "lava_golem": {
    "model": "res://assets/creatures/LavaGolem.glb",
@@ -420,7 +462,17 @@
      "damage": 0.8,
      "weight": 0.8
     }
-   ]
+   ],
+   "drops": {
+    "obsidian": [
+     1,
+     2
+    ],
+    "ember_shard": [
+     0,
+     1
+    ]
+   }
   },
   "fire_salamander": {
    "model": "res://assets/creatures/FireSalamander.glb",
@@ -498,7 +550,13 @@
      "max_range": 1.3,
      "weight": 0.8
     }
-   ]
+   ],
+   "drops": {
+    "ember_shard": [
+     1,
+     1
+    ]
+   }
   },
   "mushroom_beetle": {
    "model": "res://assets/creatures/MushroomBeetle.glb",
@@ -575,7 +633,17 @@
      "max_range": 2.3,
      "weight": 1.0
     }
-   ]
+   ],
+   "drops": {
+    "beetle_chitin": [
+     1,
+     2
+    ],
+    "glow_spore": [
+     0,
+     1
+    ]
+   }
   }
  },
  "spawns": [

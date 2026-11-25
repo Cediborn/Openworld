@@ -183,6 +183,49 @@ func _specs() -> Array:
 		_k(1.2, "smooth", ride, {"spine": [6, 0, 0], "head": [-4, 3, 0]}),
 		_k(2.4, "smooth", ride),
 	]})
+	# Two fingers to the lips for a sharp whistle (calls your horse).
+	var whistle := _merge(stand, {"r_upper": [-0.32, -0.5, 0.8], "r_fore": [0.5, 0.84, 0.2], "head": [-8, 0, 0], "chest": [-3, 0, 0], "blade": [0.6, 0.3, 0.7]})
+	specs.append({"name": "Whistle", "keys": [
+		_k(0.0, "smooth", stand),
+		_k(0.3, "out", whistle),
+		_k(1.0, "smooth", whistle, {"head": [-10, 4, 0]}),
+		_k(1.35, "in", stand),
+	]})
+	# Flintlock pistol. The barrel is attached along the hand like the sword
+	# blade, so "blade" aims the barrel. Aim: right arm straight out, left hand
+	# steadying the wrist.
+	var aim := _merge(stand, {"spine": [-2, 0, 0], "head": [3, 0, 0],
+		"r_upper": [0.14, 0.02, 0.99], "r_fore": [0.1, 0.03, 0.99], "blade": [0.0, 0.0, 1.0],
+		"l_upper": [-0.28, -0.4, 0.87], "l_fore": [-0.78, 0.12, 0.62], "foot_l": [0.02, 0, 0.12], "foot_r": [-0.02, 0, -0.1]})
+	specs.append({"name": "Pistol_Aim", "loop": true, "keys": [_k(0.0, "smooth", aim), _k(1.5, "smooth", aim, {"r_fore": [0.1, 0.05, 0.99], "spine": [-3, 0, 0]}), _k(3.0, "smooth", aim)]})
+	specs.append({"name": "Pistol_Shoot", "keys": [
+		_k(0.0, "linear", aim),
+		_k(0.05, "out", aim, {"r_upper": [0.14, 0.2, 0.97], "r_fore": [0.1, 0.5, 0.86], "blade": [0.0, 0.55, 0.84], "chest": [-7, 0, 0], "head": [-1, 0, 0], "hips": [0, 0, -0.04]}),
+		_k(0.45, "smooth", aim),
+	]})
+	# Reload: barrel up, powder and ball, ram it home with the left hand, aim again.
+	var load_pose := _merge(stand, {"head": [14, 0, 0], "chest": [4, 0, 0],
+		"r_upper": [-0.22, -0.88, 0.42], "r_fore": [0.55, 0.25, 0.8], "blade": [0.15, 0.97, 0.18],
+		"l_upper": [0.3, -0.45, 0.84], "l_fore": [-0.35, 0.55, 0.76]})
+	specs.append({"name": "Pistol_Reload", "keys": [
+		_k(0.0, "smooth", aim),
+		_k(0.35, "smooth", load_pose),
+		_k(0.75, "smooth", load_pose, {"l_fore": [-0.2, 0.92, 0.33]}),
+		_k(1.05, "smooth", load_pose, {"l_fore": [-0.4, 0.3, 0.86]}),
+		_k(1.35, "smooth", load_pose, {"l_fore": [-0.2, 0.92, 0.33]}),
+		_k(1.65, "smooth", load_pose, {"l_fore": [-0.4, 0.3, 0.86]}),
+		_k(2.0, "smooth", aim),
+	]})
+	# Walking and standing with the pistol drawn but lowered.
+	var carry := _merge(stand, {"r_upper": [-0.16, -0.92, 0.36], "r_fore": [0.0, -0.45, 0.89], "blade": [0.05, -0.3, 0.95]})
+	specs.append({"name": "Pistol_Idle", "loop": true, "keys": [_k(0.0, "smooth", carry), _k(1.6, "smooth", carry, {"chest": [2, 0, 0]}), _k(3.2, "smooth", carry)]})
+	# Worshippers: hands together at the chest, head bowed (standing or at a pew).
+	var pray := _merge(stand, {"head": [16, 0, 0], "neck": [6, 0, 0],
+		"r_upper": [-0.25, -0.82, 0.5], "r_fore": [0.72, 0.42, 0.55], "l_upper": [0.25, -0.82, 0.5], "l_fore": [-0.72, 0.42, 0.55]})
+	specs.append({"name": "Pray", "loop": true, "keys": [_k(0.0, "smooth", pray), _k(2.0, "smooth", pray, {"head": [19, 0, 0], "chest": [2, 0, 0]}), _k(4.0, "smooth", pray)]})
+	# Kneeling at the altar rail, hands together.
+	var kneel := _merge(pray, {"hips": [0, -0.48, -0.08], "hips_rot": [-4, 0, 0], "spine": [6, 0, 0], "foot_l": [0.0, 0, -0.42], "foot_r": [0.0, 0, -0.42]})
+	specs.append({"name": "Kneel_Pray", "loop": true, "keys": [_k(0.0, "smooth", kneel), _k(2.5, "smooth", kneel, {"head": [20, 0, 0]}), _k(5.0, "smooth", kneel)]})
 	return specs
 
 

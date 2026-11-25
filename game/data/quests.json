@@ -3048,6 +3048,595 @@
     },
     "text": "the Warden's Mantle"
    }
+  },
+  "missing_relic": {
+   "title": "The Missing Relic",
+   "type": "side",
+   "region": "Brickton",
+   "giver": "aldric",
+   "description": "The Reliquary of the Mender has vanished from the church altar. Father Aldric needs it found before the feast of the Mending.",
+   "offer": [
+    "Traveller. Forgive me, I am not myself. The Reliquary of the Mender is gone from the altar.",
+    "It holds a stone the Mender herself is said to have carried. Without it the feast of the Mending is... a hollow thing.",
+    "Look at the altar, speak with Brother Cuthbert and anyone who was about that night. Will you help?"
+   ],
+   "accept": [
+    "Bless you. Start at the altar. Whoever took it was in a hurry."
+   ],
+   "progress_lines": [
+    "Any sign of the reliquary? Brother Cuthbert locked up that night, and pilgrims pass through the square."
+   ],
+   "steps": [
+    {
+     "type": "inspect",
+     "text": "Investigate the altar",
+     "pos": [
+      -290,
+      163.6
+     ],
+     "model": "marker",
+     "label": "Examine the altar",
+     "lines": [
+      "A clean ring in the dust where the reliquary stood. Beside it, a smear of red clay.",
+      "Red clay. There's none in Brickton's streets. It's the soil south-west of the churchyard."
+     ]
+    },
+    {
+     "text": "Question the witnesses",
+     "goals": [
+      {
+       "type": "talk",
+       "text": "Question Brother Cuthbert",
+       "npc": "cuthbert",
+       "lines": [
+        "I locked the doors at nine, as always. One man was still praying, cloak caked in red mud. I thought nothing of it.",
+        "He asked a great many questions about the relic. Whether it was gold. It is silver, I told him. God forgive me."
+       ]
+      },
+      {
+       "type": "talk",
+       "text": "Question Pilgrim Ayla in the market",
+       "npc": "ayla",
+       "lines": [
+        "A man in a muddy cloak? Yes! Running past the churchyard wall before dawn, a bundle under his arm.",
+        "He went south-west, towards the old drovers' camp by the creek."
+       ]
+      }
+     ]
+    },
+    {
+     "type": "inspect",
+     "text": "Follow the clues outside the churchyard",
+     "pos": [
+      -312,
+      165
+     ],
+     "model": "tracks",
+     "dir": [
+      -1,
+      0.6
+     ],
+     "label": "Study the footprints",
+     "lines": [
+      "Boot prints in red clay, deep and fast. They head south-west, towards the creek."
+     ]
+    },
+    {
+     "type": "reach",
+     "text": "Find the thief's hiding place",
+     "pos": [
+      -360,
+      210
+     ],
+     "radius": 14,
+     "lines": [
+      "A cold camp: a torn bedroll, a smashed lantern... and wolf tracks all over it. The thief left in a hurry."
+     ]
+    },
+    {
+     "type": "kill",
+     "text": "Drive off the wolves at the camp",
+     "spawn": {
+      "species": "wolf",
+      "count": 2,
+      "pos": [
+       -362,
+       214
+      ],
+      "radius": 6
+     }
+    },
+    {
+     "type": "collect",
+     "text": "Recover the relic",
+     "item": "relic_reliquary",
+     "spots": [
+      [
+       -358,
+       212
+      ]
+     ],
+     "model": "chest",
+     "label": "Take the reliquary"
+    },
+    {
+     "type": "place",
+     "text": "Return the relic to the altar",
+     "pos": [
+      -290,
+      163.6
+     ],
+     "item": "relic_reliquary",
+     "model": "marker",
+     "label": "Place the reliquary on the altar",
+     "missing": "You need the reliquary.",
+     "lines": [
+      "You set the silver box back in its ring of dust. The church feels a little less empty."
+     ]
+    },
+    {
+     "type": "talk",
+     "text": "Tell Father Aldric",
+     "npc": "aldric",
+     "lines": [
+      "It's back. You found it. The thief abandoned it to the wolves? Then perhaps he learned something.",
+      "Take this medallion. The Mender's hand, pressed to the earth. May it steady yours."
+     ]
+    }
+   ],
+   "rewards": {
+    "coins": 120,
+    "xp": 160,
+    "items": {
+     "saint_medallion": 1
+    },
+    "text": "a unique religious medallion"
+   }
+  },
+  "pilgrims_journey": {
+   "title": "The Pilgrim's Journey",
+   "type": "side",
+   "region": "Glow Hollow",
+   "giver": "aldric",
+   "description": "Sister Odile set out for the old shrine at the edge of Glow Hollow ten days ago and never returned.",
+   "offer": [
+    "Sister Odile walked to the old shrine in Glow Hollow to pray for the island. Ten days ago.",
+    "She should have been back in four. Brida at the Brickton Arms kept her pack. Start there, and bring her home if you can."
+   ],
+   "accept": [
+    "Brida is at the Brickton Arms, on the market square. Go with God."
+   ],
+   "progress_lines": [
+    "Any word of Sister Odile? The shrine is at the edge of Glow Hollow, south-east of here."
+   ],
+   "npcs": {
+    "odile": {
+     "name": "Sister Odile",
+     "outfit": {
+      "model": "female",
+      "jacket": [
+       0.55,
+       0.55,
+       0.58
+      ],
+      "pants": [
+       0.4,
+       0.4,
+       0.42
+      ],
+      "boots": [
+       0.22,
+       0.15,
+       0.1
+      ],
+      "hair": [
+       0.45,
+       0.3,
+       0.2
+      ],
+      "accessories": [
+       "hood"
+      ],
+      "hood_color": [
+       0.55,
+       0.55,
+       0.58
+      ]
+     },
+     "mode": "wander",
+     "wander": 0.0,
+     "lines": {
+      "default": [
+       "Stay close, please. My knees are not what they were."
+      ]
+     },
+     "present": [
+      3,
+      5
+     ]
+    }
+   },
+   "steps": [
+    {
+     "type": "talk",
+     "text": "Ask Brida at the Brickton Arms",
+     "npc": "brida",
+     "lines": [
+      "Odile? Lovely woman. Left her pack with me and said she'd be three days.",
+      "She meant to pray at the old shrine where Glow Hollow begins, then follow the creek to see the 'singing stones'. Silly, if you ask me."
+     ]
+    },
+    {
+     "type": "reach",
+     "text": "Travel to the old shrine in Glow Hollow",
+     "pos": [
+      -65,
+      220
+     ],
+     "radius": 14,
+     "lines": [
+      "Fresh candle stubs on the shrine. Someone prayed here not long ago, and went south along the creek."
+     ]
+    },
+    {
+     "type": "inspect",
+     "text": "Search for the pilgrim's trail",
+     "pos": [
+      -74,
+      240
+     ],
+     "model": "marker",
+     "label": "Pick up the prayer beads",
+     "lines": [
+      "Wooden prayer beads in the mud, the string snapped. Beetle tracks, big ones, all around."
+     ]
+    },
+    {
+     "type": "talk",
+     "text": "Find Sister Odile",
+     "npc": "odile",
+     "pos": [
+      -80,
+      258
+     ],
+     "lines": [
+      "Oh! A person! I've been hiding in these roots for two days. The beetles... they nest right there.",
+      "Here they come again!"
+     ]
+    },
+    {
+     "type": "kill",
+     "text": "Protect Sister Odile from the beetles",
+     "spawn": {
+      "species": "mushroom_beetle",
+      "count": 2,
+      "pos": [
+       -90,
+       250
+      ],
+      "radius": 5
+     }
+    },
+    {
+     "type": "escort",
+     "text": "Escort Sister Odile to Wren's hut",
+     "npc": "odile",
+     "from": [
+      -80,
+      258
+     ],
+     "to": [
+      25,
+      209
+     ],
+     "radius": 10
+    },
+    {
+     "type": "talk",
+     "text": "Tell Father Aldric she is safe",
+     "npc": "aldric",
+     "lines": [
+      "Wren is looking after her? Thank heaven. And thank you.",
+      "This cloak was blessed for pilgrims. You walk further than any of them. Wear it."
+     ]
+    }
+   ],
+   "rewards": {
+    "coins": 140,
+    "xp": 190,
+    "items": {
+     "pilgrim_cloak": 1
+    },
+    "text": "the Pilgrim's Cloak"
+   }
+  },
+  "shadows_church": {
+   "title": "Shadows over the Church",
+   "type": "side",
+   "region": "Brickton",
+   "giver": "maud",
+   "requires": [
+    "missing_relic"
+   ],
+   "description": "Strange creatures have been seen around the church at night. Sister Maud is frightened, and Father Aldric pretends not to be.",
+   "offer": [
+    "You found the relic. Perhaps you'll believe me, then. Something comes to the church at night.",
+    "Scratching at the windows by the graveyard. Shapes between the stones. Brother Cuthbert saw eyes. Violet eyes."
+   ],
+   "accept": [
+    "Look around the graveyard. And ask Cuthbert, he won't tell Father, but he'll tell you."
+   ],
+   "progress_lines": [
+    "Whatever it is comes at night. Please be careful."
+   ],
+   "steps": [
+    {
+     "text": "Investigate the unusual events",
+     "goals": [
+      {
+       "type": "inspect",
+       "text": "Examine the claw marks on the graveyard wall",
+       "pos": [
+        -305,
+        140
+       ],
+       "model": "marker",
+       "label": "Examine the claw marks",
+       "lines": [
+        "Long scratches in the stone, glittering faintly violet. Whatever made them was tall."
+       ]
+      },
+      {
+       "type": "talk",
+       "text": "Speak with Brother Cuthbert",
+       "npc": "cuthbert",
+       "lines": [
+        "Eyes, yes. Violet, like the ice in the Frost Peaks. It came up out of the old grave at the back. The one with no name.",
+        "I didn't tell Father. He has enough to worry about."
+       ]
+      }
+     ]
+    },
+    {
+     "type": "inspect",
+     "text": "Discover the source of the disturbances",
+     "pos": [
+      -306,
+      170
+     ],
+     "model": "inscription",
+     "color": [
+      0.7,
+      0.3,
+      1.0
+     ],
+     "label": "Examine the nameless grave",
+     "lines": [
+      "The grave has split open. Violet light seeps from the crack, cold as frost.",
+      "Beneath the moss, a carved sign: an eye inside a broken circle. The Wardens' mark. Something old was buried here.",
+      "It will come back after dark. You should be ready."
+     ]
+    },
+    {
+     "type": "night",
+     "text": "Wait for nightfall (rest in your house or at a camp fire)"
+    },
+    {
+     "type": "defend",
+     "text": "Defend the church after dark",
+     "pos": [
+      -298,
+      150
+     ],
+     "radius": 26,
+     "from": [
+      -1,
+      0.3
+     ],
+     "spawn_dist": 20,
+     "waves": [
+      [
+       [
+        "wolf",
+        2,
+        {
+         "tint": [
+          0.7,
+          0.3,
+          1.0
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "frost_spirit",
+        2,
+        {
+         "tint": [
+          0.7,
+          0.3,
+          1.0
+         ]
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "type": "kill",
+     "text": "Defeat the Hollow Shade",
+     "spawn": {
+      "species": "frost_spirit",
+      "count": 1,
+      "pos": [
+       -306,
+       168
+      ],
+      "radius": 2,
+      "elite": {
+       "tint": [
+        0.55,
+        0.2,
+        0.9
+       ],
+       "health": 2.6,
+       "scale": 1.35,
+       "name": "The Hollow Shade"
+      }
+     },
+     "give": {
+      "shade_essence": 1
+     }
+    },
+    {
+     "type": "talk",
+     "text": "Report to Sister Maud",
+     "npc": "maud",
+     "lines": [
+      "It's gone? Truly? I watched from the bell tower. I've never prayed so hard in my life.",
+      "Father wants you to have these. Things the church has kept for a hard day. This was one."
+     ]
+    }
+   ],
+   "rewards": {
+    "coins": 160,
+    "xp": 230,
+    "items": {
+     "rare_crystal": 2,
+     "starsteel": 1
+    },
+    "text": "rare materials"
+   }
+  },
+  "ancient_scriptures": {
+   "title": "The Ancient Scriptures",
+   "type": "main",
+   "chapter": 2,
+   "region": "Brickton",
+   "giver": "aldric",
+   "requires": [
+    "strange_silence"
+   ],
+   "description": "Father Aldric has found references in the church chronicle to an event before the Mending: the Shattering. The pages that explain it are missing.",
+   "offer": [
+    "Brother Anselm found something while copying the chronicle. References to 'the Shattering', before the Mending.",
+    "The pages that should explain it were torn out. Long ago. One of them might still be in this church.",
+    "Will you look? Start in the library. I have a feeling this matters more than an old book."
+   ],
+   "accept": [
+    "The library is at the back of the church, on the right of the altar."
+   ],
+   "progress_lines": [
+    "Any luck with the missing pages? Look in the library, my chamber, and wherever the Wardens left their marks."
+   ],
+   "steps": [
+    {
+     "type": "inspect",
+     "text": "Explore the church library",
+     "pos": [
+      -296,
+      166.5
+     ],
+     "model": "marker",
+     "label": "Search the bookshelves",
+     "lines": [
+      "Between two ledgers, a note in Brother Anselm's hand: 'The torn pages: one is pressed in Father's prayer book. Two were taken to Caldor, to be compared with the stones.'"
+     ]
+    },
+    {
+     "type": "collect",
+     "text": "Find the missing pages",
+     "item": "scripture_page",
+     "spots": [
+      [
+       -284.4,
+       163.4
+      ],
+      [
+       -243,
+       184
+      ],
+      [
+       -230,
+       196
+      ]
+     ],
+     "model": "page",
+     "label": "Pick up the page"
+    },
+    {
+     "type": "reach",
+     "text": "Investigate the ruins of Caldor",
+     "pos": [
+      -235,
+      190
+     ],
+     "radius": 18,
+     "lines": [
+      "Crowned trees on every stone, and under them, older carvings: the eye in a broken circle. The Wardens' mark."
+     ]
+    },
+    {
+     "text": "Decode the inscriptions",
+     "goals": [
+      {
+       "type": "inspect",
+       "text": "Decode the western stone",
+       "pos": [
+        -245,
+        182
+       ],
+       "model": "inscription",
+       "color": [
+        0.7,
+        0.4,
+        1.0
+       ],
+       "label": "Decode the inscription",
+       "lines": [
+        "With the pages beside it the carving makes sense: 'Five lands, one light. The light was kept beneath the hollow hill.'"
+       ]
+      },
+      {
+       "type": "inspect",
+       "text": "Decode the eastern stone",
+       "pos": [
+        -228,
+        198
+       ],
+       "model": "inscription",
+       "color": [
+        0.7,
+        0.4,
+        1.0
+       ],
+       "label": "Decode the inscription",
+       "lines": [
+        "'When the keepers grew proud, the light broke, and the land broke with it. Mended, not healed. It sleeps. Do not wake it.'"
+       ]
+      }
+     ]
+    },
+    {
+     "type": "talk",
+     "text": "Bring the scriptures to Father Aldric",
+     "npc": "aldric",
+     "lines": [
+      "'Mended, not healed.' So the Mending did not end it. The light still sleeps beneath the island.",
+      "And the violet ice, the twisted golems... it is stirring. You must take this to the Elder.",
+      "Keep the restored chronicle. It belongs with whoever will finish this story."
+     ]
+    }
+   ],
+   "rewards": {
+    "coins": 150,
+    "xp": 280,
+    "items": {
+     "warden_codex": 1
+    },
+    "text": "the Warden Codex and the truth of the Shattering"
+   }
   }
  },
  "contracts": {

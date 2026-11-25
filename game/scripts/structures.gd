@@ -385,6 +385,7 @@ static func lamp_post(parent: Node3D, pos: Vector3, lit_mat: Material) -> void:
 	box(parent, Vector3(0.5, 0.06, 0.06), pos + Vector3(0.2, 3.15, 0), plain(Color(0.12, 0.12, 0.13), 0.6, 0.6))
 	var lan := box(parent, Vector3(0.26, 0.34, 0.26), pos + Vector3(0.42, 2.95, 0), lit_mat)
 	lan.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lan.set_meta("lamp", true)   # LightPool gives the nearest lanterns real light at night
 
 
 static func market_stall(parent: Node3D, pos: Vector3, yaw: float, awning: Color, goods: Array) -> Node3D:

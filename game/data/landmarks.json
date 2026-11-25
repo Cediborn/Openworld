@@ -1,0 +1,7 @@
+{
+  "_comment": "Buildings added with the expansion. Each reserves its footprint (trees, rocks and street lamps keep clear; see WorldData.load_data) and is built by its own script: player_house by Village/Interiors, church by Church. x, z centre; w, d size (m); rot radians (0 = door faces +z).",
+  "landmarks": [
+    {"id": "player_house", "kind": "player_house", "name": "Your House", "x": -240.0, "z": 95.0, "w": 12.0, "d": 10.0, "rot": 3.14159265, "floors": 2, "style": 0, "white": true, "garden": 7.0},
+    {"id": "church", "kind": "church", "name": "Church of the Mended Isle", "x": -290.0, "z": 148.0, "w": 16.0, "d": 40.0, "rot": 3.14159265, "floors": 1, "style": 0}
+  ]
+}

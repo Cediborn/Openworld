@@ -197,6 +197,7 @@ func _build_lava() -> void:
 	col.shape = box
 	floor_body.add_child(col)
 	floor_body.position = Vector3(360, WorldData.LAVA_LEVEL - LAVA_WADE_DEPTH - 0.2, 0)
+	floor_body.set_meta("walkable", true)   # ground, not an obstacle (see HorseNav)
 	add_child(floor_body)
 
 

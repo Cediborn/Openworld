@@ -33,6 +33,7 @@ var audio: GameAudio
 var menu: GameMenu
 var quality: Quality
 var stable: Stable
+var expansion: Expansion
 var settings: Dictionary = {}
 var touch := false
 var in_title := false
@@ -164,6 +165,10 @@ func _boot() -> void:
 		town = Town.new()
 		add_child(town)
 		town.setup(data, village)
+	if village and await _step("your house and the church"):
+		expansion = Expansion.new()
+		add_child(expansion)
+		expansion.build_landmarks(self)
 	_mark("player")
 	await get_tree().process_frame
 	_spawn_player()
@@ -253,6 +258,8 @@ func _boot() -> void:
 		journal.features = features
 		journal.data = data
 		journal.player = player
+	if expansion and features and await _step("interiors, firearm and lights"):
+		expansion.wire(self)
 	if await _step("weather effects"):
 		effects = ZoneEffects.new()
 		add_child(effects)
@@ -331,6 +338,8 @@ func _new_game() -> void:
 		stable.reset()
 	if sky:
 		sky.time_of_day = config.get("start_hour", 7.6)
+	if expansion and expansion.player:
+		expansion.on_new_game()
 	_resume()
 	hud.show_notice("Find the village to the west.\nSomeone there needs your help.")
 	save_game()
@@ -356,6 +365,8 @@ func _continue_game() -> void:
 		stable.load_state(s.get("horses", {}))
 	if sky and s.has("hour"):
 		sky.time_of_day = s.hour
+	if expansion and expansion.player:
+		expansion.on_loaded()
 	_resume()
 
 
@@ -490,6 +501,8 @@ func _on_night(amount: float) -> void:
 		village.set_night(amount)
 	if town:
 		town.set_night(amount)
+	if expansion:
+		expansion.set_night(amount)
 
 
 func _label(pos: Vector2, size: int) -> Label:

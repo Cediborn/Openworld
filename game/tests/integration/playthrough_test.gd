@@ -47,7 +47,7 @@ func _init() -> void:
 	p.health = 1.0e7
 	await _town_checks()
 	await _original_quest()
-	var order := ["strange_silence", "lost_merchant", "blacksmith_request", "hunters_challenge", "missing_caravan", "herbalist_collection",
+	var order := ["strange_silence", "ancient_scriptures", "missing_relic", "pilgrims_journey", "shadows_church", "lost_merchant", "blacksmith_request", "hunters_challenge", "missing_caravan", "herbalist_collection",
 		"trouble_gates", "frozen_expedition", "forgotten_explorer", "beneath_ashes", "golems_secret", "glowing_heart", "strange_crystal",
 		"hidden_treasure", "queen_beneath", "last_journal", "night_beasts", "forgotten_kingdom", "stranger_midnight", "five_fragments", "awakening"]
 	for id in order:

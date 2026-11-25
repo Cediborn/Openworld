@@ -47,6 +47,14 @@ var attack_pressed := false   # set by the touch attack button
 var dodge_pressed := false    # set by the touch dodge button
 var block_held := false       # set by the touch block button
 var potion_pressed := false   # set by the touch potion button
+var gun_toggle_pressed := false  # G / touch pistol button: draw or holster the flintlock
+var reload_pressed := false      # R / touch reload button
+var aim_held := false            # touch: hold to aim (PC: right mouse while the pistol is drawn)
+var whistle_pressed := false     # T / touch horse button: whistle for your horse
+## The flintlock pistol (see Firearm); null until the world sets it up.
+var gun: Firearm
+## Emitted when the explorer whistles for a horse.
+signal whistled
 var since_damage := 99.0
 var since_attack := 99.0
 var burn_tick := 0.0
@@ -96,6 +104,9 @@ var ride_speed := 0.0
 var ride_yaw := 0.0
 var _foot_shape: CollisionShape3D
 var _horse_shape: CollisionShape3D
+## 0..1: how far the camera has moved in to the aiming position.
+var _aim_blend := 0.0
+const AIM_CAMERA_DISTANCE := 2.1
 ## Emitted when getting on (true) or off (false) a horse.
 signal ridden(on: bool)
 
@@ -176,6 +187,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			dodge_pressed = true
 		elif event.keycode == KEY_H:
 			potion_pressed = true
+		elif event.keycode == KEY_G:
+			gun_toggle_pressed = true
+		elif event.keycode == KEY_R:
+			reload_pressed = true
+		elif event.keycode == KEY_T:
+			whistle_pressed = true
 
 
 func _physics_process(delta: float) -> void:
@@ -198,6 +215,12 @@ func _physics_process(delta: float) -> void:
 	var want_potion := potion_pressed
 	potion_pressed = false
 	var want_block: bool = block_held or (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
+	var want_gun := gun_toggle_pressed
+	gun_toggle_pressed = false
+	var want_reload := reload_pressed
+	reload_pressed = false
+	var want_whistle := whistle_pressed
+	whistle_pressed = false
 	since_damage += delta
 	since_attack += delta
 	if dead or in_conversation:
@@ -207,7 +230,21 @@ func _physics_process(delta: float) -> void:
 		want_dodge = false
 		want_block = false
 		want_potion = false
+		want_gun = false
+		want_reload = false
+		want_whistle = false
+	if want_whistle:
+		whistle()
 	var wish: Vector3 = Basis(Vector3.UP, yaw) * Vector3(stick.x, 0, stick.y)
+	if gun:
+		if want_gun and horse == null and swing < 0:
+			gun.toggle()
+		var drawn := gun.drawn and horse == null
+		# With the pistol out, attack fires and block (right mouse) aims instead.
+		gun.update(delta, want_attack and drawn, (want_block or aim_held) and drawn, want_reload and drawn)
+		if drawn:
+			want_attack = false
+			want_block = false
 	if horse:
 		_update_combat(delta, false, false, false, want_potion, wish)
 		if horse:   # (a fall into lava can end the ride)
@@ -229,7 +266,7 @@ func _physics_process(delta: float) -> void:
 			speed = jog_speed
 	if swing >= 0:
 		speed *= combat.get("attack_move_factor", 0.3)
-	if blocking:
+	if blocking or (gun and gun.drawn and (gun.aiming or gun.reloading())):
 		speed = minf(speed, walk_speed)
 	var in_lava := _in_lava()
 	if in_lava:
@@ -265,8 +302,8 @@ func _physics_process(delta: float) -> void:
 	var flat := Vector2(velocity.x, velocity.z)
 	if swing >= 0:
 		body.rotation.y = lerp_angle(body.rotation.y, swing_yaw, 1.0 - exp(-22.0 * delta))
-	elif blocking:
-		body.rotation.y = lerp_angle(body.rotation.y, yaw + PI, 1.0 - exp(-12.0 * delta))
+	elif blocking or (gun and gun.drawn and (gun.aiming or gun.cooldown > 0.0)):
+		body.rotation.y = lerp_angle(body.rotation.y, yaw + PI, 1.0 - exp(-14.0 * delta))
 	elif dodge_t >= 0.0:
 		body.rotation.y = lerp_angle(body.rotation.y, atan2(dodge_dir.x, dodge_dir.z), 1.0 - exp(-25.0 * delta))
 	elif flat.length() > 0.3:
@@ -275,8 +312,14 @@ func _physics_process(delta: float) -> void:
 	_animate(flat.length(), delta)
 
 	var follow := global_position + Vector3(0, 1.6, 0)
+	var aim_k := 1.0 if gun and gun.drawn and gun.aiming else 0.0
+	_aim_blend = move_toward(_aim_blend, aim_k, delta * 5.0)
+	# Over the right shoulder while aiming, so the crosshair isn't behind your head.
+	follow += Basis(Vector3.UP, yaw) * Vector3(0.55, 0.05, 0) * _aim_blend
 	cam_pivot.global_position = cam_pivot.global_position.lerp(follow, 1.0 - exp(-18.0 * delta))
 	cam_pivot.rotation = Vector3(pitch, yaw, 0)
+	spring.spring_length = lerpf(camera_distance, AIM_CAMERA_DISTANCE, _aim_blend)
+	body.aim_pitch = lerpf(body.aim_pitch, clampf(pitch + 0.12, -0.9, 0.9) * aim_k, 1.0 - exp(-14.0 * delta))
 
 
 # ---------- Combat ----------
@@ -546,6 +589,10 @@ func _animate(speed: float, delta: float) -> void:
 		return
 	land_timer -= delta
 	var drawn := body.sword_hand != null and body.sword_hand.visible
+	var pistol := gun != null and gun.drawn
+	if pistol and air_time <= 0.2 and land_timer <= 0.0 and (speed < 0.25 or gun.aiming):
+		body.play("Pistol_Aim" if gun.aiming else "Pistol_Idle", 0.15)
+		return
 	if blocking:
 		body.play("Sword_Block", 0.12)
 	elif air_time > 0.2:
@@ -564,12 +611,25 @@ func _animate(speed: float, delta: float) -> void:
 
 # ---------- Riding ----------
 
+## Two fingers to the lips: a sharp whistle that calls your horse (see Stable.whistle).
+func whistle() -> void:
+	if dead or in_conversation:
+		return
+	if horse == null and is_on_floor() and swing < 0 and dodge_t < 0.0:
+		if gun and gun.reloading():
+			return
+		body.play_once("Whistle", 0.1)
+	whistled.emit()
+
+
 ## Climbs onto a horse: the explorer sits in the saddle and the stick now
 ## steers the horse (walk, trot; sprint to gallop).
 func mount(h: Horse) -> void:
 	if horse != null or dead:
 		return
 	horse = h
+	if gun and gun.drawn:
+		gun.set_drawn(false)
 	_end_swing()
 	blocking = false
 	dodge_t = -1.0

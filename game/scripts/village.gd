@@ -2,15 +2,29 @@ class_name Village
 extends Node3D
 ## Brickton: timber-framed houses with plaster walls, stone bases and tiled
 ## roofs, placed from data/village.json. Windows light up at night.
+##
+## Every house is a real building you can walk into: hollow walls with a door
+## opening on the street side, a hinged wooden door, a ramp up to the stone
+## threshold, a boarded floor and a ceiling. Interiors (furniture, lights and
+## the people inside) are added by Interiors when you come close.
 
 const TEX := "res://assets/vendor/polyhaven/textures/"
 const PLASTER_TINTS := [Color(0.95, 0.92, 0.85), Color(0.95, 0.82, 0.45), Color(0.85, 0.5, 0.4), Color(0.7, 0.8, 0.6)]
 
 var window_mat: StandardMaterial3D
+var data: WorldData
 var mats := {}
+## One entry per house: {"root", "h" (village.json entry), "w", "d", "floors",
+## "door": Node3D hinge, "door_local": Vector3 (centre of the doorway, floor level)}.
+var buildings: Array[Dictionary] = []
+const WALL := 0.25          ## wall thickness (m)
+const DOOR_W := 1.25        ## doorway width (m)
+const DOOR_H := 2.25        ## doorway height (m)
+const FLOOR_Y := 0.5        ## floor level above the house origin (top of the stone base)
 
 
-func setup(data: WorldData) -> void:
+func setup(world_data: WorldData) -> void:
+	data = world_data
 	window_mat = StandardMaterial3D.new()
 	window_mat.albedo_color = Color(0.12, 0.13, 0.15)
 	window_mat.roughness = 0.1
@@ -18,12 +32,13 @@ func setup(data: WorldData) -> void:
 	window_mat.emission = Color(1.0, 0.7, 0.35)
 	window_mat.emission_energy_multiplier = 0.0
 	for h in data.houses:
-		_house(h)
+		if not h.get("reserved", false):
+			_house(h)
 
 
 ## Builds one more house from the same parts (used for lodges and halls outside the village).
-func build_house(h: Dictionary) -> void:
-	_house(h)
+func build_house(h: Dictionary) -> Node3D:
+	return _house(h)
 
 
 func set_night(amount: float) -> void:
@@ -107,7 +122,7 @@ func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot := Vec
 	return mi
 
 
-func _house(h: Dictionary) -> void:
+func _house(h: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	root.position = Vector3(h.x, h.get("y", 0.0), h.z)
 	root.rotation.y = h.rot
@@ -116,13 +131,20 @@ func _house(h: Dictionary) -> void:
 	var d: float = h.d
 	var floors: int = h.floors
 	var wall_h := 3.0 * floors
+	if data:
+		data.add_floor(Vector2(h.x, h.z), h.rot, Vector2(w + 0.4, d + 0.4), h.get("y", 0.0) + FLOOR_Y)
 	var stone := _tex_mat("castle_brick_07", Color(0.85, 0.85, 0.85), 0.6)
 	var plaster := _tex_mat("plastered_stone_wall", PLASTER_TINTS[int(h.style) % 4], 0.35)
+	if h.get("white", false):
+		# Your house: white limestone blocks, not plaster.
+		plaster = _tex_mat("castle_brick_07", Color(1.35, 1.33, 1.28), 0.45)
+		stone = _tex_mat("castle_brick_07", Color(1.1, 1.08, 1.04), 0.6)
 	var timber := _tex_mat("weathered_brown_planks", Color(0.55, 0.45, 0.38), 0.8)
 	var roof := _tex_mat("clay_roof_tiles_02", Color(0.85, 0.75, 0.7) if int(h.style) % 2 == 0 else Color(0.55, 0.58, 0.62), 0.5)
 
 	_box(root, Vector3(w + 0.4, 1.0, d + 0.4), Vector3(0, 0.0, 0), stone)
-	_box(root, Vector3(w, wall_h, d), Vector3(0, 0.5 + wall_h * 0.5, 0), plaster)
+	var door_x := -w * 0.15
+	_hollow_walls(root, w, d, wall_h, floors, plaster, door_x)
 	# Timber frame: corner posts, floor beams and a few braces.
 	var t := 0.22
 	for sx in [-1, 1]:
@@ -164,7 +186,8 @@ func _house(h: Dictionary) -> void:
 	_box(root, Vector3(0.7, 2.2, 0.7), Vector3(w * 0.25, top + rise * 0.6 + 0.6, -d * 0.2), stone)
 	# Door and windows on the street side (+z).
 	var door := _tex_mat("weathered_brown_planks", Color(0.4, 0.28, 0.2), 1.2)
-	_box(root, Vector3(1.1, 2.1, 0.12), Vector3(-w * 0.15, 0.5 + 1.05, d * 0.5 + 0.05), door)
+	var hinge := _door(root, door_x, d, door, timber)
+	_steps(root, h, door_x, d, stone)
 	for f in floors:
 		for wx in [-0.35, 0.2, 0.38]:
 			if f == 0 and wx < -0.2:
@@ -172,12 +195,89 @@ func _house(h: Dictionary) -> void:
 			_box(root, Vector3(0.9, 1.1, 0.1), Vector3(w * wx, 0.5 + f * 3.0 + 1.7, d * 0.5 + 0.04), window_mat)
 			_box(root, Vector3(1.1, 0.12, 0.2), Vector3(w * wx, 0.5 + f * 3.0 + 1.1, d * 0.5 + 0.08), timber)
 	_extras(root, h, w, d, top, rise)
-	# Collision.
+	# Roof: one solid block above the walls so nothing walks or sees through it.
 	var body := StaticBody3D.new()
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(w + 0.4, wall_h + 1.0 + rise, d + 0.4)
+	shape.size = Vector3(w + 0.4, rise + 0.4, d + 0.4)
 	col.shape = shape
-	col.position = Vector3(0, (wall_h + 1.0 + rise) * 0.5 - 0.5, 0)
+	col.position = Vector3(0, top + rise * 0.5, 0)
 	body.add_child(col)
 	root.add_child(body)
+	buildings.append({"root": root, "h": h, "w": w, "d": d, "floors": floors, "door": hinge,
+		"door_local": Vector3(door_x, FLOOR_Y, d * 0.5)})
+	return root
+
+
+## Plaster walls with a doorway in the front (+z) wall, a boarded floor on
+## the stone base and a ceiling over the ground floor. All solid.
+func _hollow_walls(root: Node3D, w: float, d: float, wall_h: float, floors: int, plaster: Material, door_x: float) -> void:
+	var y0 := FLOOR_Y
+	var hw := w * 0.5 - WALL * 0.5
+	var hd := d * 0.5 - WALL * 0.5
+	# Back, left and right walls.
+	Structures.box(root, Vector3(w, wall_h, WALL), Vector3(0, y0 + wall_h * 0.5, -hd), plaster, Vector3.ZERO, true)
+	Structures.box(root, Vector3(WALL, wall_h, d - WALL * 2.0), Vector3(-hw, y0 + wall_h * 0.5, 0), plaster, Vector3.ZERO, true)
+	Structures.box(root, Vector3(WALL, wall_h, d - WALL * 2.0), Vector3(hw, y0 + wall_h * 0.5, 0), plaster, Vector3.ZERO, true)
+	# Front wall in three pieces around the doorway.
+	var left_w := (door_x - DOOR_W * 0.5) + w * 0.5
+	var right_w := w * 0.5 - (door_x + DOOR_W * 0.5)
+	Structures.box(root, Vector3(left_w, wall_h, WALL), Vector3(-w * 0.5 + left_w * 0.5, y0 + wall_h * 0.5, hd), plaster, Vector3.ZERO, true)
+	Structures.box(root, Vector3(right_w, wall_h, WALL), Vector3(w * 0.5 - right_w * 0.5, y0 + wall_h * 0.5, hd), plaster, Vector3.ZERO, true)
+	Structures.box(root, Vector3(DOOR_W, wall_h - DOOR_H, WALL), Vector3(door_x, y0 + DOOR_H + (wall_h - DOOR_H) * 0.5, hd), plaster, Vector3.ZERO, true)
+	# Floor boards and the ceiling of the ground floor (upper floors are private).
+	var boards := _tex_mat("weathered_brown_planks", Color(0.62, 0.5, 0.4), 0.9)
+	Structures.box(root, Vector3(w - WALL * 2.0, 0.04, d - WALL * 2.0), Vector3(0, y0 + 0.02, 0), boards)
+	var ceil_y := y0 + 3.0 if floors > 1 else y0 + wall_h
+	Structures.box(root, Vector3(w - WALL * 2.0, 0.2, d - WALL * 2.0), Vector3(0, ceil_y + 0.1, 0), boards, Vector3.ZERO, true)
+	# Beams across the ceiling.
+	var beam := _tex_mat("weathered_brown_planks", Color(0.45, 0.35, 0.28), 0.8)
+	for i in int(w / 1.8):
+		Structures.box(root, Vector3(0.18, 0.2, d - WALL * 2.0), Vector3(-w * 0.5 + 1.2 + i * 1.8, ceil_y - 0.1, 0), beam)
+	# The stone base is the floor: solid.
+	var base := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(w + 0.4, 1.0, d + 0.4)
+	col.shape = shape
+	base.add_child(col)
+	root.add_child(base)
+
+
+## A plank door on an iron-strapped frame, hinged at the left of the doorway.
+## Returns the hinge (rotate it to open; see Interiors).
+func _door(root: Node3D, door_x: float, d: float, planks: Material, timber: Material) -> Node3D:
+	var hinge := Node3D.new()
+	hinge.name = "DoorHinge"
+	hinge.position = Vector3(door_x - DOOR_W * 0.5 + 0.04, FLOOR_Y, d * 0.5 - WALL * 0.5)
+	root.add_child(hinge)
+	var leaf_w := DOOR_W - 0.08
+	Structures.box(hinge, Vector3(leaf_w, DOOR_H - 0.04, 0.08), Vector3(leaf_w * 0.5, DOOR_H * 0.5, 0), planks)
+	var iron := Structures.plain(Color(0.12, 0.11, 0.1), 0.5, 0.7)
+	for y in [0.45, DOOR_H - 0.5]:
+		Structures.box(hinge, Vector3(leaf_w * 0.85, 0.07, 0.1), Vector3(leaf_w * 0.45, y, 0), iron)
+	Structures.sphere(hinge, 0.05, Vector3(leaf_w - 0.15, 1.05, 0.07), iron)
+	var body := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(leaf_w, DOOR_H - 0.04, 0.1)
+	col.shape = shape
+	col.position = Vector3(leaf_w * 0.5, DOOR_H * 0.5, 0)
+	body.add_child(col)
+	hinge.add_child(body)
+	# Door frame.
+	for sx in [-1.0, 1.0]:
+		Structures.box(root, Vector3(0.14, DOOR_H + 0.1, 0.34), Vector3(door_x + sx * (DOOR_W * 0.5 + 0.03), FLOOR_Y + DOOR_H * 0.5, d * 0.5 - WALL * 0.5), timber)
+	Structures.box(root, Vector3(DOOR_W + 0.3, 0.16, 0.34), Vector3(door_x, FLOOR_Y + DOOR_H + 0.05, d * 0.5 - WALL * 0.5), timber)
+	return hinge
+
+
+## Stone steps up to the threshold, over a gentle ramp you can walk up.
+func _steps(root: Node3D, h: Dictionary, door_x: float, d: float, stone: Material) -> void:
+	var run := 1.5
+	for i in 2:
+		Structures.box(root, Vector3(DOOR_W + 0.6, 0.25, run * (1.0 - i * 0.5)), Vector3(door_x, 0.125 + i * 0.25 - 0.25, d * 0.5 + 0.2 + run * (1.0 - i * 0.5) * 0.5), stone)
+	var ang := atan2(FLOOR_Y + 0.3, run)
+	var ramp_len := sqrt(run * run + (FLOOR_Y + 0.3) * (FLOOR_Y + 0.3))
+	var ramp := Structures.collider(root, Vector3(DOOR_W + 0.4, 0.1, ramp_len), Vector3(door_x, FLOOR_Y * 0.5 - 0.2, d * 0.5 + 0.2 + run * 0.5), Vector3(ang, 0, 0))
+	ramp.set_meta("walkable", true)

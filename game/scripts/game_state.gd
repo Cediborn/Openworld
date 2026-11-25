@@ -169,12 +169,17 @@ func apply_stats() -> void:
 
 ## Drinks the strongest potion carried. Returns true if one was used.
 func use_potion() -> bool:
-	for id in ["potion", "elixir"]:
+	# Potions first, then food (tavern meals).
+	var order: Array = ["potion", "elixir"]
+	for id in items:
+		if item(id).get("kind", "") == "food" and count(id) > 0:
+			order.append(id)
+	for id in order:
 		if count(id) > 0:
 			remove_item(id)
 			if player:
 				player.heal_left += float(item(id).get("heal", 45)) - float(player.combat.get("potion_heal", 45.0))
-			notify.emit("Drank a " + item_name(id), "item")
+			notify.emit(("Ate " if item(id).get("kind", "") == "food" else "Drank a ") + item_name(id), "item")
 			return true
 	notify.emit("No healing potions left", "warn")
 	return false

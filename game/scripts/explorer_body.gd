@@ -12,9 +12,11 @@ const MODELS := {
 const ANIM_DIR := "res://assets/character/anims/"
 const ANIMS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Jump_Start", "Jump", "Jump_Land", "Swim_Idle", "Swim_Fwd",
 	"Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Sword_Idle", "Sword_Block", "Hit_Chest", "Death01", "Idle_Talking",
-	"PickUp_Table", "Interact", "Roll", "Sitting_Idle", "Crouch_Idle", "Dance", "Ride"]
+	"PickUp_Table", "Interact", "Roll", "Sitting_Idle", "Crouch_Idle", "Dance", "Ride",
+	"Whistle", "Pistol_Aim", "Pistol_Shoot", "Pistol_Reload", "Pistol_Idle", "Pray", "Kneel_Pray"]
 ## Animations that play once and then hand control back to locomotion.
-const ONE_SHOTS := ["Jump_Start", "Jump", "Jump_Land", "Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Hit_Chest", "Death01", "PickUp_Table", "Roll"]
+const ONE_SHOTS := ["Jump_Start", "Jump", "Jump_Land", "Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Hit_Chest", "Death01", "PickUp_Table", "Roll",
+	"Whistle", "Pistol_Shoot", "Pistol_Reload"]
 ## The explorer's look; villagers pass their own outfit before being added.
 const EXPLORER := {
 	"model": "male", "jacket": Color(0.29, 0.29, 0.19), "pants": Color(0.16, 0.16, 0.13),
@@ -45,6 +47,12 @@ var outfit: Dictionary = EXPLORER
 var outfit_mat: ShaderMaterial
 var sword_hand: Node3D
 var sword_hip: Node3D
+## The flintlock in the hand and in its holster (explorer only).
+var gun_hand: Node3D
+var gun_hip: Node3D
+## Leans the chest up or down to follow the aim (radians, + = up).
+var aim_pitch := 0.0
+var _aim_mod: AimLean
 var blade_mat: StandardMaterial3D
 var _busy_left := 0.0   # seconds of game time until a one-shot animation ends
 var smooth_normals := PackedVector3Array()
@@ -592,6 +600,114 @@ func _add_sword() -> void:
 	sword_hip.position = Vector3(0.19, -0.02, 0.04)
 	sword_hip.rotation = Vector3(0.35, 0, PI * 0.88)
 	set_sword_drawn(false)
+	if "explorer" in outfit.get("accessories", []):
+		_add_pistol(hand, hips)
+
+
+## A flintlock pistol: walnut stock, browned iron barrel, brass furniture and
+## a working-looking lock (hammer, frizzen, pan). Barrel along local +Y, like
+## the sword blade, so the baked aim poses point it where the "blade" goes.
+func _pistol_mesh() -> Node3D:
+	var root := Node3D.new()
+	var walnut := StandardMaterial3D.new()
+	walnut.albedo_color = Color(0.32, 0.17, 0.08)
+	walnut.roughness = 0.45
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color(0.2, 0.19, 0.18)
+	iron.metallic = 0.85
+	iron.roughness = 0.35
+	var brass := StandardMaterial3D.new()
+	brass.albedo_color = Color(0.7, 0.52, 0.22)
+	brass.metallic = 0.85
+	brass.roughness = 0.3
+	var barrel := CylinderMesh.new()
+	barrel.top_radius = 0.011
+	barrel.bottom_radius = 0.014
+	barrel.height = 0.26
+	barrel.radial_segments = 10
+	_piece(root, barrel, iron, Vector3(0, 0.2, 0.022))
+	var muzzle := CylinderMesh.new()
+	muzzle.top_radius = 0.015
+	muzzle.bottom_radius = 0.015
+	muzzle.height = 0.018
+	muzzle.radial_segments = 10
+	_piece(root, muzzle, brass, Vector3(0, 0.325, 0.022))
+	# Fore-stock under the barrel, then the grip curving down to a brass butt cap.
+	_piece(root, _box(Vector3(0.026, 0.2, 0.022)), walnut, Vector3(0, 0.17, 0.004))
+	_piece(root, _box(Vector3(0.03, 0.07, 0.04)), walnut, Vector3(0, 0.05, 0.012))
+	_piece(root, _box(Vector3(0.028, 0.11, 0.034)), walnut, Vector3(0, 0.0, -0.035), Vector3(-0.9, 0, 0))
+	var cap := SphereMesh.new()
+	cap.radius = 0.024
+	cap.height = 0.04
+	_piece(root, cap, brass, Vector3(0, -0.035, -0.085))
+	# Lock plate, hammer (cock), frizzen, trigger and its guard.
+	_piece(root, _box(Vector3(0.006, 0.06, 0.022)), iron, Vector3(0.016, 0.06, 0.02))
+	_piece(root, _box(Vector3(0.006, 0.012, 0.035)), iron, Vector3(0.018, 0.035, 0.045), Vector3(0.6, 0, 0))
+	_piece(root, _box(Vector3(0.006, 0.02, 0.012)), iron, Vector3(0.018, 0.085, 0.04))
+	_piece(root, _box(Vector3(0.004, 0.006, 0.02)), iron, Vector3(0, 0.04, -0.02), Vector3(0.4, 0, 0))
+	var guard := TorusMesh.new()
+	guard.inner_radius = 0.014
+	guard.outer_radius = 0.018
+	_piece(root, guard, brass, Vector3(0, 0.04, -0.022), Vector3(0, 0, PI * 0.5))
+	var tip := Marker3D.new()
+	tip.name = "Muzzle"
+	tip.position = Vector3(0, 0.34, 0.022)
+	root.add_child(tip)
+	return root
+
+
+func _add_pistol(hand: BoneAttachment3D, hips: BoneAttachment3D) -> void:
+	gun_hand = _pistol_mesh()
+	# Same hand frame as the sword: the barrel runs out past the knuckles.
+	gun_hand.position = Vector3(-0.01, 0.07, 0.02)
+	gun_hand.rotation = Vector3(0, 0, PI * 0.5)
+	hand.add_child(gun_hand)
+	gun_hip = Node3D.new()
+	hips.add_child(gun_hip)
+	var holstered := _pistol_mesh()
+	gun_hip.add_child(holstered)
+	_piece(holstered, _box(Vector3(0.045, 0.2, 0.05)), _fabric(Color(0.24, 0.15, 0.08), 0.7), Vector3(0, 0.2, 0.02))
+	gun_hip.position = Vector3(-0.2, 0.02, 0.02)
+	gun_hip.rotation = Vector3(0.25, 0, -PI * 0.92)
+	_aim_mod = AimLean.new()
+	skeleton.add_child(_aim_mod)
+	_aim_mod.body = self
+	set_gun_drawn(false)
+
+
+## Shows the pistol in the hand (aiming) or in its holster.
+func set_gun_drawn(drawn: bool) -> void:
+	if gun_hand:
+		gun_hand.visible = drawn
+		gun_hip.visible = not drawn
+
+
+## World position of the pistol's muzzle (shots and the flash start here).
+func muzzle_position() -> Vector3:
+	if gun_hand == null:
+		return global_position + Vector3.UP * 1.4
+	return (gun_hand.get_node("Muzzle") as Node3D).global_position
+
+
+## Leans the upper body to aim up or down (SkeletonModifier3D, after the animation).
+class AimLean:
+	extends SkeletonModifier3D
+	var body: ExplorerBody
+
+	func _process_modification() -> void:
+		if body == null or absf(body.aim_pitch) < 0.001:
+			return
+		var sk := get_skeleton()
+		for b in [["Spine", 0.3], ["Chest", 0.35], ["UpperChest", 0.35]]:
+			var i := sk.find_bone(b[0])
+			if i < 0:
+				continue
+			# Pitch about the character's right (-X) axis, expressed in the bone's parent space.
+			var parent := sk.get_bone_parent(i)
+			var pg := sk.get_bone_global_pose(parent) if parent >= 0 else Transform3D()
+			var axis := (pg.basis.inverse() * Vector3(-1, 0, 0)).normalized()
+			var pose := sk.get_bone_pose_rotation(i)
+			sk.set_bone_pose_rotation(i, Quaternion(axis, body.aim_pitch * b[1]) * pose)
 
 
 ## Props for villagers: apron, chef hat, beard, cane, basket, hammer, hair bun.

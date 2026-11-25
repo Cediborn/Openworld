@@ -19,6 +19,10 @@ signal vocal(kind: String)
 var cfg: Dictionary = {}
 ## Returns ground height at (x, z). Injected so the creature works without the world.
 var height_at: Callable = func(_x: float, _z: float) -> float: return 0.0
+## Optional (x, z) -> bool: true where this creature must never step (horses: lava).
+var avoid_at: Callable = Callable()
+## Seconds left of bolting from a gunshot (shy animals).
+var scared := 0.0
 ## The node creatures react to (the player). May be null.
 var threat: Node3D
 var home := Vector3.ZERO
@@ -181,6 +185,23 @@ func take_hit(amount: float, from_pos: Vector3) -> void:
 		vocal.emit("roar")
 	else:
 		state = State.FLEE
+
+
+## A gunshot `from` somewhere near: shy animals bolt (and keep running for a
+## while), monsters within earshot roar and come looking.
+func hear_gunshot(from: Vector3, startle: bool, alert: bool) -> void:
+	if state == State.DEAD or state == State.ATTACK:
+		return
+	if temper == "flee":
+		if startle:
+			scared = float(cfg.get("scare_time", 7.0))
+			state = State.FLEE
+			var away := global_position - from
+			away.y = 0.0
+			target = global_position + away.normalized() * 25.0
+	elif alert and state in [State.IDLE, State.GRAZE, State.WALK, State.RETURN]:
+		cooldown = 0.0
+		_start_roar()
 
 
 func _die() -> void:
@@ -432,13 +453,14 @@ func _think(delta: float) -> void:
 		_attack_update(delta)
 		return
 	if temper == "flee":
-		if d < cfg.flee_radius and state != State.FLEE:
+		scared = maxf(0.0, scared - delta)
+		if (d < cfg.flee_radius or scared > 0.0) and state != State.FLEE:
 			state = State.FLEE
 		if state == State.FLEE and threat:
 			var away := global_position - threat.global_position
 			away.y = 0
 			target = global_position + away.normalized() * 15.0
-			if d > cfg.calm_radius:
+			if d > cfg.calm_radius and scared <= 0.0:
 				_choose_idle()
 			return
 	else:
@@ -529,7 +551,9 @@ func _move(delta: float) -> void:
 		var step := -global_transform.basis.z * speed * delta
 		var ahead := global_position + step * (1.5 / maxf(speed * delta, 0.001))
 		# Never walk into lava (or anywhere too low for this species): head home instead.
-		if height_at.call(ahead.x, ahead.z) < float(cfg.get("min_height", -INF)):
+		var dest := global_position + step
+		if height_at.call(ahead.x, ahead.z) < float(cfg.get("min_height", -INF)) \
+				or (avoid_at.is_valid() and (avoid_at.call(ahead.x, ahead.z) or avoid_at.call(dest.x, dest.z))):
 			target = home
 			step = Vector3.ZERO
 		global_position += step
