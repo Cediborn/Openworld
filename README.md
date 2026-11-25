@@ -64,6 +64,7 @@ Design notes: `design/gdd/chapter-one.md`. Content is generated from `tools/cont
 - Combat animations for the explorer are authored on his skeleton by `tools/bake_anims.gd` (swings, guard, block, hit, death, talking); monsters animate procedurally with per-species attack moves (`data/creatures.json`).
 - `.github/workflows/build.yml`: runs the world, combat and full-playthrough tests and builds Windows and Android on every push.
 - `.claude/`, `CLAUDE.md`, `project.yaml`: the [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) template (MIT, see `LICENSE-claude-code-game-studios`).
+- `.claude/skills/` also holds the Godot skills from [GodotPrompter](https://github.com/jame581/godotprompter) (MIT, see `LICENSE-godotprompter`).
 
 ## Credits (all CC0)
 
