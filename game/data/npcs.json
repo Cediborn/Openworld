@@ -1,5 +1,5 @@
 {
- "_comment": "Villagers. home = [x, z]; mode: wander (around home), stroll (anywhere in town along the streets), patrol (route of [x, z] waypoints), work (stays at a workplace facing `face` degrees, 0 = +z), chat (stands talking), sit. role: quest_giver, merchant (shop), smith, innkeeper (rest), captain / hunter (monster contracts), guard (fights raiders), villager, traveller. Lines are picked by context: original quest stage (intro, hunt, return, forge, done), else default (ambient, one picked at random). Quest dialogue comes from data/quests.json.",
+ "_comment": "Villagers. home = [x, z]; mode: wander (around home), stroll (anywhere in town along the streets), patrol (route of [x, z] waypoints), work (stays at a workplace facing `face` degrees, 0 = +z), chat (stands talking), sit. role: quest_giver, merchant (shop), smith, innkeeper (rest), captain / hunter (monster contracts), guard (fights raiders), villager, traveller. Lines are picked by context: original quest stage (intro, hunt, return, forge, done), else default (ambient, one picked at random). Quest dialogue comes from data/quests.json. keep: true = always spawned, even on phones (needed by quests or to fill the church and tavern).",
  "talk_distance": 3.2,
  "active_distance": 95.0,
  "villagers": [
@@ -1504,7 +1504,8 @@
      "I walk to every shrine on the island once a year. This year they feel... awake.",
      "The old shrines respond to those who are patient. Look closely at their carvings."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "kit",
@@ -2242,7 +2243,8 @@
      "The bells? I ring them myself, every hour from seven until nine at night.",
      "Father Aldric hardly sleeps since the relic went missing. Or since the noises at night began."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "anselm",
@@ -2292,7 +2294,8 @@
      "Shh. I am copying the chronicle, and my hand is not what it was.",
      "Some pages are missing. Torn out, long before my time."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "maud",
@@ -2337,7 +2340,8 @@
      "Two hundred candles a week, and every one lit by hand.",
      "At night I hear scratching outside the east windows. Father says it is the wind."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "edda",
@@ -2379,7 +2383,8 @@
     "default": [
      "I come every morning. My husband is a fisherman."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "rolf_w",
@@ -2465,7 +2470,8 @@
     "default": [
      "...and keep my brother safe in the Frost Peaks. Oh! Forgive me, I didn't hear you."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "hugh",
@@ -2644,7 +2650,8 @@
      "Forty years I've sat in this chair. Seen three bridges washed away and one built.",
      "The church bells sound different since the relic went. Hollow, like."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "brida",
@@ -2687,7 +2694,8 @@
      "Don't mind Fennick, he tells everyone that.",
      "A pilgrim came through a week back, heading for the old shrine in Glow Hollow. Never came back for her pack."
     ]
-   }
+   },
+   "keep": true
   },
   {
    "id": "traveller_jory",
@@ -2778,7 +2786,99 @@
     "default": [
      "Best stew on the island. Don't tell my mother."
     ]
-   }
+   },
+   "keep": true
+  },
+  {
+   "id": "tam",
+   "name": "Tam the Shop Boy",
+   "role": "merchant",
+   "shop": "merchant",
+   "home": [
+    -275.9,
+    -50.0
+   ],
+   "mode": "work",
+   "face": 270,
+   "wander": 0.0,
+   "idle_anim": "Idle",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.45,
+     0.35
+    ],
+    "pants": [
+     0.3,
+     0.25,
+     0.2
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.6,
+     0.35,
+     0.15
+    ],
+    "accessories": [
+     "apron"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Tilly's out front haggling. I can sell you anything she can. Mostly."
+    ]
+   },
+   "keep": true
+  },
+  {
+   "id": "wat",
+   "name": "Wat the Apprentice",
+   "role": "villager",
+   "home": [
+    -253.99,
+    10.05
+   ],
+   "mode": "work",
+   "face": -5,
+   "wander": 0.0,
+   "idle_anim": "Interact",
+   "outfit": {
+    "model": "male",
+    "jacket": [
+     0.3,
+     0.25,
+     0.22
+    ],
+    "pants": [
+     0.25,
+     0.2,
+     0.18
+    ],
+    "boots": [
+     0.2,
+     0.14,
+     0.1
+    ],
+    "hair": [
+     0.2,
+     0.12,
+     0.08
+    ],
+    "accessories": [
+     "apron"
+    ]
+   },
+   "lines": {
+    "default": [
+     "Keep back from the forge, it bites. Master Bram's out at the street anvil."
+    ]
+   },
+   "keep": true
   }
  ]
 }

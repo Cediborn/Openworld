@@ -10,6 +10,8 @@ extends Node3D
 ## few lights are ever on. Doors: walk up and use the prompt to open or close.
 
 const NEAR := 28.0
+const ROOM_DAY := 1.8
+const ROOM_NIGHT := 2.4
 const FAR := 45.0
 
 var data: WorldData
@@ -51,8 +53,9 @@ func setup(world_data: WorldData, v: Village, p: Node3D) -> void:
 func set_night(amount: float) -> void:
 	_night = amount
 	for i in _built:
-		var l: OmniLight3D = _built[i].get_meta("light")
-		l.light_energy = lerpf(0.6, 1.4, amount)
+		for k in ["light", "light2"]:
+			if _built[i].has_meta(k):
+				(_built[i].get_meta(k) as OmniLight3D).light_energy = lerpf(ROOM_DAY, ROOM_NIGHT, amount)
 
 
 func _process(delta: float) -> void:
@@ -138,14 +141,11 @@ func furnish(i: int) -> Node3D:
 			_player_house(root, w, d, door_x, rng)
 		_:
 			_home(root, w, d, door_x, rng)
-	var light := OmniLight3D.new()
-	light.light_color = Color(1.0, 0.75, 0.48)
-	light.omni_range = maxf(w, d) * 0.9
-	light.light_energy = lerpf(0.6, 1.4, _night)
-	light.shadow_enabled = false
-	light.position = Vector3(0, 2.4, 0)
-	root.add_child(light)
+	# Room light (window daylight by day, lamps and candles at night); big rooms get a second.
+	var light := _room_light(root, Vector3(0, 2.3, -d * 0.15), maxf(w, d) * 1.2)
 	root.set_meta("light", light)
+	if w * d > 70.0:
+		root.set_meta("light2", _room_light(root, Vector3(0, 2.3, d * 0.3), maxf(w, d)))
 	return root
 
 
@@ -283,3 +283,15 @@ func _player_house(root: Node3D, w: float, d: float, door_x: float, rng: RandomN
 	Furniture.chair(root, Vector3(-w * 0.5 + 1.7, 0, part_z + 1.2), PI * 0.6, oak, 0.75)
 	Furniture.banner(root, Vector3(w * 0.1, 2.2, part_z + 0.09), Color(0.2, 0.35, 0.6))
 	Furniture.candles(root, Vector3(w * 0.5 - 0.6, 0, d * 0.5 - 0.6), 3)
+
+
+func _room_light(root: Node3D, at: Vector3, reach: float) -> OmniLight3D:
+	var l := OmniLight3D.new()
+	l.light_color = Color(1.0, 0.8, 0.55)
+	l.omni_range = reach
+	l.omni_attenuation = 0.8
+	l.light_energy = lerpf(ROOM_DAY, ROOM_NIGHT, _night)
+	l.shadow_enabled = false
+	l.position = at
+	root.add_child(l)
+	return l

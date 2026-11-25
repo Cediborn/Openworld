@@ -575,6 +575,31 @@ CONTRACTS = {
 # space -> world: (-290 - x, 148 - z). Altar (-290, 163.6), library desk
 # (-295.5, 163.8), priest's chamber (-284.4, 163.4), graveyard to the west.
 
+Q["ancient_scriptures"] = {
+    "title": "The Ancient Scriptures", "type": "main", "chapter": 2, "region": "Brickton", "giver": "aldric", "requires": ["strange_silence"],
+    "description": "Father Aldric has found references in the church chronicle to an event before the Mending: the Shattering. The pages that explain it are missing.",
+    "offer": ["Brother Anselm found something while copying the chronicle. References to 'the Shattering', before the Mending.",
+              "The pages that should explain it were torn out. Long ago. One of them might still be in this church.",
+              "Will you look? Start in the library. I have a feeling this matters more than an old book."],
+    "accept": ["The library is at the back of the church, on the right of the altar."],
+    "progress_lines": ["Any luck with the missing pages? Look in the library, my chamber, and wherever the Wardens left their marks."],
+    "steps": [
+        {"type": "inspect", "text": "Explore the church library", "pos": [-296, 166.5], "model": "marker", "label": "Search the bookshelves",
+         "lines": ["Between two ledgers, a note in Brother Anselm's hand: 'The torn pages: one is pressed in Father's prayer book. Two were taken to Caldor, to be compared with the stones.'"]},
+        {"type": "collect", "text": "Find the missing pages", "item": "scripture_page", "spots": [[-284.4, 163.4], [-243, 184], [-230, 196]], "model": "page", "label": "Pick up the page"},
+        {"type": "reach", "text": "Investigate the ruins of Caldor", "pos": [-235, 190], "radius": 18,
+         "lines": ["Crowned trees on every stone, and under them, older carvings: the eye in a broken circle. The Wardens' mark."]},
+        {"text": "Decode the inscriptions", "goals": [
+            {"type": "inspect", "text": "Decode the western stone", "pos": [-245, 182], "model": "inscription", "color": [0.7, 0.4, 1.0], "label": "Decode the inscription",
+             "lines": ["With the pages beside it the carving makes sense: 'Five lands, one light. The light was kept beneath the hollow hill.'"]},
+            {"type": "inspect", "text": "Decode the eastern stone", "pos": [-228, 198], "model": "inscription", "color": [0.7, 0.4, 1.0], "label": "Decode the inscription",
+             "lines": ["'When the keepers grew proud, the light broke, and the land broke with it. Mended, not healed. It sleeps. Do not wake it.'"]}]},
+        {"type": "talk", "text": "Bring the scriptures to Father Aldric", "npc": "aldric",
+         "lines": ["'Mended, not healed.' So the Mending did not end it. The light still sleeps beneath the island.",
+                   "And the violet ice, the twisted golems... it is stirring. You must take this to the Elder.",
+                   "Keep the restored chronicle. It belongs with whoever will finish this story."]}],
+    "rewards": {"coins": 150, "xp": 280, "items": {"warden_codex": 1}, "text": "the Warden Codex and the truth of the Shattering"}}
+
 Q["missing_relic"] = {
     "title": "The Missing Relic", "type": "side", "region": "Brickton", "giver": "aldric",
     "description": "The Reliquary of the Mender has vanished from the church altar. Father Aldric needs it found before the feast of the Mending.",
@@ -662,31 +687,6 @@ Q["shadows_church"] = {
          "lines": ["It's gone? Truly? I watched from the bell tower. I've never prayed so hard in my life.",
                    "Father wants you to have these. Things the church has kept for a hard day. This was one."]}],
     "rewards": {"coins": 160, "xp": 230, "items": {"rare_crystal": 2, "starsteel": 1}, "text": "rare materials"}}
-
-Q["ancient_scriptures"] = {
-    "title": "The Ancient Scriptures", "type": "main", "chapter": 2, "region": "Brickton", "giver": "aldric", "requires": ["strange_silence"],
-    "description": "Father Aldric has found references in the church chronicle to an event before the Mending: the Shattering. The pages that explain it are missing.",
-    "offer": ["Brother Anselm found something while copying the chronicle. References to 'the Shattering', before the Mending.",
-              "The pages that should explain it were torn out. Long ago. One of them might still be in this church.",
-              "Will you look? Start in the library. I have a feeling this matters more than an old book."],
-    "accept": ["The library is at the back of the church, on the right of the altar."],
-    "progress_lines": ["Any luck with the missing pages? Look in the library, my chamber, and wherever the Wardens left their marks."],
-    "steps": [
-        {"type": "inspect", "text": "Explore the church library", "pos": [-296, 166.5], "model": "marker", "label": "Search the bookshelves",
-         "lines": ["Between two ledgers, a note in Brother Anselm's hand: 'The torn pages: one is pressed in Father's prayer book. Two were taken to Caldor, to be compared with the stones.'"]},
-        {"type": "collect", "text": "Find the missing pages", "item": "scripture_page", "spots": [[-284.4, 163.4], [-243, 184], [-230, 196]], "model": "page", "label": "Pick up the page"},
-        {"type": "reach", "text": "Investigate the ruins of Caldor", "pos": [-235, 190], "radius": 18,
-         "lines": ["Crowned trees on every stone, and under them, older carvings: the eye in a broken circle. The Wardens' mark."]},
-        {"text": "Decode the inscriptions", "goals": [
-            {"type": "inspect", "text": "Decode the western stone", "pos": [-245, 182], "model": "inscription", "color": [0.7, 0.4, 1.0], "label": "Decode the inscription",
-             "lines": ["With the pages beside it the carving makes sense: 'Five lands, one light. The light was kept beneath the hollow hill.'"]},
-            {"type": "inspect", "text": "Decode the eastern stone", "pos": [-228, 198], "model": "inscription", "color": [0.7, 0.4, 1.0], "label": "Decode the inscription",
-             "lines": ["'When the keepers grew proud, the light broke, and the land broke with it. Mended, not healed. It sleeps. Do not wake it.'"]}]},
-        {"type": "talk", "text": "Bring the scriptures to Father Aldric", "npc": "aldric",
-         "lines": ["'Mended, not healed.' So the Mending did not end it. The light still sleeps beneath the island.",
-                   "And the violet ice, the twisted golems... it is stirring. You must take this to the Elder.",
-                   "Keep the restored chronicle. It belongs with whoever will finish this story."]}],
-    "rewards": {"coins": 150, "xp": 280, "items": {"warden_codex": 1}, "text": "the Warden Codex and the truth of the Shattering"}}
 
 data = {
     "_comment": "Generated by tools/content/build_quests.py. Quests: type main/side/special; giver (npc id) or trigger (start by examining/reaching something) or auto (starts when its prerequisites are done); requires = quest ids; steps = goals (see scripts/quests.gd); rewards given exactly once.",

@@ -140,14 +140,19 @@ func _town_checks() -> void:
 		roles[v.role] = int(roles.get(v.role, 0)) + 1
 	check(roles.has("merchant") and roles.has("guard") and roles.has("quest_giver") and roles.has("villager") and roles.has("traveller") and roles.has("smith"),
 		"villager roles present: %s" % [roles])
-	# Nobody stands inside a building or walks a street that crosses one.
-	var inside := []
+	# Buildings are walk-in: people inside one stand on its floor, clear of the walls.
+	var in_wall := []
+	var off_floor := []
 	for v in world.story.villagers:
 		for h in d.houses:
 			var local := (Vector2(v.home.x, v.home.z) - Vector2(h.x, h.z)).rotated(float(h.rot))
 			if absf(local.x) < h.w * 0.5 + 0.2 and absf(local.y) < h.d * 0.5 + 0.2:
-				inside.append(v.id)
-	check(inside.is_empty(), "no villager starts inside a building %s" % [inside])
+				if absf(local.x) > h.w * 0.5 - Village.WALL - 0.25 or absf(local.y) > h.d * 0.5 - Village.WALL - 0.25:
+					in_wall.append(v.id)
+				if absf(v.global_position.y - d.height(v.global_position.x, v.global_position.z)) > 0.05:
+					off_floor.append(v.id)
+	check(in_wall.is_empty(), "no villager stands inside a wall %s" % [in_wall])
+	check(off_floor.is_empty(), "villagers inside buildings stand on the floor %s" % [off_floor])
 	var bad_edges := 0
 	var town: Town = world.town
 	for a in town.nodes.size():

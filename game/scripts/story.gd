@@ -59,7 +59,7 @@ func setup(world_data: WorldData, p: Player, h: Hud, is_touch: bool, t: Town = n
 	for v: Dictionary in npc_cfg.villagers:
 		# Phones run out of memory with every townsperson: keep everyone with
 		# a role, and only a few background villagers.
-		if mobile and v.get("role", "") in ["villager", "guard"]:
+		if mobile and v.get("role", "") in ["villager", "guard"] and not v.get("keep", false):
 			extras += 1
 			if extras > 6:
 				continue

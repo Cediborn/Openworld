@@ -20,6 +20,9 @@ var crosshair: Control
 var ammo_label: Label
 var lamps: LightPool
 var night := 0.0
+## A soft light near the camera at night so you can always see your explorer
+## (no outline or glow; just enough fill to read the figure against the dark).
+var fill: OmniLight3D
 
 
 ## Your house and the church (they reserve their ground in data/landmarks.json).
@@ -33,6 +36,7 @@ func build_landmarks(w: Node) -> void:
 		h["y"] = data.terrain_height(float(e.x), float(e.z))
 		match str(e.kind):
 			"player_house":
+				h["y"] = float(h.y) + 0.35   # sit the floor clear of the grass on the high side
 				village.build_house(h)
 				house_index = village.buildings.size() - 1
 				_garden(village.buildings[house_index].root, h)
@@ -86,7 +90,20 @@ func wire(w: Node) -> void:
 	lamps = LightPool.new()
 	add_child(lamps)
 	lamps.setup(player, w.mobile)
+	_trail_lanterns(w)
 	_collect_lamps(w)
+	fill = OmniLight3D.new()
+	fill.light_color = Color(0.85, 0.88, 1.0)
+	fill.omni_range = 7.0
+	fill.omni_attenuation = 1.6
+	fill.shadow_enabled = false
+	fill.light_specular = 0.1
+	fill.visible = false
+	player.cam_pivot.add_child(fill)
+	fill.position = Vector3(0.4, 0.6, 1.6)
+	# Occlusion culling: houses, walls and the church hide what's behind them (PC).
+	if not w.mobile:
+		get_viewport().use_occlusion_culling = true
 	# Ambient sound in the tavern and the church.
 	if audio:
 		var inn := interiors.find("inn")
@@ -105,6 +122,9 @@ func set_night(amount: float) -> void:
 		church.set_night(amount)
 	if lamps:
 		lamps.set_night(amount)
+	if fill:
+		fill.light_energy = 0.55 * smoothstep(0.2, 0.8, amount)
+		fill.visible = fill.light_energy > 0.02
 
 
 ## New game: the flintlock and a pouch of shot.
@@ -160,7 +180,7 @@ func _garden(root: Node3D, h: Dictionary) -> void:
 	var w: float = h.w
 	var d: float = h.d
 	var g: float = h.get("garden", 6.0)
-	var white := village._tex_mat("castle_brick_07", Color(1.3, 1.28, 1.22), 0.5)
+	var white := village._tex_mat("plastered_stone_wall", Color(1.25, 1.24, 1.2), 0.3)
 	# A low white wall round a front courtyard, with a gap at the path.
 	var front := d * 0.5 + g
 	var gap := 2.0
@@ -191,8 +211,12 @@ func _garden(root: Node3D, h: Dictionary) -> void:
 	var lit := village.window_mat
 	for sx in [-1.0, 1.0]:
 		Structures.lamp_post(root, Vector3(door_x + sx * (gap * 0.5 + 0.4), 0, front), lit)
-	var sign := Structures.notice_board(root, Vector3(door_x + gap * 0.5 + 1.2, 0, front + 0.3), 0.0)
-	Structures.label(root, "~ Your House ~", Vector3(door_x + gap * 0.5 + 1.2, 1.9, front + 0.45), 40, Color(0.98, 0.92, 0.7))
+	# Name board on two posts by the gate.
+	var sx := door_x + gap * 0.5 + 1.4
+	for px in [-0.6, 0.6]:
+		Structures.box(root, Vector3(0.1, 1.7, 0.1), Vector3(sx + px, 0.85, front + 0.4), Structures.wood(Color(0.4, 0.28, 0.18)))
+	Structures.box(root, Vector3(1.5, 0.55, 0.06), Vector3(sx, 1.45, front + 0.4), Structures.wood(Color(0.55, 0.4, 0.26)))
+	Structures.label(root, "Your House", Vector3(sx, 1.45, front + 0.45), 40, Color(0.98, 0.92, 0.7))
 	# A carved crest over the door marks the owner.
 	Structures.box(root, Vector3(0.9, 0.9, 0.08), Vector3(door_x, Village.FLOOR_Y + 2.75, d * 0.5 + 0.05), Structures.plain(Color(0.2, 0.32, 0.6), 0.7))
 	Structures.sphere(root, 0.22, Vector3(door_x, Village.FLOOR_Y + 2.75, d * 0.5 + 0.1), Structures.plain(Color(0.9, 0.75, 0.3), 0.3, 0.9), Vector3(1, 1, 0.3))
@@ -269,3 +293,27 @@ func _ambience(name: String, at: Vector3, size: float, db: float) -> void:
 	p.autoplay = true
 	add_child(p)
 	p.global_position = at
+
+
+## A few lanterns beside the meadow trails (every ~60 m), lit at night.
+func _trail_lanterns(w: Node) -> void:
+	var placed: Array[Vector2] = []
+	var lit := village.window_mat
+	for z in range(-240, 241, 12):
+		for x in range(-170, 241, 12):
+			var p := Vector2(x, z)
+			if p.length() > 235.0 or data.on_path(p.x, p.y) < 0.6 or data.is_lava(p.x, p.y):
+				continue
+			if placed.any(func(q: Vector2) -> bool: return q.distance_to(p) < 60.0):
+				continue
+			# Step off the trail to its edge.
+			var side := Vector2.INF
+			for a in 8:
+				var off := Vector2(cos(a * TAU / 8.0), sin(a * TAU / 8.0)) * 3.2
+				if data.on_path(p.x + off.x, p.y + off.y) < 0.15:
+					side = p + off
+					break
+			if side == Vector2.INF:
+				continue
+			placed.append(p)
+			Structures.lamp_post(self, Vector3(side.x, data.height(side.x, side.y), side.y), lit)

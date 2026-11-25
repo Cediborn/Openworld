@@ -14,7 +14,9 @@ void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float n = texture(noise_tex, wpos.xz * 0.35 + wpos.y * 0.2).r;
 	VERTEX += NORMAL * (n - 0.5) * 0.9;
-	VERTEX.x += sin(TIME * 1.3 + wpos.y * 0.6 + wpos.x * 0.2) * wind * VERTEX.y * 0.15;
+	float gust = 0.55 + 0.45 * sin(TIME * 0.35 + wpos.x * 0.015 + wpos.z * 0.01) * sin(TIME * 0.21 + wpos.z * 0.02);
+	VERTEX.x += sin(TIME * 1.3 + wpos.y * 0.6 + wpos.x * 0.2) * wind * gust * VERTEX.y * 0.15;
+	VERTEX.z += cos(TIME * 0.9 + wpos.x * 0.4) * wind * gust * VERTEX.y * 0.08;
 }
 
 void fragment() {

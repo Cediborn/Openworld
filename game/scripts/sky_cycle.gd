@@ -3,6 +3,12 @@ extends Node3D
 ## Day and night: moves the sun and moon, colours the sky, light and fog for
 ## the time of day, tints the air per zone (cold blue in Frost Peaks, smoky
 ## orange in Ember Wastes, violet in Glow Hollow) and shows the aurora at night.
+##
+## Nights are moonlit, not black: a stronger blue moon (with shadows on PC, so
+## forests are dappled), a moonlit ambient instead of the dark night sky's,
+## and per-zone night air: moonlight off the snow in Frost Peaks, a warm lava
+## glow in Ember Wastes, a violet glow in Glow Hollow. Dawn and dusk pass
+## through a short blue hour.
 
 signal night_changed(amount: float)
 
@@ -18,6 +24,9 @@ var aurora_mat: ShaderMaterial
 var mobile := false
 var night := 0.0
 var zone_w := [1.0, 0.0, 0.0, 0.0, 0.0]
+const MOON_ENERGY := 0.95
+const NIGHT_AMBIENT := Color(0.42, 0.5, 0.72)
+const NIGHT_AMBIENT_ENERGY := 0.6
 
 
 func setup(is_mobile: bool, config: Dictionary) -> void:
@@ -43,6 +52,7 @@ func setup(is_mobile: bool, config: Dictionary) -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_color = NIGHT_AMBIENT
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_white = 6.0
@@ -58,6 +68,10 @@ func setup(is_mobile: bool, config: Dictionary) -> void:
 	env.adjustment_saturation = 1.08
 	env.adjustment_contrast = 1.05
 	if not mobile:
+		# Soft bounce light in corners and under eaves (half resolution).
+		env.ssil_enabled = true
+		env.ssil_radius = 4.0
+		env.ssil_intensity = 0.8
 		env.ssao_enabled = true
 		env.ssao_radius = 1.2
 		env.ssao_intensity = 1.6
@@ -79,9 +93,11 @@ func setup(is_mobile: bool, config: Dictionary) -> void:
 	sun.light_volumetric_fog_energy = 1.4
 	add_child(sun)
 	moon = DirectionalLight3D.new()
-	moon.light_color = Color(0.55, 0.65, 0.95)
+	moon.light_color = Color(0.62, 0.72, 1.0)
 	moon.shadow_enabled = not mobile
+	moon.shadow_blur = 2.0
 	moon.directional_shadow_max_distance = 80.0
+	moon.light_volumetric_fog_energy = 0.6
 	add_child(moon)
 	_build_aurora()
 	_apply()
@@ -166,14 +182,21 @@ func _apply() -> void:
 	sun.light_energy = 1.7 * day
 	sun.visible = day > 0.01
 	sun.light_color = Color(1.0, 0.97, 0.92).lerp(Color(1.0, 0.68, 0.38), golden)
-	moon.light_energy = 0.55 * night
+	# Moonlight, and an ambient that keeps people and paths readable at night.
+	moon.light_energy = MOON_ENERGY * night * (1.0 + zone_w[1] * 0.35)
 	moon.visible = night > 0.05
-	env.ambient_light_energy = lerpf(0.55, 1.15, day)
+	# Lava country glows at night; the hollow's plants and crystals too.
+	env.ambient_light_energy = lerpf(NIGHT_AMBIENT_ENERGY + zone_w[2] * 0.6 + zone_w[3] * 0.2, 1.15, day)
+	env.ambient_light_sky_contribution = lerpf(0.25, 1.0, day)
+	var amb := NIGHT_AMBIENT.lerp(Color(0.75, 0.85, 1.0), zone_w[1] * 0.6)
+	amb = amb.lerp(Color(0.95, 0.45, 0.22), zone_w[2] * 0.85).lerp(Color(0.5, 0.35, 0.8), zone_w[3] * 0.6)
+	env.ambient_light_color = amb
 	env.background_energy_multiplier = lerpf(1.0, 1.0, day)
 	sky_mat.energy_multiplier = lerpf(0.5, 1.0, day)
 
 	# Base fog for the time of day, then tinted by the zone the player is in.
-	var fog := Color(0.70, 0.78, 0.88).lerp(Color(0.95, 0.7, 0.5), golden).lerp(Color(0.05, 0.07, 0.12), night)
+	var blue_hour := clampf(1.0 - absf(elev + 4.0) / 6.0, 0.0, 1.0)
+	var fog := Color(0.70, 0.78, 0.88).lerp(Color(0.95, 0.7, 0.5), golden).lerp(Color(0.32, 0.38, 0.6), blue_hour * 0.7).lerp(Color(0.08, 0.1, 0.17), night)
 	var density := 0.0006
 	var zone_fog := [Color(0, 0, 0, 0), Color(0.75, 0.85, 1.0), Color(0.55, 0.38, 0.3), Color(0.35, 0.2, 0.55), Color(0.8, 0.78, 0.72)]
 	var zone_density := [0.0, 0.0012, 0.0016, 0.0024, 0.0004]

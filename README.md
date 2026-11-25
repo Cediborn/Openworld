@@ -20,7 +20,7 @@ It replaces the old version in place.
 | Frost Peaks | north | snowy pines, a mountain pass, falling snow, aurora at night |
 | Ember Wastes | east | black basalt, lava rivers, rising embers, smoky haze |
 | Glow Hollow | south | giant glowing mushrooms, crystals, blue grass that shines at night |
-| Brickton | west | a market town: main street, market square with stalls and a well, inn, town hall bell tower, north and south residential streets, craft quarter, guarded east gate; 40+ townsfolk |
+| Brickton | west | a market town (every house can be entered; your own white-stone house by the south gardens; the Church of the Mended Isle further south): main street, market square with stalls and a well, inn, town hall bell tower, north and south residential streets, craft quarter, guarded east gate; 40+ townsfolk |
 
 A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is top-left.
 
@@ -41,6 +41,12 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 | Gallop (on a horse) | Shift | Orange button |
 | Dialogue choices | 1, 2, 3 or click | Tap |
 | Journal (quests, map, gear, progress) | J | Book button (top right) |
+| Draw / holster the flintlock | G | Pistol button (right side) |
+| Aim / fire the flintlock | Hold right mouse / left click | Pistol drawn: red button fires (auto-aim at the crosshair) |
+| Reload | R (or fire when empty) | Reload button (while drawn) |
+| Whistle for your horse | T | Horseshoe button (right side) |
+| Open / close a door | E at the door | Tap the prompt |
+| Sleep until morning (your house) | E at your bed | Tap the prompt |
 
 ## What there is to do
 

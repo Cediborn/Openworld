@@ -17,8 +17,11 @@ void vertex() {
 	depth = COLOR.r;
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float phase = dot(wp.xz, vec2(0.25, 0.18));
-	VERTEX.x += sin(TIME * 1.4 + phase) * wind * VERTEX.y * 0.1;
-	VERTEX.z += cos(TIME * 1.1 + phase) * wind * VERTEX.y * 0.06;
+	// Gusts roll across the island (slow travelling waves), and leaves flutter faster at the tips.
+	float gust = 0.55 + 0.45 * sin(TIME * 0.35 + wp.x * 0.015 + wp.z * 0.01) * sin(TIME * 0.21 + wp.z * 0.02);
+	VERTEX.x += sin(TIME * 1.4 + phase) * wind * gust * VERTEX.y * 0.1;
+	VERTEX.z += cos(TIME * 1.1 + phase) * wind * gust * VERTEX.y * 0.06;
+	VERTEX += NORMAL * sin(TIME * 7.0 + phase * 9.0) * 0.012 * gust * depth;
 	wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 

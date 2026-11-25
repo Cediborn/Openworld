@@ -181,6 +181,8 @@ func _buildings(p: Player) -> void:
 	check(absf(p.global_position.y - floor_y) < 0.1 and p.is_on_floor(), "inside, you stand on the floor (%.2f m)" % (p.global_position.y - floor_y))
 	await _walk_to(p, outside, 6.0)
 	check(not _inside(b, p.global_position), "and walk back out")
+	check(_inside(b, world.story.by_id["tam"].global_position), "a shopkeeper stands behind the counter inside")
+	check(_inside(village.buildings[inter.find("smithy")], world.story.by_id["wat"].global_position), "an apprentice works the smithy forge")
 	# Different buildings get different rooms.
 	var counts := {}
 	for k in ["inn", "smithy", "hall"]:

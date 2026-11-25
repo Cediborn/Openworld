@@ -48,10 +48,11 @@ func setup(world_data: WorldData, entry: Dictionary, village: Village) -> void:
 	position = Vector3(entry.x, ground, entry.z)
 	rotation.y = float(entry.rot)
 	floor_y = ground + FLOOR
-	stone = village._tex_mat("castle_brick_07", Color(0.92, 0.9, 0.86), 0.35)
-	dark_stone = village._tex_mat("castle_brick_07", Color(0.62, 0.6, 0.58), 0.4)
+	# Pale limestone walls, grey dressed stone for plinth, buttresses and mouldings.
+	stone = village._tex_mat("plastered_stone_wall", Color(1.12, 1.08, 1.0), 0.22)
+	dark_stone = village._tex_mat("rock_face_03", Color(0.95, 0.93, 0.9), 0.35)
 	oak = village._tex_mat("weathered_brown_planks", Color(0.5, 0.36, 0.24), 0.9)
-	_plinth()
+	_plinth(village)
 	_nave()
 	_roof(village)
 	_towers(village)
@@ -115,7 +116,7 @@ func _solid(size: Vector3, pos: Vector3, mat: Material, rot := Vector3.ZERO) -> 
 
 # ---------- Shell ----------
 
-func _plinth() -> void:
+func _plinth(village: Village) -> void:
 	_solid(Vector3(w + 2.0, FLOOR + 1.0, d + 2.0), Vector3(0, FLOOR * 0.5 - 0.5, 0), dark_stone)
 	# Broad steps up to the doors, over a ramp.
 	for i in 3:
@@ -126,7 +127,7 @@ func _plinth() -> void:
 	var ramp := Structures.collider(self, Vector3(DOOR_W + 2.6, 0.1, sqrt(run * run + (FLOOR + 0.2) * (FLOOR + 0.2))), Vector3(0, FLOOR * 0.5 - 0.1, d * 0.5 + 1.0 + run * 0.5), Vector3(ang, 0, 0))
 	ramp.set_meta("walkable", true)
 	# Flagstone floor.
-	Structures.box(self, Vector3(w - T * 2.0, 0.04, d - T * 2.0), Vector3(0, FLOOR + 0.02, 0), Structures.tex_mat("castle_brick_07", Color(0.55, 0.52, 0.5), 0.6))
+	Structures.box(self, Vector3(w - T * 2.0, 0.04, d - T * 2.0), Vector3(0, FLOOR + 0.02, 0), village._tex_mat("cobblestone_floor_05", Color(0.95, 0.92, 0.88), 0.5))
 
 
 func _nave() -> void:
@@ -321,8 +322,8 @@ func _interior(village: Village) -> void:
 		Furniture.chandelier(self, p, 1.0)
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.78, 0.5)
-		l.light_energy = 1.6
-		l.omni_range = 14.0
+		l.light_energy = 2.6
+		l.omni_range = 17.0
 		l.shadow_enabled = false
 		l.position = p + Vector3(0, -0.5, 0)
 		add_child(l)

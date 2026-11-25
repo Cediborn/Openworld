@@ -77,7 +77,9 @@ jobs:
 
       - name: Run world data tests
         working-directory: game
-        run: ~/godot/godot --headless --path . -s res://tests/unit/world/world_data_test.gd
+        run: |
+          ~/godot/godot --headless --path . -s res://tests/unit/world/world_data_test.gd
+          ~/godot/godot --headless --path . -s res://tests/unit/world/terrain_lod_test.gd
 
       - name: Run combat tests (every species attacks for real, sword hits only where the blade connects)
         working-directory: game
@@ -85,9 +87,18 @@ jobs:
           ~/godot/godot --headless --path . -s res://tests/integration/combat_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/sword_test.gd
 
+      - name: Run expansion tests (ground contact, horse whistle and lava rescue, flintlock, buildings, church, phone mode)
+        working-directory: game
+        timeout-minutes: 30
+        run: |
+          ~/godot/godot --headless --path . -s res://tests/integration/ground_test.gd
+          ~/godot/godot --headless --path . -s res://tests/integration/horse_test.gd
+          ~/godot/godot --headless --path . -s res://tests/integration/expansion_test.gd
+          ~/godot/godot --headless --path . -s res://tests/integration/expansion_test.gd -- --mobile
+
       - name: Play every quest, shrine, treasure and event start to finish
         working-directory: game
-        timeout-minutes: 25
+        timeout-minutes: 35
         run: ~/godot/godot --headless --path . -s res://tests/integration/playthrough_test.gd
 
       - name: Export Windows

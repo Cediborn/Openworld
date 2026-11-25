@@ -21,6 +21,7 @@ const WALL := 0.25          ## wall thickness (m)
 const DOOR_W := 1.25        ## doorway width (m)
 const DOOR_H := 2.25        ## doorway height (m)
 const FLOOR_Y := 0.5        ## floor level above the house origin (top of the stone base)
+const GRASS_CLEAR := 0.45   ## floor height above the highest ground under it (grass is ~0.4 m)
 
 
 func setup(world_data: WorldData) -> void:
@@ -123,6 +124,9 @@ func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot := Vec
 
 
 func _house(h: Dictionary) -> Node3D:
+	# The floor must clear the highest ground under the house (and the grass on it).
+	if data:
+		h["y"] = maxf(float(h.get("y", 0.0)), _footprint_top(h) - FLOOR_Y + GRASS_CLEAR)
 	var root := Node3D.new()
 	root.position = Vector3(h.x, h.get("y", 0.0), h.z)
 	root.rotation.y = h.rot
@@ -136,13 +140,13 @@ func _house(h: Dictionary) -> Node3D:
 	var stone := _tex_mat("castle_brick_07", Color(0.85, 0.85, 0.85), 0.6)
 	var plaster := _tex_mat("plastered_stone_wall", PLASTER_TINTS[int(h.style) % 4], 0.35)
 	if h.get("white", false):
-		# Your house: white limestone blocks, not plaster.
-		plaster = _tex_mat("castle_brick_07", Color(1.35, 1.33, 1.28), 0.45)
-		stone = _tex_mat("castle_brick_07", Color(1.1, 1.08, 1.04), 0.6)
+		# Your house: whitewashed stone walls on a pale grey stone base.
+		plaster = _tex_mat("plastered_stone_wall", Color(1.25, 1.24, 1.2), 0.3)
+		stone = _tex_mat("rock_face_03", Color(1.15, 1.13, 1.1), 0.5)
 	var timber := _tex_mat("weathered_brown_planks", Color(0.55, 0.45, 0.38), 0.8)
 	var roof := _tex_mat("clay_roof_tiles_02", Color(0.85, 0.75, 0.7) if int(h.style) % 2 == 0 else Color(0.55, 0.58, 0.62), 0.5)
 
-	_box(root, Vector3(w + 0.4, 1.0, d + 0.4), Vector3(0, 0.0, 0), stone)
+	_box(root, Vector3(w + 0.4, 2.0, d + 0.4), Vector3(0, -0.5, 0), stone)
 	var door_x := -w * 0.15
 	_hollow_walls(root, w, d, wall_h, floors, plaster, door_x)
 	# Timber frame: corner posts, floor beams and a few braces.
@@ -225,6 +229,14 @@ func _hollow_walls(root: Node3D, w: float, d: float, wall_h: float, floors: int,
 	Structures.box(root, Vector3(left_w, wall_h, WALL), Vector3(-w * 0.5 + left_w * 0.5, y0 + wall_h * 0.5, hd), plaster, Vector3.ZERO, true)
 	Structures.box(root, Vector3(right_w, wall_h, WALL), Vector3(w * 0.5 - right_w * 0.5, y0 + wall_h * 0.5, hd), plaster, Vector3.ZERO, true)
 	Structures.box(root, Vector3(DOOR_W, wall_h - DOOR_H, WALL), Vector3(door_x, y0 + DOOR_H + (wall_h - DOOR_H) * 0.5, hd), plaster, Vector3.ZERO, true)
+	# Occluders: houses hide what's behind them (used when occlusion culling is on, PC).
+	for o in [[Vector3(w, wall_h, WALL), Vector3(0, y0 + wall_h * 0.5, -hd)], [Vector3(WALL, wall_h, d), Vector3(-hw, y0 + wall_h * 0.5, 0)], [Vector3(WALL, wall_h, d), Vector3(hw, y0 + wall_h * 0.5, 0)]]:
+		var oi := OccluderInstance3D.new()
+		var bo := BoxOccluder3D.new()
+		bo.size = o[0]
+		oi.occluder = bo
+		oi.position = o[1]
+		root.add_child(oi)
 	# Floor boards and the ceiling of the ground floor (upper floors are private).
 	var boards := _tex_mat("weathered_brown_planks", Color(0.62, 0.5, 0.4), 0.9)
 	Structures.box(root, Vector3(w - WALL * 2.0, 0.04, d - WALL * 2.0), Vector3(0, y0 + 0.02, 0), boards)
@@ -238,8 +250,9 @@ func _hollow_walls(root: Node3D, w: float, d: float, wall_h: float, floors: int,
 	var base := StaticBody3D.new()
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(w + 0.4, 1.0, d + 0.4)
+	shape.size = Vector3(w + 0.4, 2.0, d + 0.4)
 	col.shape = shape
+	col.position.y = -0.5
 	base.add_child(col)
 	root.add_child(base)
 
@@ -274,10 +287,21 @@ func _door(root: Node3D, door_x: float, d: float, planks: Material, timber: Mate
 
 ## Stone steps up to the threshold, over a gentle ramp you can walk up.
 func _steps(root: Node3D, h: Dictionary, door_x: float, d: float, stone: Material) -> void:
-	var run := 1.5
+	var run := 2.2
 	for i in 2:
 		Structures.box(root, Vector3(DOOR_W + 0.6, 0.25, run * (1.0 - i * 0.5)), Vector3(door_x, 0.125 + i * 0.25 - 0.25, d * 0.5 + 0.2 + run * (1.0 - i * 0.5) * 0.5), stone)
-	var ang := atan2(FLOOR_Y + 0.3, run)
-	var ramp_len := sqrt(run * run + (FLOOR_Y + 0.3) * (FLOOR_Y + 0.3))
-	var ramp := Structures.collider(root, Vector3(DOOR_W + 0.4, 0.1, ramp_len), Vector3(door_x, FLOOR_Y * 0.5 - 0.2, d * 0.5 + 0.2 + run * 0.5), Vector3(ang, 0, 0))
+	var drop := FLOOR_Y + 0.9   # reaches below the ground in front, however it slopes
+	var ang := atan2(drop, run)
+	var ramp_len := sqrt(run * run + drop * drop)
+	var ramp := Structures.collider(root, Vector3(DOOR_W + 0.4, 0.1, ramp_len), Vector3(door_x, FLOOR_Y - drop * 0.5 - 0.05, d * 0.5 + 0.2 + run * 0.5), Vector3(ang, 0, 0))
 	ramp.set_meta("walkable", true)
+
+
+## Highest terrain under a house's footprint.
+func _footprint_top(h: Dictionary) -> float:
+	var top := -INF
+	for i in 5:
+		for j in 5:
+			var l := Vector3((i / 4.0 - 0.5) * (float(h.w) + 0.4), 0, (j / 4.0 - 0.5) * (float(h.d) + 0.4)).rotated(Vector3.UP, float(h.rot))
+			top = maxf(top, data.terrain_height(float(h.x) + l.x, float(h.z) + l.z))
+	return top
