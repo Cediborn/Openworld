@@ -1,0 +1,23 @@
+{
+  "_comment": "Green-valley test zone for Terrain3D. Heights: FastNoise2 'green_valley' (tools/world_generation/regions.cfg), then the hand-made sculpt below (tools/world_generation/build_terrain.gd). Points are [x, z, bed height]; world coordinates, the zone spans -256..256.",
+  "source": "res://world/terrain/source/green_valley",
+  "data_dir": "res://world/terrain/green_valley",
+  "origin": [-256, -256],
+  "spawn": [-150, 52],
+  "rivers": [
+    {"name": "Spring Brook", "width": 4.0, "depth": 0.45, "speed": 0.9, "murk": 0.05, "rapids": [1, 4, 5],
+     "points": [[-106, -226, 33.0], [-116, -186, 31.0], [-131, -151, 29.5], [-141, -126, 28.6], [-143, -119, 19.0], [-156, -86, 15.0], [-171, -51, 9.0], [-181, -16, 4.0], [-186, 6, 2.3]]}
+  ],
+  "falls": [
+    {"name": "Spring Brook Falls", "top": [-141, 29.05, -126], "bottom": [-143, 19.2, -119], "width": 4.4}
+  ],
+  "lakes": [
+    {"name": "Valley Pond", "center": [-186, 28], "radius": 30, "level": 3.0, "clarity": 2.2},
+    {"name": "Plunge pool", "center": [-143, -117], "radius": 6, "level": 19.45, "clarity": 1.5}
+  ],
+  "sculpt": {
+    "valley_radius": 70.0,
+    "bank_slope": 0.32,
+    "pools": [{"center": [-186, 28], "radius": 30, "floor": 1.4, "rim": 3.6}, {"center": [-143, -117], "radius": 6, "floor": 18.1, "rim": 19.8, "blend": 1.3}]
+  }
+}

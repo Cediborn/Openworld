@@ -4,3 +4,6 @@ game/assets/polyhaven/
 game/assets/vendor/
 game/android/
 __pycache__/
+
+# local physics-engine comparisons (docs/environment-pipeline.md)
+game/override.cfg
