@@ -473,5 +473,5 @@ func _point(id: String, label: String, local: Vector3, lines: Array) -> void:
 	it.position = local
 	it.action = func(_n: Interactable) -> void:
 		if open_text.is_valid():
-			open_text.call({"speaker": "", "lines": lines})
+			open_text.call({"speaker": "", "lines": lines, "lore": label.trim_prefix("Read ").trim_prefix("Look at ").capitalize()})
 	points[id] = it

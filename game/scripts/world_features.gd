@@ -813,7 +813,7 @@ func _build_trial(f: Dictionary) -> Array:
 			Structures.tablet(clue, Vector3(0, 0, -0.8), 0.0, Color(0.7, 0.85, 1.0))
 		clue.action = func(_n: Interactable) -> void:
 			state.set_flag("clue:" + f.id)
-			story.open({"speaker": "", "lines": f.clue_text})
+			story.open({"speaker": "", "lines": f.clue_text, "lore": "A Warden stone"})
 	var done := func(at: Array) -> void:
 		nodes.append(_give_fragment_at(f.id, at))
 	match f.kind:

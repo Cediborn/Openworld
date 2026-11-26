@@ -17,6 +17,7 @@ uniform float radius = 45.0;          // grass fades out at this distance from t
 uniform float wind_strength = 0.16;
 uniform bool flowers = false;         // this instance set draws flower heads instead
 uniform float night = 0.0;            // 0 day .. 1 night, makes Glow Hollow grass shine
+uniform float density_scale = 1.0;    // Grass density setting (0.25..1)
 group_uniforms;
 
 varying float tip;
@@ -46,6 +47,7 @@ void vertex() {
 	float meadow = max(0.0, 1.0 - b.r - b.g - b.b - b.a);
 	float density = clamp(meadow + b.a * 0.7 + b.b * 0.9 - b.r * 2.0 - b.g * 2.0, 0.0, 1.0);
 	density *= 1.0 - smoothstep(0.15, 0.5, max(pm.r, pm.g));
+	density *= density_scale;
 	float keep = step(hash(cell + 5.0), density);
 	// Flowers: only a few, only in meadow and village grass.
 	float flower_keep = step(hash(cell + 41.0), 0.07 * (meadow + b.a * 0.5));

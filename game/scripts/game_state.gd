@@ -185,6 +185,17 @@ func use_potion() -> bool:
 	return false
 
 
+## Adds a journal entry ("lore": inscriptions read; "rumour": things heard),
+## once per text. Kept in the save with the other flags.
+func add_note(kind: String, title: String, text: String) -> void:
+	var notes: Array = flags.get("journal_notes", [])
+	for n in notes:
+		if n.get("text", "") == text:
+			return
+	notes.append({"kind": kind, "title": title, "text": text})
+	flags["journal_notes"] = notes
+
+
 func save_state() -> Dictionary:
 	return {"coins": coins, "xp": xp, "level": level, "reputation": reputation, "items": items,
 		"weapon": weapon, "armor": armor, "smith_level": smith_level, "flags": flags}

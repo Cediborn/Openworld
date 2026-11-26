@@ -31,7 +31,7 @@ var in_danger := false
 
 ## Creates the Music and Effects buses once, so settings can change them.
 static func ensure_buses() -> void:
-	for bus in ["Music", "Effects"]:
+	for bus in ["Music", "Effects", "Ambience"]:
 		if AudioServer.get_bus_index(bus) == -1:
 			AudioServer.add_bus()
 			var i := AudioServer.bus_count - 1
@@ -40,8 +40,10 @@ static func ensure_buses() -> void:
 
 
 ## Applies the settings volumes (0..1).
-static func apply_volumes(music: float, effects: float) -> void:
+static func apply_volumes(music: float, effects: float, master := 1.0, ambience := 0.9) -> void:
 	ensure_buses()
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(master, 0.0001)))
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Ambience"), linear_to_db(maxf(ambience, 0.0001)))
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), linear_to_db(maxf(music, 0.0001)))
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Effects"), linear_to_db(maxf(effects, 0.0001)))
 
@@ -62,13 +64,13 @@ func setup(world_data: WorldData, p: Player, creatures: Array) -> void:
 		stream.loop = true
 		s.stream = stream
 		s.volume_db = -80.0
-		s.bus = "Effects"
+		s.bus = "Ambience"
 		s.set_meta("base_db", float(a.volume_db))
 		add_child(s)
 		ambience[key] = s
 		amb_target[key] = 0.0
 	var takes: int = cfg.footsteps.takes
-	for surface in ["grass", "stone", "snow"]:
+	for surface in ["grass", "stone", "snow", "water"]:
 		var list: Array[AudioStream] = []
 		for i in takes:
 			list.append(load("res://assets/audio/steps/%s_%d.ogg" % [surface, i]))
@@ -183,6 +185,8 @@ func _fade_ambience(delta: float) -> void:
 
 
 func _surface() -> String:
+	if player.water_depth > 0.08:
+		return "water"
 	var p := player.global_position
 	var w: Array = data.zone(p.x, p.z)
 	if w[1] > 0.5:

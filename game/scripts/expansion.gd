@@ -302,7 +302,7 @@ func _ambience(name: String, at: Vector3, size: float, db: float) -> void:
 	p.volume_db = db
 	p.unit_size = size
 	p.max_distance = size * 3.0
-	p.bus = "Effects"
+	p.bus = "Ambience"
 	p.autoplay = true
 	add_child(p)
 	p.global_position = at

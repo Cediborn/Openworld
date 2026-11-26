@@ -346,6 +346,12 @@ func open(c: Dictionary, with: Villager = null) -> void:
 	convo = c
 	line_i = 0
 	dialogue_with = with
+	if state:
+		# Inscriptions read and rumours heard go into the journal.
+		if c.has("lore"):
+			state.add_note("lore", c.lore, "\n".join(c.lines))
+		elif c.has("note"):
+			state.add_note("rumour", c.note, "\n".join(c.lines))
 	if with:
 		with.set_talking(true)
 	player.in_conversation = true
@@ -374,6 +380,8 @@ func _start_dialogue(v: Villager) -> void:
 		var lines := v.lines_for(stage if v.cfg.get("lines", {}).has(stage) else "default")
 		c = {"lines": lines}
 	c["speaker"] = v.display_name
+	if state:
+		state.flags["met:" + v.id] = true   # the journal's People section
 	open(c, v)
 
 

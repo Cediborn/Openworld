@@ -222,6 +222,15 @@ func _apply() -> void:
 
 
 ## "HH:MM" for the clock in the corner.
+## Shadows setting: "off", "low" (near you only) or "high" (this device's full set).
+func set_shadow_quality(q: String) -> void:
+	sun.shadow_enabled = q != "off"
+	moon.shadow_enabled = q != "off" and not mobile
+	var far := 55.0 if mobile else 200.0
+	sun.directional_shadow_max_distance = far * (0.45 if q == "low" else 1.0)
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if (mobile or q == "low") else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+
+
 func clock_text() -> String:
 	var h := int(time_of_day)
 	var m := int((time_of_day - h) * 60.0)

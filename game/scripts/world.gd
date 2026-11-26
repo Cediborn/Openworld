@@ -40,6 +40,11 @@ var in_title := false
 var autosave := 30.0
 ## Seconds between automatic saves.
 const AUTOSAVE_EVERY := 30.0
+## The adventure being played: its save slot id, its name and time played (s).
+var current_slot := ""
+var slot_name := ""
+var playtime := 0.0
+var last_saved_msec := 0
 
 
 ## Loading steps, in order. Each is recorded before it runs; if the game
@@ -56,6 +61,11 @@ var booted := false
 
 func _ready() -> void:
 	_parse_args()
+	if "--test-zone" in OS.get_cmdline_user_args():
+		# The Terrain3D green-valley test zone (also from exported builds).
+		get_tree().change_scene_to_file.call_deferred("res://world/test_zone/green_valley.tscn")
+		return
+	UiTheme.click_sounds(self)
 	config = JSON.parse_string(FileAccess.get_file_as_string("res://data/game_config.json"))
 	_read_last_boot()
 	_show_boot_label()
@@ -218,6 +228,7 @@ func _boot() -> void:
 		player.struck.connect(func(_t: Node3D, _p: Vector3) -> void: audio.sfx("sword_hit", -2.0, randf_range(0.9, 1.1)))
 		player.blocked_hit.connect(func() -> void: audio.sfx("block", -4.0))
 		player.dodged.connect(func() -> void: audio.sfx("roll", -6.0))
+		player.splashed.connect(func() -> void: audio.sfx("splash", -6.0, randf_range(0.9, 1.1)))
 		hud.banner_shown.connect(func(t: String) -> void:
 			if t.begins_with("Discovered"):
 				audio.sfx("discover", -6.0)
@@ -294,6 +305,22 @@ func _boot() -> void:
 	menu.continue_game.connect(_continue_game)
 	menu.resumed.connect(_resume)
 	menu.save_and_quit.connect(_save_and_quit)
+	menu.quit_game.connect(func() -> void:
+		save_game()
+		get_tree().quit())
+	menu.load_slot.connect(_load_slot)
+	menu.save_now.connect(func() -> void:
+		in_title = false
+		save_game())
+	menu.slot_renamed.connect(func(id: String, n: String) -> void:
+		if id == current_slot:
+			slot_name = n)
+	menu.open_journal.connect(func(section: String) -> void:
+		if journal:
+			menu.hide_menu()
+			journal.open_journal(section)
+			# Closing a journal opened from the pause menu goes back to it.
+			journal.closed.connect(_pause, CONNECT_ONE_SHOT))
 	menu.settings_changed.connect(func(s: Dictionary) -> void:
 		_apply_settings(s)
 		SaveGame.save_settings(s))
@@ -311,17 +338,48 @@ func _boot() -> void:
 
 func _apply_settings(s: Dictionary) -> void:
 	settings = s
-	GameAudio.apply_volumes(s.music, s.effects)
+	GameAudio.apply_volumes(s.music, s.effects, s.master, s.ambience)
+	UiTheme.reduced_motion = s.reduced_motion
+	get_tree().root.content_scale_factor = clampf(float(s.text_size), 0.85, 1.3)
 	if quality:
 		quality.set_preset(s.quality)
 	if player:
 		player.look_mult = s.sensitivity
+		player.camera.far = {"near": 1200.0, "normal": 2500.0}.get(s.view_distance, 5000.0)
 	if hud_fps:
 		hud_fps.visible = s.show_fps
+	if hud:
+		hud.set_full(s.hud_full)
+	if sky:
+		sky.env.adjustment_brightness = clampf(float(s.brightness), 0.7, 1.3)
+		sky.set_shadow_quality(s.shadows)
+	if grass:
+		grass.set_density(s.foliage)
+	if not mobile and not OS.has_feature("mobile") and DisplayServer.get_name() != "headless":
+		var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if s.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
+		if DisplayServer.window_get_mode() != mode and not (mode == DisplayServer.WINDOW_MODE_WINDOWED and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MAXIMIZED):
+			DisplayServer.window_set_mode(mode)
+		if not s.fullscreen:
+			var wh: PackedStringArray = str(s.window_size).split("x")
+			var want := Vector2i(int(wh[0]), int(wh[1])) if wh.size() == 2 else Vector2i(1600, 900)
+			if DisplayServer.window_get_size() != want and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED:
+				DisplayServer.window_set_size(want)
+				DisplayServer.window_set_position(DisplayServer.screen_get_position() + (DisplayServer.screen_get_size() - want) / 2)
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if s.vsync else DisplayServer.VSYNC_DISABLED)
+		var vp := get_viewport()
+		vp.msaa_3d = Viewport.MSAA_2X if s.aa == "msaa" else Viewport.MSAA_DISABLED
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if s.aa == "off" else Viewport.SCREEN_SPACE_AA_FXAA
 
 
-func _new_game() -> void:
-	SaveGame.delete_save()
+## Starts a new adventure in a new save slot (other slots are never touched).
+func _new_game(slot_name := "") -> void:
+	if current_slot != "" and not in_title:
+		save_game()   # keep the adventure we are leaving
+	if slot_name.strip_edges() == "":
+		slot_name = SaveGame.next_name()
+	current_slot = SaveGame.new_slot(slot_name)
+	self.slot_name = slot_name
+	playtime = 0.0
 	if state:
 		state.load_state({})
 	if story:
@@ -345,8 +403,24 @@ func _new_game() -> void:
 	save_game()
 
 
+## Continues the most recently saved adventure.
 func _continue_game() -> void:
-	var s := SaveGame.load_save()
+	_load_slot(SaveGame.latest_slot())
+
+
+## Loads an adventure exactly where it was saved, replacing whatever is in play
+## (which was saved first when the pause menu opened).
+func _load_slot(id: String) -> void:
+	if id == "":
+		return
+	var s := SaveGame.load_save(id)
+	if current_slot != "" and current_slot != id and not in_title:
+		save_game()
+	current_slot = id
+	slot_name = str(s.get("meta", {}).get("name", "Adventure"))
+	playtime = float(s.get("playtime", s.get("meta", {}).get("playtime", 0.0)))
+	if features:
+		features.end_event()
 	if s.has("player"):
 		var p: Array = s.player
 		player.respawn(Vector3(p[0], maxf(p[1], data.height(p[0], p[2]) + 0.1), p[2]))
@@ -368,6 +442,7 @@ func _continue_game() -> void:
 	if expansion and expansion.player:
 		expansion.on_loaded()
 	_resume()
+	save_game()   # marks it as the adventure last played (Continue)
 
 
 func _resume() -> void:
@@ -384,32 +459,39 @@ func _pause() -> void:
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	hud.visible = false
-	menu.show_pause(settings)
+	var where: String = WorldData.ZONE_NAMES[data.dominant_zone(player.global_position.x, player.global_position.z)] if data else ""
+	menu.current_slot = current_slot
+	var info := "%s   ·   %s   ·   %s" % [slot_name, where, sky.clock_text()] if sky else where
+	menu.show_pause(settings, info, "Progress saved" if current_slot != "" else "Not saved")
 
 
 func _save_and_quit() -> void:
 	save_game()
-	if OS.has_feature("mobile"):
-		get_tree().quit()
-	else:
-		in_title = true
-		hud.visible = false
-		menu.show_title(true, settings)
+	in_title = true
+	hud.visible = false
+	menu.show_title(true, settings)
 
 
-## Writes progress to the save file (position, health, quest, time of day).
+## Writes progress to the current adventure's slot (position, health, quests,
+## items, discoveries, time of day, horses, playtime).
 func save_game() -> void:
-	if player == null or player.dead or shot_path != "":
+	# Never at the title screen: the world there is not anyone's adventure yet.
+	if player == null or player.dead or shot_path != "" or current_slot == "" or in_title:
 		return
 	var p := player.global_position
-	SaveGame.save({
+	var region: String = WorldData.ZONE_NAMES[data.dominant_zone(p.x, p.z)] if data else ""
+	last_saved_msec = Time.get_ticks_msec()
+	if hud:
+		hud.show_saving()
+	SaveGame.save(current_slot, {
+		"playtime": playtime,
 		"player": [p.x, p.y, p.z], "yaw": player.yaw, "health": player.health,
 		"story": story.save_state() if story else {},
 		"progress": state.save_state() if state else {},
 		"quests": quests.save_state() if quests else {},
 		"hour": sky.time_of_day if sky else 8.0,
 		"horses": stable.save_state() if stable else {},
-	})
+	}, {"name": slot_name, "region": region, "level": state.level if state else 1, "playtime": playtime})
 
 
 var _save_soon := false
@@ -462,6 +544,8 @@ func _parse_args() -> void:
 			var p := a.substr(8).split(",")
 			config_spawn_override = Vector3(float(p[0]), 0, float(p[1]))
 			spawn_yaw = float(p[2]) if p.size() > 2 else 0.0
+		elif a.begins_with("--ui_tour="):
+			ui_tour = a.substr(10).split(",")
 		elif a.begins_with("--tour="):
 			tour = a.substr(7).split(";")
 		elif a.begins_with("--fly="):
@@ -476,6 +560,9 @@ func _parse_args() -> void:
 var fly: PackedStringArray = []
 ## Screenshot tour: "x,y,z,yaw,pitch,hour;..." saved as <shot>_<n>.png
 var tour: PackedStringArray = []
+## Interface screenshot tour: "title,pause,settings,quests,people,inventory,map,dialogue,hud"
+## saved as <shot>_ui_<name>.png (dev tool for checking the menus).
+var ui_tour: PackedStringArray = []
 var tour_cam: Camera3D
 var config_spawn_override := Vector3.INF
 var spawn_yaw := 0.0
@@ -516,8 +603,7 @@ func _label(pos: Vector2, size: int) -> Label:
 
 
 func _build_ui() -> void:
-	var layer := CanvasLayer.new()
-	add_child(layer)
+	var layer: CanvasLayer = hud   # clock, FPS and place names hide with the HUD (menus)
 	hud_fps = _label(Vector2(18, 12), 18)
 	layer.add_child(hud_fps)
 	hud_clock = _label(Vector2(18, 38), 22)
@@ -528,6 +614,9 @@ func _build_ui() -> void:
 	hud_zone.position = Vector2(-300, 70)
 	hud_zone.size = Vector2(600, 60)
 	hud_zone.modulate.a = 0.0
+	hud_zone.add_theme_font_override("font", UiTheme.title_font())
+	hud_zone.add_theme_color_override("font_color", UiTheme.GOLD_BRIGHT)
+	hud_clock.add_theme_font_override("font", UiTheme.title_font())
 	layer.add_child(hud_zone)
 	if DisplayServer.is_touchscreen_available() or mobile:
 		var tc := TouchControls.new()
@@ -542,6 +631,8 @@ func _process(delta: float) -> void:
 	if player == null or sky == null or hud_fps == null:
 		return
 	Villager.hour = sky.time_of_day
+	if not in_title and not get_tree().paused:
+		playtime += delta
 	autosave -= delta
 	if autosave <= 0.0:
 		autosave = AUTOSAVE_EVERY
@@ -567,6 +658,10 @@ func _process(delta: float) -> void:
 		if booted:
 			_run_tour()
 		return
+	if ui_tour.size() > 0:
+		if booted:
+			_run_ui_tour()
+		return
 	if shot_path != "":
 		shot_frames += 1
 		if shot_act.begins_with("ride") and stable:
@@ -588,18 +683,68 @@ func _process(delta: float) -> void:
 					story.interact()
 				"hurt":
 					player.take_damage(35.0, player.global_position + Vector3(1, 0, 0))
-				"journal", "map":
-					journal.open_journal()
+				"journal", "map", "people", "inventory", "discoveries":
+					journal.open_journal("quests" if shot_act == "journal" else shot_act)
 					get_tree().paused = false   # keep the screenshot counter running
-					if shot_act == "map":
-						journal.tabs.current_tab = 1
-					journal.refresh()
+				"pause":
+					_pause()
+					get_tree().paused = false
+				"settings":
+					_pause()
+					menu._open_settings("pause")
+					get_tree().paused = false
 		if shot_frames == 50:
 			for l in [hud_fps, hud_clock, hud_zone]:
 				l.visible = false
 		if shot_frames == 60:
 			get_viewport().get_texture().get_image().save_png(shot_path)
 			get_tree().quit()
+
+
+func _run_ui_tour() -> void:
+	var idx := shot_frames / 12
+	var f := shot_frames % 12
+	shot_frames += 1
+	get_viewport().scaling_3d_scale = 0.35   # the 3D behind is only a backdrop; keeps software rendering quick
+	if idx >= ui_tour.size():
+		get_tree().quit()
+		return
+	var what := ui_tour[idx]
+	if f == 0:
+		journal.visible = false
+		menu.hide_menu()
+		story.hud.hide_dialogue()
+		get_tree().paused = false
+		hud.visible = true
+		match what:
+			"title":
+				hud.visible = false
+				menu.show_title(true, settings)
+			"pause":
+				_pause()
+			"settings", "settings_audio", "settings_graphics":
+				_pause()
+				menu._open_settings("pause")
+				menu.settings_tabs.current_tab = {"settings": 0, "settings_audio": 2, "settings_graphics": 1}[what]
+			"confirm":
+				hud.visible = false
+				menu.show_title(true, settings)
+				menu._ask_new_game()
+			"slots":
+				hud.visible = false
+				menu.show_title(true, settings)
+				menu._open_slots("title")
+			"dialogue":
+				story._start_dialogue(story.by_id["elder"])
+			"hud":
+				hud.toast("+50 coins", "coins")
+				hud.toast("Quest updated", "quest")
+				hud.show_banner("The Old Mill", "Discovered")
+			_:
+				journal.open_journal(what)
+		get_tree().paused = false   # keep the counter running
+	if f == 10:
+		get_viewport().get_texture().get_image().save_png(shot_path.get_basename() + "_ui_%s.png" % what)
 
 
 func _run_tour() -> void:

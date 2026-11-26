@@ -233,11 +233,11 @@ func _house(p: Player) -> void:
 	check(sleep != null, "your bed offers 'Sleep until morning'")
 	world.sky.time_of_day = 22.5
 	p.health = p.max_health * 0.3
-	SaveGame.delete_save()
+	SaveGame.delete_slot(world.current_slot)
 	sleep.action.call(sleep)
 	check(absf(world.sky.time_of_day - 7.0) < 0.1, "sleeping moves the clock to 7:00")
 	check(p.health >= p.max_health, "you wake fully healed")
-	check(SaveGame.has_save(), "sleeping saves the game")
+	check(not SaveGame.load_save(world.current_slot).is_empty(), "sleeping saves the game")
 	# Storage chests: materials go in, stay in the save, come back out.
 	var st: GameState = world.state
 	var store: Interactable = null
@@ -254,7 +254,7 @@ func _house(p: Player) -> void:
 	check(st.count("iron_ore") == 0 and st.count("potion") == potions, "materials go into the chest; potions stay with you")
 	world.save_game()
 	st.flags.erase("house_stash")
-	st.load_state(SaveGame.load_save().get("progress", {}))
+	st.load_state(SaveGame.load_save(world.current_slot).get("progress", {}))
 	take.action.call(take)
 	check(st.count("iron_ore") == 3, "after a save and load they come back out (%d iron ore)" % st.count("iron_ore"))
 	check(Villager.places.has("tavern") and Villager.places.has("church") and Villager.doors.size() >= 40, "townsfolk know the tavern, the church and their doors (%d)" % Villager.doors.size())
@@ -321,7 +321,7 @@ func _save_compat(p: Player) -> void:
 	var old := {"player": [0, 5, 40], "yaw": 0.0, "health": 80.0, "story": {"stage": "done", "found": ["frost", "ember", "glow"]},
 		"progress": {"coins": 345, "xp": 900, "level": 4, "items": {"potion": 2, "frost_coat": 1}, "weapon": "iron_sword", "armor": "frost_coat", "flags": {"some_flag": true}},
 		"quests": {}, "hour": 13.0, "horses": {"white": [348.0, 128.0, 0.0]}}
-	SaveGame.save(old)
+	SaveGame.save(world.current_slot, old, {"name": "Old save"})
 	world._continue_game()
 	await physics(10)
 	check(st.coins == 345 and st.level == 4 and st.count("frost_coat") == 1 and st.armor == "frost_coat", "an old save keeps coins, level, items and armour")

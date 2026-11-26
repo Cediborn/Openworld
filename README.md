@@ -40,7 +40,7 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 | Get on / off a horse | E next to the horse | Tap the prompt |
 | Gallop (on a horse) | Shift | Orange button |
 | Dialogue choices | 1, 2, 3 or click | Tap |
-| Journal (quests, map, gear, progress) | J | Book button (top right) |
+| Journal (quests, people, discoveries, lore, notes, inventory, map) | J | Book button (top right) |
 | Draw / holster the flintlock | G | Pistol button (right side) |
 | Aim / fire the flintlock | Hold right mouse / left click | Pistol drawn: red button fires (auto-aim at the crosshair) |
 | Reload | R (or fire when empty) | Reload button (while drawn) |
@@ -58,6 +58,8 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 - **Yellow "!"** floats over anyone (or anything, like the contract board or a found map) with a mission for you, and stays visible through buildings and from far away. A blue "?" means someone to report back to.
 - **Exploring**: 22 named places (some hidden), 12 treasures (chests, buried caches that need their map, a locked cellar, guarded hoards), 6 shrines with different puzzles, 4 rare bosses with unique weapons, random world events (raids, a travelling merchant, rare creatures, eruptions, travellers in need).
 - **Progress**: coins, experience and levels, Brickton reputation, weapons and armour (frost and fire resistance), blacksmith upgrades. Everything saves.
+- **Save slots**: every New Game is its own adventure in its own slot; Continue picks up the one you played last, Load Game lists them all (name, level, region, time played, when saved) and lets you rename or delete them. The game saves itself every 30 seconds, at quest steps, when you pause, sleep or quit, and writes each save crash-safely (a damaged save falls back to the previous one). Saves from before slots existed appear as "Adventure 1"; the old file is left as it was.
+- **Menus**: a medieval look throughout (Cinzel and Alegreya fonts, gold-framed panels, a parchment journal with People, Discoveries, Lore and Notes pages, a sepia map you can drag and zoom). Settings has Display, Graphics, Audio, Gameplay, Controls and Accessibility pages (text size, reduced motion) with Apply, Cancel and Reset.
 
 Design notes: `design/gdd/chapter-one.md`. Content is generated from `tools/content/*.py` into `game/data/`.
 

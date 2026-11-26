@@ -94,6 +94,7 @@ jobs:
           ~/godot/godot --headless --path . -s res://tests/integration/ground_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/horse_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/routine_test.gd
+          ~/godot/godot --headless --path . -s res://tests/integration/save_slots_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/expansion_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/expansion_test.gd -- --mobile
 

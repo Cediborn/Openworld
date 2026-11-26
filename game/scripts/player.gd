@@ -90,6 +90,10 @@ var use_potion: Callable
 signal struck(target: Node3D, pos: Vector3)
 ## Emitted when a blocked hit is absorbed.
 signal blocked_hit
+## Stepped or fell into water (for the splash).
+signal splashed
+## How deep the water is where you stand (0 on land); you wade slower in it.
+var water_depth := 0.0
 ## Emitted when a swing starts (combo index) and when a dodge roll starts.
 signal swung(index: int)
 signal dodged
@@ -271,6 +275,11 @@ func _physics_process(delta: float) -> void:
 	var in_lava := _in_lava()
 	if in_lava:
 		speed *= combat.get("lava_speed_factor", 0.55)
+	var wet := Water.depth_at(global_position) if not Water.bodies.is_empty() else 0.0
+	if wet > 0.12 and water_depth <= 0.12:
+		splashed.emit()
+	water_depth = wet
+	speed *= lerpf(1.0, 0.5, clampf(wet / 0.9, 0.0, 1.0))   # wading
 	var target := wish.normalized() * speed if amount > 0.05 else Vector3.ZERO
 	if swing >= 0:
 		target += swing_step

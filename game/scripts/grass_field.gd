@@ -47,6 +47,12 @@ func _make_layer(data: WorldData, mesh: Mesh, n: int, flowers: bool) -> MultiMes
 	return mmi
 
 
+## Grass density setting: thins every tuft field (0.25..1).
+func set_density(d: float) -> void:
+	for m in materials:
+		m.set_shader_parameter("density_scale", clampf(d, 0.0, 1.0))
+
+
 ## A thin stem with a small flat flower head on top.
 static func _flower_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()

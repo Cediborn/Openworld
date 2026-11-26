@@ -101,7 +101,7 @@ func for_villager(v: Villager) -> Dictionary:
 					0:
 						open_shop("tavern", v.display_name)
 					1:
-						return {"lines": [RUMOURS[randi() % RUMOURS.size()]]}
+						return {"lines": [RUMOURS[randi() % RUMOURS.size()]], "note": "Heard at the tavern"}
 					2:
 						var c := quests.contract_convo("board")
 						return c if not c.is_empty() else {"lines": ["Father Aldric up at the church was asking for help. And the contract board in the square always has something."]}
