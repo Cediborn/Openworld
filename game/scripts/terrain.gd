@@ -220,8 +220,10 @@ func _build_far_ring() -> void:
 			var a: float = TAU * s / segs
 			var x: float = cos(a) * rad
 			var z: float = sin(a) * rad
-			var env: float = smoothstep(500.0, 900.0, rad) * (1.0 - smoothstep(2600.0, 3200.0, rad))
-			var h: float = 60.0 + env * (200.0 + (ridge.get_noise_2d(x, z) * 0.5 + 0.5) * 650.0)
+			# Low foothills first, peaks far off: they sit ~10-18 degrees above the
+			# horizon from the island instead of standing over it like a wall.
+			var env: float = smoothstep(560.0, 1600.0, rad) * (1.0 - smoothstep(2600.0, 3200.0, rad))
+			var h: float = 40.0 + env * (90.0 + (ridge.get_noise_2d(x, z) * 0.5 + 0.5) * 480.0)
 			row.append(Vector3(x, h, z))
 		pts.append(row)
 	for r in rings:

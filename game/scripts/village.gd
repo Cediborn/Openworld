@@ -30,7 +30,7 @@ func setup(world_data: WorldData) -> void:
 	window_mat.albedo_color = Color(0.12, 0.13, 0.15)
 	window_mat.roughness = 0.1
 	window_mat.emission_enabled = true
-	window_mat.emission = Color(1.0, 0.7, 0.35)
+	window_mat.emission = Color(1.0, 0.6, 0.27)   # warm candlelight, not white
 	window_mat.emission_energy_multiplier = 0.0
 	for h in data.houses:
 		if not h.get("reserved", false):
@@ -43,7 +43,7 @@ func build_house(h: Dictionary) -> Node3D:
 
 
 func set_night(amount: float) -> void:
-	window_mat.emission_energy_multiplier = amount * 3.0
+	window_mat.emission_energy_multiplier = amount * 1.5
 	for l in night_lights:
 		l.visible = amount > 0.3
 		l.light_energy = 1.4 * amount

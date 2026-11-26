@@ -3,8 +3,9 @@
 // texture, so the CPU never builds terrain meshes.
 // Layers (texture array order): 0 meadow, 1 snow, 2 lava rock, 3 glow floor,
 // 4 village grass, 5 dirt trail, 6 cobblestone, 7 cliff rock.
-// Budget: 2 zone layers + trail + road + cliff + snow cap = 6 albedo reads
-// (+6 normal reads on PC). Zone selection uses the two strongest weights.
+// Budget: 2 zone layers + trail + road + snow cap = 5 albedo reads, plus 3
+// for triplanar cliff rock only on steep ground (+ the same normal
+// reads on PC). Zone selection uses the two strongest weights.
 shader_type spatial;
 
 group_uniforms world;
@@ -59,6 +60,31 @@ vec3 layer_normal(int i, vec2 xz) {
 	return texture(normal_layers, vec3(xz * layer_scale[i], float(i))).rgb;
 }
 
+// Cliff rock projected from the side as well as from above, so steep mountain
+// walls show rock instead of the top-down texture smeared into vertical streaks.
+vec3 tri_weights(vec3 n) {
+	vec3 bw = pow(abs(n), vec3(4.0));
+	return bw / (bw.x + bw.y + bw.z);
+}
+
+vec3 cliff_albedo(vec3 p, vec3 bw) {
+	if (!use_textures) {
+		return fallback_colors[7];
+	}
+	float s = layer_scale[7];
+	vec3 c = texture(albedo_layers, vec3(p.zy * s, 7.0)).rgb * bw.x
+		+ texture(albedo_layers, vec3(p.xz * s, 7.0)).rgb * bw.y
+		+ texture(albedo_layers, vec3(p.xy * s, 7.0)).rgb * bw.z;
+	return c * layer_tint[7];
+}
+
+vec3 cliff_normal(vec3 p, vec3 bw) {
+	float s = layer_scale[7];
+	return texture(normal_layers, vec3(p.zy * s, 7.0)).rgb * bw.x
+		+ texture(normal_layers, vec3(p.xz * s, 7.0)).rgb * bw.y
+		+ texture(normal_layers, vec3(p.xy * s, 7.0)).rgb * bw.z;
+}
+
 void fragment() {
 	vec2 xz = world_pos.xz;
 	vec4 b = texture(biome_map, map_uv(xz));
@@ -85,18 +111,23 @@ void fragment() {
 	float cliff = smoothstep(0.30, 0.45, slope + (micro - 0.5) * 0.1);
 	float trail = smoothstep(0.3, 0.7, pm.r + (micro - 0.5) * 0.4);
 	float road = smoothstep(0.4, 0.6, pm.g);
-	float snow_cap = smoothstep(snow_line - 15.0, snow_line + 15.0, world_pos.y + macro * 30.0) * (1.0 - smoothstep(0.55, 0.75, slope));
+	float snow_cap = smoothstep(snow_line - 15.0, snow_line + 15.0, world_pos.y + macro * 30.0) * (1.0 - smoothstep(0.35, 0.55, slope + (micro - 0.5) * 0.15));   // snow lies on ledges, sheer faces show rock
 
 	// Trails through snow are trampled snow, not bare dirt.
 	vec3 trail_c = mix(layer_albedo(5, xz), layer_albedo(1, xz) * 0.82, smoothstep(0.3, 0.7, w[1]));
 	col = mix(col, trail_c, trail);
 	col = mix(col, layer_albedo(6, xz), road);
-	col = mix(col, layer_albedo(7, xz) * mix(vec3(1.0), vec3(0.55, 0.5, 0.52), w[2]), cliff);
+	vec3 bw = tri_weights(world_nrm);
+	if (cliff > 0.001) {
+		col = mix(col, cliff_albedo(world_pos, bw) * mix(vec3(1.0), vec3(0.55, 0.5, 0.52), w[2]), cliff);
+	}
 	col = mix(col, layer_albedo(1, xz), snow_cap);
 	if (use_normal_maps) {
 		nrm = mix(nrm, layer_normal(5, xz), trail);
 		nrm = mix(nrm, layer_normal(6, xz), road);
-		nrm = mix(nrm, layer_normal(7, xz), cliff);
+		if (cliff > 0.001) {
+			nrm = mix(nrm, cliff_normal(world_pos, bw), cliff);
+		}
 		NORMAL_MAP = nrm;
 	}
 	// Ground near lava glows faintly orange.

@@ -99,6 +99,35 @@ func _init() -> void:
 	check(not in_lava, "it never crosses lava")
 	check(notes.any(func(n: String) -> bool: return n.contains("on its way")) and notes.any(func(n: String) -> bool: return n.contains("is here")), "on-screen notes for 'on its way' and 'is here'")
 
+	# --- Somewhere it can't reach: it comes as close as it safely can and says so. ---
+	var spot := stable.nav.nearest_open(Vector2(-250, -3))
+	p.global_position = Vector3(spot.x, data.height(spot.x, spot.y) + 0.3, spot.y)
+	var pc := stable.nav.cell_of(spot)
+	var walled := {}
+	for dj in range(-2, 3):
+		for di in range(-2, 3):
+			if maxi(absi(di), absi(dj)) == 2:
+				var c := pc + Vector2i(di, dj)
+				walled[c] = stable.nav.grid.is_point_solid(c)
+				stable.nav.grid.set_point_solid(c, true)
+	notes.clear()
+	var res2 := stable.whistle()
+	check(res2 == "near", "whistling where it can't reach you: it comes as near as it can (%s)" % res2)
+	simulated = 0.0
+	through_wall = 0
+	while white.is_coming() and simulated < 120.0:
+		white._process(1.0 / 30.0)
+		simulated += 1.0 / 30.0
+		if not _open_near(stable.nav, white.global_position.x, white.global_position.z):
+			through_wall += 1
+	var wait_d := Vector2(white.global_position.x, white.global_position.z).distance_to(spot)
+	check(not white.is_coming() and wait_d > 6.0 and wait_d < 20.0 and through_wall == 0, "it waits on open ground just outside (%.1f m away, %d blocked samples)" % [wait_d, through_wall])
+	check(notes.any(func(n: String) -> bool: return n.contains("can't reach you")), "and the player is told it can't reach them")
+	for c in walled:
+		stable.nav.grid.set_point_solid(c, walled[c])
+	p.global_position = Vector3(street.x, data.height(street.x, street.y) + 0.3, street.y)
+	white.global_position = Vector3(street.x + 2.0, data.height(street.x + 2.0, street.y), street.y)
+
 	# --- Feedback: right here, riding, too far. ---
 	check(stable.whistle() == "here", "whistling with the horse beside you says it's right here")
 	p.mount(white)

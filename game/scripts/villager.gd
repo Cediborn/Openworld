@@ -12,6 +12,17 @@ extends Node3D
 ##   sit     - sits on a bench or at a table
 ## Guards also fight monsters that come into town, and anyone can be told to
 ## run for shelter (hide) during an attack.
+##
+## Daily routine (townsfolk who stroll or wander): some visit the church in the
+## morning, many spend the evening outside the tavern, and everyone walks home
+## and goes indoors at night, coming back out after dawn.
+
+## Hour of the day (0-24), set by the world each frame.
+static var hour := 12.0
+## Where routines lead: "tavern" and "church" spots, set when the town is built.
+static var places := {}
+## House doors (where townsfolk go indoors at night), set when the town is built.
+static var doors: Array = []
 
 var cfg: Dictionary = {}
 var id := ""
@@ -41,6 +52,14 @@ var patrol_i := 0
 ## Fewer animation updates when far from the camera (set by Story).
 var lod := 0
 var _lod_skip := 0
+## Where the daily routine has them: "", "home", "tavern" or "church".
+var routine := ""
+var _base_mode := ""
+var _routine_check := 0.0
+var _shift := 0.0          ## this person's habits run up to ~40 min early or late
+var _likes := {}           ## "tavern" / "church": goes there at all
+var _habit_rng := RandomNumberGenerator.new()
+var _col: CollisionShape3D
 
 
 ## Builds the villager. Colours in cfg.outfit are [r, g, b] arrays.
@@ -50,7 +69,12 @@ func setup(villager_cfg: Dictionary, seed_value: int) -> void:
 	display_name = cfg.name
 	role = cfg.get("role", "")
 	mode = cfg.get("mode", "wander")
+	_base_mode = mode
 	rng.seed = seed_value
+	# Own generator for habits, so everyone's other randomness stays as it was.
+	_habit_rng.seed = seed_value * 7919 + 1
+	_shift = _habit_rng.randf_range(-0.7, 0.7)
+	_likes = {"tavern": _habit_rng.randf() < 0.65, "church": _habit_rng.randf() < 0.4}
 	var outfit := {}
 	for k in cfg.outfit:
 		var v = cfg.outfit[k]
@@ -74,6 +98,7 @@ func setup(villager_cfg: Dictionary, seed_value: int) -> void:
 	col.position.y = cap.height * 0.5
 	blocker.add_child(col)
 	add_child(blocker)
+	_col = col
 	marker = make_marker()
 	marker.position.y = MARKER_Y * body.scale.x
 	add_child(marker)
@@ -188,6 +213,8 @@ func set_hiding(on: bool, spot := Vector3.INF) -> void:
 	path = []
 	walking = false
 	visible = true
+	if _col:
+		_col.set_deferred("disabled", false)
 
 
 func _process(delta: float) -> void:
@@ -206,6 +233,10 @@ func _process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(to.x, to.z), clampf(delta * 6.0, 0, 1))
 		body.play("Idle_Talking", 0.3)
 		return
+	_routine_check -= delta
+	if _routine_check <= 0.0:
+		_routine_check = 1.0
+		_follow_routine()
 	if hiding:
 		_hide_update(delta)
 		return
@@ -234,6 +265,9 @@ func _idle(_delta: float) -> void:
 			# Workers step away from the bench now and then and come back.
 			if mode == "work" and timer <= 0.0 and float(cfg.get("wander", 0.0)) > 0.2:
 				_pick_wander()
+		"visit":
+			# Outside the tavern: chatting; at the church: a quiet prayer.
+			body.play("Pray" if routine == "church" else "Idle_Talking", 0.4)
 		"stroll":
 			body.play(cfg.get("idle_anim", "Idle"), 0.3)
 			if timer <= 0.0 and town:
@@ -267,6 +301,9 @@ func _pick_wander() -> void:
 func _walk(delta: float) -> void:
 	if path.is_empty():
 		walking = false
+		if routine == "home":
+			set_hiding(true)   # at the door: indoors for the night
+			return
 		timer = rng.randf_range(3.0, 9.0) if mode != "patrol" else rng.randf_range(2.0, 5.0)
 		return
 	var goal: Vector3 = path[0]
@@ -287,12 +324,12 @@ func _walk(delta: float) -> void:
 ## Walks (briskly) to the shelter spot, then disappears indoors.
 func _hide_update(delta: float) -> void:
 	if hide_spot == Vector3.INF:
-		visible = false
+		_go_indoors()
 		return
 	var to := hide_spot - global_position
 	to.y = 0
 	if to.length() < 0.6:
-		visible = false
+		_go_indoors()
 		return
 	global_position += to.normalized() * minf(2.6 * delta, to.length())
 	rotation.y = lerp_angle(rotation.y, atan2(to.x, to.z), clampf(delta * 6.0, 0, 1))
@@ -339,3 +376,68 @@ static func _anim_speed(anim_name: String) -> float:
 			return 3.6
 		_:
 			return 1.45
+
+
+func _go_indoors() -> void:
+	visible = false
+	if _col:
+		_col.set_deferred("disabled", true)   # no invisible body blocking the doorway
+
+
+# ---------- Daily routine ----------
+
+## What the clock asks of this person now ("" = their usual habit).
+func wanted_routine() -> String:
+	if role != "villager" or cfg.get("keep", false) or not _base_mode in ["stroll", "wander"] \
+			or (marker and marker.visible) or doors.is_empty():
+		return ""
+	var h := fposmod(hour + _shift, 24.0)
+	if h >= 21.5 or h < 6.0:
+		return "home"
+	if h >= 17.5 and _likes.tavern and places.has("tavern"):
+		return "tavern"
+	if h >= 7.5 and h < 9.5 and _likes.church and places.has("church"):
+		return "church"
+	return ""
+
+
+func _follow_routine() -> void:
+	if talking or (hiding and routine != "home"):
+		return    # a quest or an attack has them; leave it be
+	var want := wanted_routine()
+	if want == routine:
+		if want == "home" and not hiding and not walking:
+			_walk_to(_home_door())   # someone brought them back out at night
+		return
+	var was := routine
+	routine = want
+	if was == "home" and hiding:
+		# Morning: step out of the front door.
+		var door := _home_door()
+		set_hiding(false)
+		global_position = Vector3(door.x, height_at.call(door.x, door.z), door.z)
+	match want:
+		"home":
+			_walk_to(_home_door())
+		"tavern", "church":
+			var spot: Vector3 = places[want] + Vector3(_habit_rng.randf_range(-3.0, 3.0), 0, _habit_rng.randf_range(-1.5, 1.5))
+			_walk_to(spot)
+		_:
+			mode = _base_mode
+			_walk_to(home)
+
+
+func _walk_to(spot: Vector3) -> void:
+	if routine != "":
+		mode = "visit"
+	path = town.route(global_position, spot) if town else []
+	path.append(spot)
+	walking = true
+
+
+func _home_door() -> Vector3:
+	var best := Vector3.INF
+	for d: Vector3 in doors:
+		if best == Vector3.INF or d.distance_to(home) < best.distance_to(home):
+			best = d
+	return best

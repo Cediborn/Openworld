@@ -40,7 +40,7 @@ func add_kinds(groups: Array) -> void:
 static func _group_of(item: Dictionary) -> String:
 	if item.kind != "model":
 		return item.kind
-	return "model_plant" if item.id in ["fern", "shrub_a", "shrub_b", "nettle", "dandelion"] else "model_rock"
+	return "model_plant" if item.id in ["fern", "shrub_a", "shrub_b", "nettle", "dandelion", "wildflower_a", "wildflower_b", "periwinkle"] else "model_rock"
 
 
 # ---------- What each item looks like ----------
@@ -183,7 +183,7 @@ func _emit(item: Dictionary, parts: Dictionary, xforms: Array) -> void:
 		tiles[key].append(xf)
 	var near_d: float = item.near * (0.7 if mobile else 1.0)
 	var far_d: float = item.far * (0.6 if mobile else 1.0)
-	var collide: bool = item.kind in ["oak", "pine", "mushroom"] or item.id in ["dead_tree", "rock_mid", "boulder", "basalt_a", "basalt_b", "crystal"]
+	var collide: bool = item.kind in ["oak", "pine", "mushroom"] or item.id in ["dead_tree", "quiver_tree", "rock_mid", "boulder", "basalt_a", "basalt_b", "crystal"]
 	for key in tiles:
 		var list: Array = tiles[key]
 		var centre := Vector3((key.x + 0.5) * TILE, 0, (key.y + 0.5) * TILE)
@@ -224,7 +224,7 @@ func _add_colliders(key: Vector2i, list: Array, item: Dictionary) -> void:
 	for xf in list:
 		var s: float = xf.basis.get_scale().x
 		var col := CollisionShape3D.new()
-		if item.kind in ["oak", "pine", "mushroom"] or item.id == "dead_tree":
+		if item.kind in ["oak", "pine", "mushroom"] or item.id in ["dead_tree", "quiver_tree"]:
 			var c := CylinderShape3D.new()
 			c.radius = 0.4 * s
 			c.height = 4.0

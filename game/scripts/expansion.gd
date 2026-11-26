@@ -61,6 +61,19 @@ func wire(w: Node) -> void:
 	interiors.setup(data, village, player)
 	interiors.play_sfx = sfx
 	interiors.on_rest = rest
+	interiors.state = w.state
+	# Townsfolk routines: home doors (not yours), the tavern front, the church steps.
+	Villager.doors.clear()
+	for i in village.buildings.size():
+		if i != house_index:
+			var b: Dictionary = village.buildings[i]
+			Villager.doors.append(b.root.to_global(b.door_local + Vector3(0, 0, 0.6)) * Vector3(1, 0, 1))
+	var tavern_i := interiors.find("inn")
+	if tavern_i >= 0:
+		var b: Dictionary = village.buildings[tavern_i]
+		Villager.places["tavern"] = b.root.to_global(b.door_local + Vector3(0, 0, 3.0)) * Vector3(1, 0, 1)
+	if church:
+		Villager.places["church"] = church.to_global(Vector3(0, 0, church.d * 0.5 + 7.0)) * Vector3(1, 0, 1)
 	if church:
 		church.player = player
 		church.sky = w.sky

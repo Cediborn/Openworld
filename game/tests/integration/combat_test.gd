@@ -92,5 +92,29 @@ func _init() -> void:
 	var boar := make(cfg, "boar", 3, dummy2)
 	boar.take_hit(10.0, dummy2.position)
 	check(boar.state == Creature.State.CHASE, "a hit boar fights back")
+
+	# 4. Wildlife hears a fight, and a fleeing deer swerves round a drop instead of freezing.
+	var far := Dummy.new()
+	far.position = Vector3(500, 0, 500)
+	root.add_child(far)
+	var grazer := make(cfg, "deer", 7, far)
+	grazer.global_position = Vector3(20, 0, 0)
+	var wolf := make(cfg, "wolf", 8, far)
+	wolf.global_position = Vector3(10, 0, 0)
+	wolf.take_hit(5.0, Vector3(8, 0, 0))
+	check(grazer.state == Creature.State.FLEE, "a deer 10 m from a sword fight bolts")
+	var shooter := Dummy.new()
+	shooter.position = Vector3(-30, 0, 100)
+	root.add_child(shooter)
+	var runner := make(cfg, "deer", 9, shooter)
+	runner.cfg["min_height"] = -1.0
+	runner.global_position = Vector3(0, 0, 100)
+	runner.height_at = func(x: float, _z: float) -> float: return -5.0 if x > 3.0 else 0.0   # a drop to the east
+	runner.hear_gunshot(Vector3(-30, 0, 100), true, false)   # shot from the west: bolts east, at the drop
+	var start := runner.global_position
+	for i in 180:
+		runner._process(dt)
+	check(runner.global_position.x <= 3.0, "the fleeing deer never steps off the drop (x %.1f)" % runner.global_position.x)
+	check(runner.global_position.distance_to(start) > 5.0, "and keeps running along it (%.1f m)" % runner.global_position.distance_to(start))
 	print("RESULT: %s" % ("ALL PASSED" if fails == 0 else "%d FAILED" % fails))
 	quit(fails)

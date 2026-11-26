@@ -238,6 +238,26 @@ func _house(p: Player) -> void:
 	check(absf(world.sky.time_of_day - 7.0) < 0.1, "sleeping moves the clock to 7:00")
 	check(p.health >= p.max_health, "you wake fully healed")
 	check(SaveGame.has_save(), "sleeping saves the game")
+	# Storage chests: materials go in, stay in the save, come back out.
+	var st: GameState = world.state
+	var store: Interactable = null
+	var take: Interactable = null
+	for it in get_nodes_in_group("interactables"):
+		if it.is_inside_tree() and it.label == "Store materials in the chest":
+			store = it
+		elif it.is_inside_tree() and it.label == "Take stored materials":
+			take = it
+	check(store != null and take != null, "your house has storage chests")
+	st.add_item("iron_ore", 3, true)
+	var potions := st.count("potion")
+	store.action.call(store)
+	check(st.count("iron_ore") == 0 and st.count("potion") == potions, "materials go into the chest; potions stay with you")
+	world.save_game()
+	st.flags.erase("house_stash")
+	st.load_state(SaveGame.load_save().get("progress", {}))
+	take.action.call(take)
+	check(st.count("iron_ore") == 3, "after a save and load they come back out (%d iron ore)" % st.count("iron_ore"))
+	check(Villager.places.has("tavern") and Villager.places.has("church") and Villager.doors.size() >= 40, "townsfolk know the tavern, the church and their doors (%d)" % Villager.doors.size())
 
 
 func _tavern(p: Player) -> void:

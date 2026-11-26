@@ -89,13 +89,14 @@ func nearest_open(p: Vector2) -> Vector2:
 
 
 ## Waypoints (x, z) from `from` to `to`, both snapped to open ground, or [] when
-## there is no way through. The first point is the horse's own cell.
-func path(from: Vector2, to: Vector2) -> PackedVector2Array:
+## there is no way through (partial: the way to the nearest reachable spot
+## instead). The first point is the horse's own cell.
+func path(from: Vector2, to: Vector2, partial := false) -> PackedVector2Array:
 	var a := nearest_open(from)
 	var b := nearest_open(to)
 	if a == Vector2.INF or b == Vector2.INF:
 		return PackedVector2Array()
-	var cells := grid.get_id_path(cell_of(a), cell_of(b))
+	var cells := grid.get_id_path(cell_of(a), cell_of(b), partial)
 	var out := PackedVector2Array()
 	for c in cells:
 		out.append(cell_center(c))

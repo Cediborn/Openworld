@@ -7,6 +7,8 @@ extends Node3D
 ## (monsters chase and roar, then lose interest). Tuning: data/creatures.json.
 
 enum State { IDLE, GRAZE, WALK, FLEE, CHASE, ROAR, RETURN, ATTACK, DEAD }
+## Metres within which shy animals hear a fight (sword hits) and bolt.
+const FIGHT_HEARD := 30.0
 
 ## Phase offsets (fraction of a step cycle) per leg group.
 const QUAD_WALK := {"H_L": 0.0, "F_L": 0.25, "H_R": 0.5, "F_R": 0.75}
@@ -172,6 +174,10 @@ func take_hit(amount: float, from_pos: Vector3) -> void:
 	away.y = 0
 	# Heavy monsters barely budge; light ones are knocked back.
 	global_position += away.normalized() * 0.35 / maxf(float(cfg.get("mass", 1.0)), 0.5)
+	# The noise of a fight sends shy animals nearby running.
+	for c in get_tree().get_nodes_in_group("creatures") if is_inside_tree() else []:
+		if c != self and c.temper == "flee" and c.global_position.distance_to(global_position) < FIGHT_HEARD:
+			c.hear_gunshot(global_position, true, false)
 	if health <= 0.0:
 		_die()
 		return
@@ -551,11 +557,19 @@ func _move(delta: float) -> void:
 		var step := -global_transform.basis.z * speed * delta
 		var ahead := global_position + step * (1.5 / maxf(speed * delta, 0.001))
 		# Never walk into lava (or anywhere too low for this species): head home instead.
-		var dest := global_position + step
-		if height_at.call(ahead.x, ahead.z) < float(cfg.get("min_height", -INF)) \
-				or (avoid_at.is_valid() and (avoid_at.call(ahead.x, ahead.z) or avoid_at.call(dest.x, dest.z))):
-			target = home
+		if _unsafe(global_position, step, ahead):
 			step = Vector3.ZERO
+			# A fleeing animal swerves along the edge instead of freezing there.
+			if state == State.FLEE:
+				for ang in [0.8, -0.8, 1.6, -1.6, 2.4, -2.4]:
+					var s: Vector3 = (-global_transform.basis.z * speed * delta).rotated(Vector3.UP, ang)
+					if not _unsafe(global_position, s, global_position + s * (1.5 / maxf(speed * delta, 0.001))):
+						step = s
+						rotation.y += ang * 0.25
+						target = global_position + s.normalized() * 15.0
+						break
+			if step == Vector3.ZERO:
+				target = home
 		global_position += step
 		var stride: float = lerpf(cfg.walk_stride, cfg.run_stride, run_mix)
 		phase = fposmod(phase + speed * delta / stride, 1.0)
@@ -563,6 +577,13 @@ func _move(delta: float) -> void:
 	if body == "float":
 		y += float(cfg.get("hover", 0.4)) + 0.15 * sin(t * 1.3)
 	global_position.y = y
+
+
+## Lava, or too low for this species, at the next step or 1.5 m ahead.
+func _unsafe(from: Vector3, step: Vector3, ahead: Vector3) -> bool:
+	var dest := from + step
+	return height_at.call(ahead.x, ahead.z) < float(cfg.get("min_height", -INF)) \
+			or (avoid_at.is_valid() and (avoid_at.call(ahead.x, ahead.z) or avoid_at.call(dest.x, dest.z)))
 
 
 # ---------- Procedural animation ----------

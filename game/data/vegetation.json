@@ -373,6 +373,97 @@
    "path_clear": 3,
    "near": 200,
    "far": 0
+  },
+  {
+   "id": "wildflower_a",
+   "kind": "model",
+   "model": "flower_empodium",
+   "zones": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3
+   ],
+   "per_ha": 30,
+   "scale": [
+    1.6,
+    2.4
+   ],
+   "max_slope": 0.35,
+   "path_clear": 2,
+   "near": 35,
+   "far": 0
+  },
+  {
+   "id": "wildflower_b",
+   "kind": "model",
+   "model": "flower_ursinia",
+   "zones": [
+    0.8,
+    0.0,
+    0.0,
+    0.0,
+    0.2
+   ],
+   "per_ha": 10,
+   "scale": [
+    1.8,
+    2.6
+   ],
+   "max_slope": 0.35,
+   "path_clear": 2,
+   "near": 35,
+   "far": 0,
+   "mobile": false
+  },
+  {
+   "id": "periwinkle",
+   "kind": "model",
+   "model": "periwinkle_plant",
+   "zones": [
+    0.0,
+    0.0,
+    0.0,
+    0.7,
+    0.0
+   ],
+   "per_ha": 14,
+   "scale": [
+    1.2,
+    1.8
+   ],
+   "max_slope": 0.4,
+   "path_clear": 2,
+   "near": 35,
+   "far": 0,
+   "mobile": false
+  },
+  {
+   "id": "quiver_tree",
+   "kind": "model",
+   "model": "dead_quiver_trunk",
+   "zones": [
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0
+   ],
+   "per_ha": 1.5,
+   "scale": [
+    1.5,
+    2.4
+   ],
+   "max_slope": 0.4,
+   "path_clear": 4,
+   "near": 220,
+   "far": 0,
+   "tint": [
+    0.22,
+    0.18,
+    0.16
+   ]
   }
  ]
 }

@@ -95,7 +95,7 @@ func _ensure_nav() -> void:
 
 
 ## Answers the player's whistle. Returns what happened: "coming", "here",
-## "riding", "too_far", "no_way" or "none".
+## "riding", "too_far", "near" (comes as close as it can), "no_way" or "none".
 func whistle() -> String:
 	if play_sfx.is_valid():
 		play_sfx.call("whistle", -3.0)
@@ -115,19 +115,27 @@ func whistle() -> String:
 		return "too_far"
 	_ensure_nav()
 	var route := nav.path(at, me)
-	if route.size() < 2:
-		_say("Your %s can't find a way to you here. Try open ground." % h.horse_name)
-		return "no_way"
+	var stuck := route.size() < 2
+	if stuck:
+		# No way all the way here: come as close as it safely can and wait there.
+		route = nav.path(at, me, true)
+		if route.size() < 2:
+			_say("Your %s can't find a way to you here. Try open ground." % h.horse_name)
+			return "no_way"
 	h.summon(route, player)
 	if play_sfx.is_valid():
 		play_sfx.call("horse_whinny", -4.0)
+	if stuck:
+		_say("Your %s can't reach you here. It will wait on safe ground %d m away." % [h.horse_name, int(route[route.size() - 1].distance_to(me))])
+		return "near"
 	_say("Your %s heard you and is on its way (%d m)." % [h.horse_name, int(_length(route))])
 	return "coming"
 
 
 func _arrived(h: Horse) -> void:
 	if h.caller == player:
-		_say("Your %s is here." % h.horse_name)
+		var gap := Vector2(h.global_position.x - player.global_position.x, h.global_position.z - player.global_position.z).length()
+		_say("Your %s is here." % h.horse_name if gap < 8.0 else "Your %s is waiting for you %d m away." % [h.horse_name, int(gap)])
 	h.caller = null
 
 

@@ -21,6 +21,8 @@ var player: Node3D
 var play_sfx: Callable = Callable()
 ## Called when the player sleeps in their own bed (see Expansion.rest).
 var on_rest: Callable = Callable()
+## Inventory, for the storage chests in your house (set by Expansion).
+var state: GameState
 ## kind per building index ("house", "inn", "shop", "hall", "workshop", "smithy").
 var kinds: Array[String] = []
 var _built := {}          # building index -> interior root
@@ -279,10 +281,44 @@ func _player_house(root: Node3D, w: float, d: float, door_x: float, rng: RandomN
 	Furniture.shelf(root, Vector3(w * 0.5 - 0.25, 0, part_z + 3.7), -PI * 0.5, oak, rng, "jars")
 	Furniture.chest(root, Vector3(-w * 0.5 + 0.6, 0, d * 0.5 - 1.0), PI * 0.5, oak)
 	Furniture.chest(root, Vector3(-w * 0.5 + 0.6, 0, d * 0.5 - 2.2), PI * 0.5, oak)
+	# The two living-room chests are your storage (materials and trophies; kept in the save).
+	var store := Interactable.new("Store materials in the chest", 1.6, func(_n: Interactable) -> void: _stash(true))
+	store.position = Vector3(-w * 0.5 + 1.3, 0, d * 0.5 - 1.0)
+	root.add_child(store)
+	var take := Interactable.new("Take stored materials", 1.6, func(_n: Interactable) -> void: _stash(false))
+	take.position = Vector3(-w * 0.5 + 1.3, 0, d * 0.5 - 2.2)
+	root.add_child(take)
 	Furniture.rug(root, Vector3(-w * 0.15, 0, part_z + 2.3), Vector2(3.0, 2.0), Color(0.3, 0.42, 0.6))
 	Furniture.chair(root, Vector3(-w * 0.5 + 1.7, 0, part_z + 1.2), PI * 0.6, oak, 0.75)
 	Furniture.banner(root, Vector3(w * 0.1, 2.2, part_z + 0.09), Color(0.2, 0.35, 0.6))
 	Furniture.candles(root, Vector3(w * 0.5 - 0.6, 0, d * 0.5 - 0.6), 3)
+
+
+## Moves every material and trophy into the house chests (store) or back out.
+func _stash(store: bool) -> void:
+	if state == null:
+		return
+	var box: Dictionary = state.flags.get("house_stash", {})
+	var moved := 0
+	if store:
+		for id in state.items.keys():
+			if str(state.item(id).get("kind", "")) in ["material", "trophy"]:
+				var n := state.count(id)
+				box[id] = int(box.get(id, 0)) + n
+				state.remove_item(id, n)
+				moved += n
+	else:
+		for id in box.keys():
+			state.add_item(id, int(box[id]), true)
+			moved += int(box[id])
+		box.clear()
+	state.flags["house_stash"] = box
+	if moved == 0:
+		state.notify.emit("Nothing to store." if store else "The chests are empty.", "info")
+	else:
+		state.notify.emit(("Stored %d items in your chests." if store else "Took %d items from your chests.") % moved, "item")
+		if play_sfx.is_valid():
+			play_sfx.call("chest", -6.0)
 
 
 func _room_light(root: Node3D, at: Vector3, reach: float) -> OmniLight3D:

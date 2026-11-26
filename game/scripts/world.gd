@@ -541,6 +541,7 @@ func _build_ui() -> void:
 func _process(delta: float) -> void:
 	if player == null or sky == null or hud_fps == null:
 		return
+	Villager.hour = sky.time_of_day
 	autosave -= delta
 	if autosave <= 0.0:
 		autosave = AUTOSAVE_EVERY
