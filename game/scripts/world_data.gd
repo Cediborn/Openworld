@@ -62,7 +62,85 @@ func load_data() -> bool:
 			r["reserved"] = true
 			r["y"] = height(float(e.x), float(e.z))
 			houses.append(r)
-	return heights.size() == RES * RES
+	if heights.size() != RES * RES:
+		return false
+	carve_water()
+	return true
+
+
+# ---------- Water (data/water.json, planned by tools/world_generation/plan_water.py) ----------
+
+## The island's lakes, streams and falls, as planned from its terrain.
+var water: Dictionary = {}
+## 1 where there is water (lakes below their level, stream channels).
+var wet := PackedByteArray()
+
+
+## Digs the dug ponds and brook channels into the heights (only ever lower),
+## then marks every wet cell: as trail ground (so grass, trees and rocks keep
+## out and the bed is mud) and in `wet` (for is_water and the map).
+func carve_water() -> void:
+	wet.resize(RES * RES)
+	wet.fill(0)
+	if not FileAccess.file_exists("res://data/water.json"):
+		return
+	water = JSON.parse_string(FileAccess.get_file_as_string("res://data/water.json"))
+	for r in water.get("rivers", []):
+		var pts: Array = r.points
+		var half: float = r.width * 0.5
+		var reach := half + 4.0
+		for k in pts.size() - 1:
+			var a := Vector2(pts[k][0], pts[k][1])
+			var b := Vector2(pts[k + 1][0], pts[k + 1][1])
+			var lo := _cell(minf(a.x, b.x) - reach, minf(a.y, b.y) - reach)
+			var hi := _cell(maxf(a.x, b.x) + reach, maxf(a.y, b.y) + reach)
+			for j in range(int(lo.y), int(hi.y) + 2):
+				for i in range(int(lo.x), int(hi.x) + 2):
+					if i >= RES or j >= RES:
+						continue
+					var p := Vector2(-SIZE * 0.5 + i * STEP, -SIZE * 0.5 + j * STEP)
+					var ab := b - a
+					var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+					var d := p.distance_to(a + ab * t)
+					if d > reach:
+						continue
+					var bed := lerpf(pts[k][2], pts[k + 1][2], t)
+					var idx := j * RES + i
+					if r.get("carve", false):
+						var g := bed + 0.5 * (d / half) ** 2 if d < half else bed + 0.5 + (d - half) * 0.6
+						heights[idx] = minf(heights[idx], g)
+					if d < half + 0.5:
+						_mark_wet(idx)
+	for l in water.get("lakes", []):
+		var c := Vector2(l.center[0], l.center[1])
+		var rad: float = l.radius
+		var level: float = l.level
+		var lo := _cell(c.x - rad * 1.25, c.y - rad * 1.25)
+		var hi := _cell(c.x + rad * 1.25, c.y + rad * 1.25)
+		for j in range(int(lo.y), int(hi.y) + 2):
+			for i in range(int(lo.x), int(hi.x) + 2):
+				if i >= RES or j >= RES:
+					continue
+				var p := Vector2(-SIZE * 0.5 + i * STEP, -SIZE * 0.5 + j * STEP)
+				var d := p.distance_to(c)
+				var idx := j * RES + i
+				if l.has("carve") and d < rad:
+					heights[idx] = minf(heights[idx], lerpf(float(l.carve.floor), level + 0.4, (d / rad) ** 2))
+				if d < rad * 1.25 and heights[idx] < level:
+					_mark_wet(idx)
+
+
+func _mark_wet(idx: int) -> void:
+	wet[idx] = 1
+	mask[idx * 2 + 1] = 255
+
+
+## Whether a point is in a lake or stream.
+func is_water(x: float, z: float) -> bool:
+	if wet.is_empty():
+		return false
+	var c := _cell(x, z)
+	return wet[int(c.y + 0.5) * RES + int(c.x + 0.5)] == 1
 
 
 func _cell(x: float, z: float) -> Vector2:

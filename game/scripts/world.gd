@@ -9,6 +9,8 @@ var mobile := OS.has_feature("mobile")
 var player: Player
 var sky: SkyCycle
 var grass: GrassField
+## Lakes, streams and falls (data/water.json).
+var water: Water
 var village: Village
 var effects: ZoneEffects
 var hud_fps: Label
@@ -154,6 +156,10 @@ func _boot() -> void:
 		var terrain := Terrain.new()
 		add_child(terrain)
 		terrain.setup(data, mobile, photo_ground)
+	if await _step("water"):
+		water = Water.new()
+		add_child(water)
+		water.build(data.water, data.terrain_height, mobile)
 	var veg := Vegetation.new()
 	add_child(veg)
 	veg.mobile = mobile

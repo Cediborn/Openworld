@@ -68,6 +68,7 @@ Design notes: `design/gdd/chapter-one.md`. Content is generated from `tools/cont
 - `game/`: the Godot project. `data/` holds the baked island (`tools/bake_world.gd` regenerates it) and tunable values.
 - Ground is drawn by the GPU from the baked height map, with less detail far away.
 - Grass travels with the player, so phones only draw what is close.
+- Ponds, brooks and waterfalls are planned from the real terrain (`tools/world_generation/plan_water.py`); you can wade into them, and Frost Peaks' tarns are walkable ice. Physics is Jolt. Terrain3D and the offline heightmap pipeline are in `docs/environment-pipeline.md` (try the test zone: `godot --path game -- --test-zone`).
 - Phones render at a lower resolution that rises or falls to keep the frame rate steady.
 - `tools/fetch_vendor.py` + `tools/asset_manifest.json`: the **Fetch assets** workflow downloads the CC0 assets and stores them on the `assets` branch; builds copy them in.
 - Combat animations for the explorer are authored on his skeleton by `tools/bake_anims.gd` (swings, guard, block, hit, death, talking); monsters animate procedurally with per-species attack moves (`data/creatures.json`).

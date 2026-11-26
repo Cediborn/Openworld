@@ -75,7 +75,8 @@ func add_river(r: Dictionary, mobile := false) -> void:
 				st.set_uv(q[1])
 				st.set_normal(Vector3.UP)
 				st.add_vertex(q[0])
-	var mi := _mesh(st, {"flow_speed": r.get("speed", 0.8), "murk": r.get("murk", 0.0), "clarity": 1.2})
+	var mi := _mesh(st, {"flow_speed": 0.0 if r.get("frozen", false) else r.get("speed", 0.8), "murk": r.get("murk", 0.0), "clarity": 1.2,
+		"frozen": r.get("frozen", false), "glow": r.get("glow", 0.0)})
 	bodies.append({"node": self, "kind": "river", "points": dense, "width": width, "depth": depth})
 	if r.get("sound", true):
 		_sound_along(dense, "stream", -12.0 if width < 6.0 else -8.0)
@@ -210,8 +211,17 @@ func add_lake(l: Dictionary, mobile := false) -> void:
 				st.set_normal(Vector3.UP)
 				st.add_vertex(q[0])
 	var frozen: bool = l.get("frozen", false)
-	add_child(_mesh(st, {"flow_speed": 0.0, "frozen": frozen, "murk": l.get("murk", 0.0), "clarity": l.get("clarity", 2.5)}))
-	if not frozen:
+	var mi := _mesh(st, {"flow_speed": 0.0, "frozen": frozen, "murk": l.get("murk", 0.0), "clarity": l.get("clarity", 2.5), "glow": l.get("glow", 0.0)})
+	add_child(mi)
+	if frozen:
+		# Ice holds you up: the frozen surface is solid ground.
+		var body := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		cs.shape = mi.mesh.create_trimesh_shape()
+		body.add_child(cs)
+		body.set_meta("walkable", true)
+		add_child(body)
+	else:
 		bodies.append({"node": self, "kind": "lake", "center": c, "radius": radius * 1.25, "level": level})
 
 

@@ -98,6 +98,7 @@ jobs:
           ~/godot/godot --headless --path . -s res://tests/integration/green_valley_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/expansion_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/expansion_test.gd -- --mobile
+          ~/godot/godot --headless --path . -s res://tests/integration/world_water_test.gd
 
       - name: Play every quest, shrine, treasure and event start to finish
         working-directory: game

@@ -777,7 +777,9 @@ func _make_map() -> Texture2D:
 				c = c.lerp(Color(0.45, 0.32, 0.18), 0.35)   # contour line
 			if h < WorldData.LAVA_LEVEL + 0.05 and float(w[2]) > 0.3:
 				c = Color(0.72, 0.24, 0.1)
-			if data.on_path(x, z) > 0.5:
+			if data.is_water(x, z):
+				c = Color(0.42, 0.58, 0.62).lerp(Color(0.85, 0.9, 0.92), float(w[1]) * 0.8)   # ice in Frost Peaks
+			elif data.on_path(x, z) > 0.5:
 				c = c.lerp(Color(0.38, 0.25, 0.12), 0.55)
 			img.set_pixel(i, j, c)
 	return ImageTexture.create_from_image(img)

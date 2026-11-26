@@ -20,6 +20,7 @@ uniform float ripple_scale = 0.12;
 uniform bool frozen = false;             // ice: no flow, pale, cracked
 uniform bool falling = false;            // waterfall sheet: streaks, always foamy
 uniform float night = 0.0;               // dims the sky glint at night
+uniform float glow = 0.0;                // Glow Hollow: the water gives off a soft blue light
 
 varying float v_depth;
 varying float v_turb;
@@ -72,6 +73,7 @@ void fragment() {
 		}
 	}
 	ALBEDO = col;
+	EMISSION = vec3(0.15, 0.45, 0.85) * glow * (0.35 + 0.65 * (1.0 - depth_t)) * (0.6 + ripple.x * 0.4);
 	METALLIC = 0.0;
 	SPECULAR = mix(0.5, 0.25, night);
 }

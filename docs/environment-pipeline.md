@@ -106,6 +106,21 @@ To add water to a place: add a river, fall or lake to its JSON. Rivers:
 points `[x, z, bed]` downhill, `width`, `depth`. Falls: `top` and `bottom`
 `[x, y, z]`, `width`. Lakes: `center`, `radius`, `level`.
 
+### The island's water
+
+`game/data/water.json` is planned from the island's real heights by
+`tools/world_generation/plan_water.py` (run it again after changing
+`height.bin`, `mask.bin` or any place, road or quest spot). It fills natural
+hollows to just below their rims (a priority flood), keeps every road,
+house, quest spot, discovery and the spawn dry, and digs a few ponds with
+spring-fed brooks in open meadow (`carve`), adding a fall where a brook
+drops into its pond. Frost Peaks' tarns are frozen (walkable ice), Glow
+Hollow's pools glow at night (`glow`). At load, `WorldData.carve_water()`
+lowers the ground for carved ponds and channels (never raises it), marks
+water as trail ground so no grass or trees grow in it, and answers
+`is_water(x, z)`; the journal map draws it. Tested by
+`tests/integration/world_water_test.gd`.
+
 ## Materials (Material Maker)
 
 Sources in `tools/materials/` (see its README); export with
