@@ -51,6 +51,11 @@ var gun_toggle_pressed := false  # G / touch pistol button: draw or holster the 
 var reload_pressed := false      # R / touch reload button
 var aim_held := false            # touch: hold to aim (PC: right mouse while the pistol is drawn)
 var whistle_pressed := false     # T / touch horse button: whistle for your horse
+## Keyboard combat: A swings the sword, S shoots, D defends (holds a block).
+## Each one puts away the other weapon first if it is out.
+var sword_key_pressed := false
+var shoot_key_pressed := false
+var _shot_queued := 0.0          # S with the pistol holstered: draw it, then fire
 ## The flintlock pistol (see Firearm); null until the world sets it up.
 var gun: Firearm
 ## Emitted when the explorer whistles for a horse.
@@ -187,7 +192,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_F:
 		attack_pressed = true
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_Q:
+		if event.physical_keycode == KEY_A:
+			attack_pressed = true
+			sword_key_pressed = true
+		elif event.physical_keycode == KEY_S:
+			shoot_key_pressed = true
+		elif event.keycode == KEY_Q:
 			dodge_pressed = true
 		elif event.keycode == KEY_H:
 			potion_pressed = true
@@ -204,11 +214,12 @@ func _physics_process(delta: float) -> void:
 	pitch = clampf(pitch - look_input.y * LOOK_SENS * 1.6 * look_mult, -1.2, 0.6)
 	look_input = Vector2.ZERO
 
+	# Arrow keys move; W sprints (Shift still works too).
 	var kb := Vector2(
-		float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)),
-		float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
+		float(Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_LEFT)),
+		float(Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_UP)))
 	var stick: Vector2 = (move_input + kb).limit_length(1.0)
-	var running: bool = sprint_held or Input.is_physical_key_pressed(KEY_SHIFT)
+	var running: bool = sprint_held or Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_SHIFT)
 	var walking: bool = Input.is_physical_key_pressed(KEY_CTRL) or Input.is_physical_key_pressed(KEY_ALT)
 	var want_jump: bool = jump_pressed or Input.is_physical_key_pressed(KEY_SPACE)
 	jump_pressed = false
@@ -218,7 +229,12 @@ func _physics_process(delta: float) -> void:
 	dodge_pressed = false
 	var want_potion := potion_pressed
 	potion_pressed = false
-	var want_block: bool = block_held or (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
+	var key_block := Input.is_physical_key_pressed(KEY_D)
+	var want_block: bool = block_held or key_block or (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
+	var want_sword_key := sword_key_pressed
+	sword_key_pressed = false
+	var want_shoot_key := shoot_key_pressed
+	shoot_key_pressed = false
 	var want_gun := gun_toggle_pressed
 	gun_toggle_pressed = false
 	var want_reload := reload_pressed
@@ -237,15 +253,37 @@ func _physics_process(delta: float) -> void:
 		want_gun = false
 		want_reload = false
 		want_whistle = false
+		want_sword_key = false
+		want_shoot_key = false
+		key_block = false
+		_shot_queued = 0.0
 	if want_whistle:
 		whistle()
 	var wish: Vector3 = Basis(Vector3.UP, yaw) * Vector3(stick.x, 0, stick.y)
 	if gun:
 		if want_gun and horse == null and swing < 0:
 			gun.toggle()
+		# A (sword) and D (defend) put the pistol away so the sword is used.
+		if horse == null and gun.drawn and (want_sword_key or key_block):
+			gun.set_drawn(false)
+		# S shoots: if the pistol is holstered, draw it and fire a moment later.
+		var want_shot := false
+		if want_shoot_key and horse == null and swing < 0:
+			if gun.drawn:
+				want_shot = true
+			elif gun.owned():
+				gun.set_drawn(true)
+				_shot_queued = 0.25
+			else:
+				gun.toggle()   # says you don't have a firearm yet
+		if _shot_queued > 0.0:
+			_shot_queued -= delta
+			if _shot_queued <= 0.0 and gun.drawn and horse == null:
+				want_shot = true
 		var drawn := gun.drawn and horse == null
 		# With the pistol out, attack fires and block (right mouse) aims instead.
-		gun.update(delta, want_attack and drawn, (want_block or aim_held) and drawn, want_reload and drawn)
+		var aim_input: bool = aim_held or (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
+		gun.update(delta, (want_attack or want_shot) and drawn, (aim_input or (want_block and not key_block)) and drawn, want_reload and drawn)
 		if drawn:
 			want_attack = false
 			want_block = false

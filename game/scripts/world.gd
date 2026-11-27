@@ -6,6 +6,10 @@ extends Node3D
 var data := WorldData.new()
 var config: Dictionary = {}
 var mobile := OS.has_feature("mobile")
+## Lighter graphics for laptops and other weak PCs: the phone-sized effects,
+## shadows, grass and plant counts with the PC's controls. Chosen at start-up
+## from the "laptop_mode" setting (auto finds built-in graphics chips).
+var lite := false
 var player: Player
 var sky: SkyCycle
 var grass: GrassField
@@ -70,8 +74,37 @@ func _ready() -> void:
 	UiTheme.click_sounds(self)
 	config = JSON.parse_string(FileAccess.get_file_as_string("res://data/game_config.json"))
 	_read_last_boot()
+	lite = mobile or _wants_lite(SaveGame.load_settings())
 	_show_boot_label()
 	_boot()
+
+
+## Whether to run the lighter graphics on this PC.
+func _wants_lite(s: Dictionary) -> bool:
+	if "--lite" in OS.get_cmdline_user_args():
+		return true
+	if "--full" in OS.get_cmdline_user_args():
+		return false
+	match str(s.get("laptop_mode", "auto")):
+		"on":
+			return true
+		"off":
+			return false
+	if DisplayServer.get_name() == "headless":
+		return false
+	# Built-in (integrated) graphics, as in most laptops, or the OpenGL fallback.
+	var kind := RenderingServer.get_video_adapter_type()
+	if kind == RenderingDevice.DEVICE_TYPE_DISCRETE_GPU:
+		return false
+	if kind == RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU:
+		return true
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
+		return true
+	var gpu := RenderingServer.get_video_adapter_name().to_lower()
+	for weak in ["intel", "uhd", "iris", "radeon(tm) graphics", "radeon graphics", "vega", "mali", "adreno"]:
+		if gpu.contains(weak):
+			return true
+	return false
 
 
 func _read_last_boot() -> void:
@@ -143,11 +176,13 @@ func _boot() -> void:
 		var q := Quality.new()
 		add_child(q)
 		q.setup(mobile, config)
+		if lite and not mobile:
+			q.setup_lite()
 		quality = q
 	if await _step("sky and lighting"):
 		sky = SkyCycle.new()
 		add_child(sky)
-		sky.setup(mobile, config)
+		sky.setup(lite, config)
 		if shot_hour >= 0.0:
 			sky.time_of_day = shot_hour
 			sky.day_minutes = 100000.0
@@ -155,14 +190,14 @@ func _boot() -> void:
 	if await _step("ground"):
 		var terrain := Terrain.new()
 		add_child(terrain)
-		terrain.setup(data, mobile, photo_ground)
+		terrain.setup(data, lite, photo_ground)
 	if await _step("water"):
 		water = Water.new()
 		add_child(water)
-		water.build(data.water, data.terrain_height, mobile)
+		water.build(data.water, data.terrain_height, lite)
 	var veg := Vegetation.new()
 	add_child(veg)
-	veg.mobile = mobile
+	veg.mobile = lite
 	veg.data = data
 	veg.begin()
 	if await _step("trees"):
@@ -206,12 +241,12 @@ func _boot() -> void:
 	if await _step("grass"):
 		grass = GrassField.new()
 		add_child(grass)
-		grass.setup(data, player, mobile)
+		grass.setup(data, player, lite)
 	var creatures: Array = []
 	if await _step("wildlife"):
 		var wildlife := Wildlife.new()
 		add_child(wildlife)
-		wildlife.setup(data, player, mobile)
+		wildlife.setup(data, player, lite)
 		creatures = wildlife.animals
 	if await _step("horses"):
 		stable = Stable.new()
@@ -228,6 +263,8 @@ func _boot() -> void:
 		story.on_heart_blade = func(quiet: bool) -> void:
 			state.add_item("heart_blade", 1, quiet)
 		story.setup(data, player, hud, touch, town, mobile)
+		if lite and not mobile:
+			story.draw_cap = 30
 		story.progress_changed.connect(save_game)
 	if audio:
 		player.swung.connect(func(i: int) -> void: get_tree().create_timer(0.12).timeout.connect(func() -> void: audio.sfx("sword_swing_%d" % (i % 3), -6.0, randf_range(0.95, 1.05))))
@@ -280,7 +317,7 @@ func _boot() -> void:
 	if await _step("weather effects"):
 		effects = ZoneEffects.new()
 		add_child(effects)
-		effects.setup(player, mobile)
+		effects.setup(player, lite)
 	if sky:
 		sky.night_changed.connect(_on_night)
 	_build_ui()
@@ -373,7 +410,8 @@ func _apply_settings(s: Dictionary) -> void:
 				DisplayServer.window_set_position(DisplayServer.screen_get_position() + (DisplayServer.screen_get_size() - want) / 2)
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if s.vsync else DisplayServer.VSYNC_DISABLED)
 		var vp := get_viewport()
-		vp.msaa_3d = Viewport.MSAA_2X if s.aa == "msaa" else Viewport.MSAA_DISABLED
+		# MSAA is too heavy for laptop graphics; they get FXAA instead.
+		vp.msaa_3d = Viewport.MSAA_2X if s.aa == "msaa" and not lite else Viewport.MSAA_DISABLED
 		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if s.aa == "off" else Viewport.SCREEN_SPACE_AA_FXAA
 
 

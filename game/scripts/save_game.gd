@@ -32,6 +32,7 @@ const DEFAULT_SETTINGS := {
 	"foliage": 1.0,           # grass density 0.25..1
 	"view_distance": "far",   # near, normal, far
 	"aa": "msaa",             # off, fxaa, msaa (desktop)
+	"laptop_mode": "auto",    # auto, on, off: lighter graphics for weak PCs (desktop, on restart)
 	"hud_full": true,
 	"text_size": 1.0,         # interface scale 0.85..1.3
 	"reduced_motion": false,

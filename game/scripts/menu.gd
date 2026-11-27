@@ -52,6 +52,7 @@ const QUALITY_ORDER := ["battery", "balanced", "sharp"]
 const SHADOW_ORDER := ["off", "low", "high"]
 const VIEW_ORDER := ["near", "normal", "far"]
 const AA_ORDER := ["off", "fxaa", "msaa"]
+const LAPTOP_ORDER := ["auto", "on", "off"]
 const WINDOW_SIZES := ["1280x720", "1600x900", "1920x1080", "2560x1440"]
 
 
@@ -233,6 +234,8 @@ func _build_settings() -> void:
 	_choice(p, "View distance", "view_distance", VIEW_ORDER, ["Near", "Normal", "Far"], "How far the camera draws the world.")
 	if desktop:
 		_choice(p, "Anti-aliasing", "aa", AA_ORDER, ["Off", "FXAA", "MSAA 2×"], "Smooths jagged edges.")
+		_choice(p, "Laptop mode", "laptop_mode", LAPTOP_ORDER, ["Auto", "On", "Off"],
+			"Lighter effects, shadows and plants so laptops run smoothly. Auto turns it on for built-in graphics. Takes effect when you restart the game.")
 
 	p = _page("Audio", "audio")
 	_slider(p, "Master volume", "master", 0.0, 1.0, "", true)
@@ -357,9 +360,10 @@ func _slider(parent: Container, label: String, key: String, lo: float, hi: float
 
 ## Read-only key and touch reference (remapping isn't supported yet).
 func _controls_reference(parent: Container) -> void:
-	var pc := [["Move", "W A S D"], ["Sprint", "Shift"], ["Jump", "Space"], ["Sword attack", "Left mouse"], ["Block", "Right mouse"],
-		["Dodge roll", "Ctrl / C"], ["Interact, talk", "E"], ["Drink a potion", "Q"], ["Draw the pistol", "G"], ["Reload", "R"],
-		["Whistle for your horse", "H"], ["Journal", "J"], ["Pause", "Esc / P"]]
+	var pc := [["Move", "Arrow keys"], ["Sprint", "W (or Shift)"], ["Walk slowly", "Ctrl"], ["Jump", "Space"],
+		["Sword attack", "A (or left mouse)"], ["Shoot the pistol", "S"], ["Defend (block)", "Hold D"],
+		["Aim the pistol", "Right mouse"], ["Dodge roll", "Q"], ["Interact, talk", "E"], ["Drink a potion", "H"],
+		["Draw or put away the pistol", "G"], ["Reload", "R"], ["Whistle for your horse", "T"], ["Journal", "J"], ["Pause", "Esc / P"]]
 	var touch := [["Move", "Left thumb stick"], ["Look", "Drag the right side"], ["Attack, block, dodge", "Bottom-right buttons"],
 		["Interact", "Tap the prompt"], ["Journal, pause", "Top-right buttons"]]
 	for group in [["Keyboard and mouse", pc], ["Touch", touch]]:

@@ -102,7 +102,7 @@ func wire(w: Node) -> void:
 	# Street lamps and lanterns share a few real lights (nearest to you, at night).
 	lamps = LightPool.new()
 	add_child(lamps)
-	lamps.setup(player, w.mobile)
+	lamps.setup(player, w.lite)
 	_trail_lanterns(w)
 	_collect_lamps(w)
 	fill = OmniLight3D.new()
@@ -158,7 +158,7 @@ func _give_kit(quiet: bool) -> void:
 	state.add_item(Firearm.GUN_ITEM, 1, true)
 	state.add_item(Firearm.AMMO_ITEM, int(world.config.get("firearm", {}).get("start_shot", 12)), true)
 	if not quiet:
-		world.hud.show_notice("Brann the hunter sent you a flintlock pistol and 12 shots.\nG to draw it, right mouse to aim, left click to fire, R to reload.")
+		world.hud.show_notice("Brann the hunter sent you a flintlock pistol and 12 shots.\nS to shoot (it draws itself), right mouse to aim, R to reload, A to go back to the sword.")
 
 
 ## Sleeping in your own bed: until morning, fully rested, game saved.

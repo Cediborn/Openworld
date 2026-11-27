@@ -28,21 +28,21 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 
 | | PC | Phone |
 |---|---|---|
-| Move | W A S D (Ctrl to walk) | Left joystick (push a little to walk) |
+| Move | Arrow keys (Ctrl to walk) | Left joystick (push a little to walk) |
 | Look | Mouse (click to lock, Esc to free) | Drag on the right side |
-| Sprint | Shift | Orange button |
+| Sprint | W (or Shift) | Orange button |
 | Jump | Space | White button |
-| Attack (3-swing combo) | Left click or F | Red sword button |
+| Attack (3-swing combo) | A, left click or F | Red sword button |
 | Dodge roll | Q | Blue arrow button |
-| Block | Hold right mouse | Hold grey shield button |
+| Block (defend) | Hold D | Hold grey shield button |
 | Drink potion | H | Flask button (top right) |
 | Talk / use | E | Tap the prompt |
 | Get on / off a horse | E next to the horse | Tap the prompt |
-| Gallop (on a horse) | Shift | Orange button |
+| Gallop (on a horse) | W (or Shift) | Orange button |
 | Dialogue choices | 1, 2, 3 or click | Tap |
 | Journal (quests, people, discoveries, lore, notes, inventory, map) | J | Book button (top right) |
 | Draw / holster the flintlock | G | Pistol button (right side) |
-| Aim / fire the flintlock | Hold right mouse / left click | Pistol drawn: red button fires (auto-aim at the crosshair) |
+| Shoot the flintlock | S (draws it if holstered); hold right mouse to aim | Pistol drawn: red button fires (auto-aim at the crosshair) |
 | Reload | R (or fire when empty) | Reload button (while drawn) |
 | Whistle for your horse | T | Horseshoe button (right side) |
 | Open / close a door | E at the door | Tap the prompt |

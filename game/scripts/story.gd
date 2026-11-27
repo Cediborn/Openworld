@@ -32,6 +32,8 @@ var found: Array = []        # ids of heart-stones picked up
 var focus = null             # Villager, stone id or Interactable under the prompt
 var _cull := 0.0
 var mobile := false
+## How many villagers are drawn at once (0 = this device's default).
+var draw_cap := 0
 ## Newer systems, set by the world.
 var quests: Quests
 var state: GameState
@@ -244,7 +246,7 @@ func _cull_villagers() -> void:
 	for v in villagers:
 		list.append([v.global_position.distance_squared_to(p), v])
 	list.sort_custom(func(a, b): return a[0] < b[0])
-	var cap := 18 if mobile else 60
+	var cap := draw_cap if draw_cap > 0 else (18 if mobile else 60)
 	for i in list.size():
 		var v: Villager = list[i][1]
 		var d := sqrt(list[i][0])
