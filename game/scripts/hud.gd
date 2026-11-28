@@ -260,8 +260,14 @@ void fragment() {
 	# Dialogue: a framed panel at the bottom; the speaker's name in gold over a rule.
 	dialogue = PanelContainer.new()
 	dialogue.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	dialogue.position = Vector2(-560, -268)
-	dialogue.size = Vector2(1120, 228)
+	# Pinned to the bottom edge and grows upwards, so extra choices never push
+	# the last buttons off the bottom of the screen.
+	dialogue.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	dialogue.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dialogue.offset_left = -560
+	dialogue.offset_right = 560
+	dialogue.offset_bottom = -28
+	dialogue.offset_top = -28 - 228
 	dialogue.add_theme_stylebox_override("panel", UiTheme.frame_box(30))
 	dialogue.visible = false
 	dialogue.gui_input.connect(func(e: InputEvent) -> void:

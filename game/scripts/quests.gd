@@ -127,7 +127,7 @@ func goal_done(id: String, gi: int) -> bool:
 
 
 func start(id: String, quiet := false) -> void:
-	if q.has(id):
+	if q.has(id) and q[id].state != "declined":   # a declined quest can still be taken up later
 		return
 	q[id] = {"state": "active", "step": 0, "prog": {}, "rewarded": false}
 	if tracked == "" or defs[id].get("type", "side") == "main":
@@ -136,6 +136,18 @@ func start(id: String, quiet := false) -> void:
 		hud.show_banner(("New Quest: " if defs[id].get("type") != "main" else "Main Quest: ") + defs[id].title, defs[id].get("region", ""))
 		hud.toast("Quest accepted: " + defs[id].title, "quest")
 	_enter_step(id)
+	quest_changed.emit()
+
+
+## The explorer turned the quest down: no "!" and no offers until they reconsider
+## (by talking to the giver again, or from the journal).
+func decline(id: String) -> void:
+	if q.has(id) and q[id].state != "declined":
+		return
+	q[id] = {"state": "declined", "step": 0, "prog": {}, "rewarded": false}
+	if tracked == id:
+		tracked = ""
+	hud.toast("Quest declined: " + defs[id].title, "quest")
 	quest_changed.emit()
 
 
@@ -381,7 +393,7 @@ func handle_talk(v: Villager) -> Dictionary:
 	# 2. A quest this person can give you.
 	for id in defs:
 		var d: Dictionary = defs[id]
-		if d.get("giver", "") == v.id and status(id) == "available" and not d.has("trigger"):
+		if d.get("giver", "") == v.id and status(id) in ["available", "declined"] and not d.has("trigger"):
 			return offer(id)
 	# 3. Townsfolk who count for a "speak to N people" goal.
 	for id in active_ids():
@@ -415,17 +427,25 @@ func handle_talk(v: Villager) -> Dictionary:
 	return {}
 
 
-## The offer conversation: description, then Accept / Not now.
+## Offer choices: Accept starts the quest, Later leaves it on offer, Deny turns it down.
+const OFFER_CHOICES := ["Accept", "Later", "Deny"]
+
+## The offer conversation: description, then Accept / Later / Deny.
 func offer(id: String) -> Dictionary:
 	var d: Dictionary = defs[id]
 	var lines: Array = d.get("offer", [d.description])
+	if status(id) == "declined":
+		lines = ["You turned this down before. Changed your mind?"] + lines
 	var reward := reward_text(id)
-	return {"lines": lines + ["(Reward: %s)" % reward] if reward != "" else lines, "choices": ["Accept", "Not now"],
+	return {"lines": lines + ["(Reward: %s)" % reward] if reward != "" else lines, "choices": OFFER_CHOICES,
 		"on_choice": func(i: int) -> Dictionary:
 			if i == 0:
 				start(id)
 				var acc: Array = d.get("accept", [])
 				return {"lines": acc} if not acc.is_empty() else {}
+			if i == 2:
+				decline(id)
+				return {"lines": ["Very well. I won't ask again."]}
 			return {"lines": d.get("decline", ["Come back if you change your mind."])}}
 
 
@@ -791,10 +811,12 @@ func _offer_trigger(id: String) -> void:
 	var reward := reward_text(id)
 	if reward != "":
 		lines[-1] = lines[-1] + "  (Reward: %s)" % reward
-	story.open({"speaker": "", "lines": lines, "choices": ["Yes, follow the trail", "Not now"],
+	story.open({"speaker": "", "lines": lines, "choices": ["Yes, follow the trail", "Later", "Deny"],
 		"on_choice": func(i: int) -> Dictionary:
 			if i == 0:
 				start(id)
+			elif i == 2:
+				decline(id)
 			else:
 				_declined[id] = Time.get_ticks_msec()
 			return {}})
@@ -819,8 +841,11 @@ func contract_convo(giver: String) -> Dictionary:
 		return {"lines": ["You already have a contract: %s. %s" % [defs[cur].title, step_text(current_step(cur))]]}
 	var d := _make_contract(contract_count, giver)
 	return {"lines": ["Contract: %s." % d.title, d.description, "Pay: %s. Danger: %s." % [reward_text_of(d), ["", "low", "moderate", "high"][int(d.tier)]]],
-		"choices": ["Take the contract", "Not now"],
+		"choices": ["Take the contract", "Later", "Deny"],
 		"on_choice": func(i: int) -> Dictionary:
+			if i == 2:
+				contract_count += 1   # turned down: the next offer is a different job
+				return {"lines": ["Suit yourself. I'll find you another job."]}
 			if i != 0:
 				return {}
 			var id := "contract_%d" % contract_count

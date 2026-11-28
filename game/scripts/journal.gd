@@ -373,7 +373,10 @@ func _action() -> void:
 	var id = list_ids[sel[0]]
 	match section:
 		"quests":
-			quests.track(id)
+			if quests.status(id) == "declined":
+				quests.start(id)
+			else:
+				quests.track(id)
 			_show_quest(id)
 			_relabel_quests()
 		"inventory":
@@ -387,7 +390,7 @@ func _fill_quests() -> void:
 	_begin("Quests", QUEST_FILTERS, filter, func(k: String) -> void:
 		filter = k
 		_fill_quests())
-	var order := ["active", "available", "locked", "completed"]
+	var order := ["active", "available", "declined", "locked", "completed"]
 	var rows := []
 	for id in quests.defs:
 		var d: Dictionary = quests.defs[id]
@@ -418,7 +421,7 @@ func _relabel_quests() -> void:
 	for i in list_ids.size():
 		var id: String = list_ids[i]
 		var st := quests.status(id)
-		var mark: String = {"active": "", "available": "New:  ", "locked": "Later:  ", "completed": ""}.get(st, "")
+		var mark: String = {"active": "", "available": "New:  ", "declined": "Declined:  ", "locked": "Later:  ", "completed": ""}.get(st, "")
 		list.set_item_text(i, mark + quests.defs[id].title + ("   ✦ tracked" if quests.tracked == id else ""))
 
 
@@ -426,7 +429,7 @@ func _show_quest(id: String) -> void:
 	var d: Dictionary = quests.defs[id]
 	var st := quests.status(id)
 	var t := "[color=%s]%s  ·  %s  ·  %s[/color]\n\n" % [SOFT_HEX, {"main": "Main Story", "side": "Side Quest", "special": "Special Quest", "contract": "Monster Contract"}.get(d.get("type", "side"), ""),
-		d.get("region", ""), {"active": "In progress", "available": "Not yet begun", "locked": "Not yet open", "completed": "Completed"}.get(st, st)]
+		d.get("region", ""), {"active": "In progress", "available": "Not yet begun", "declined": "Declined", "locked": "Not yet open", "completed": "Completed"}.get(st, st)]
 	t += d.get("description", "") + "\n\n"
 	if d.has("giver"):
 		t += "[color=%s][b]Given by[/b][/color]  %s%s\n\n" % [SOFT_HEX, _npc_name(d.giver), _npc_where(d.giver)]
@@ -441,9 +444,11 @@ func _show_quest(id: String) -> void:
 			t += "[i]Talk to %s to begin.[/i]\n\n" % _npc_name(d.giver)
 		elif d.has("trigger"):
 			t += "[i]Something in %s will set you on this trail.[/i]\n\n" % d.get("region", "the world")
+	if st == "declined":
+		t += "[i]You turned this down. Reconsider below, or talk to %s again.[/i]\n\n" % _npc_name(d.giver) if d.has("giver") else "[i]You turned this down. You can reconsider below.[/i]\n\n"
 	if id == "island_heart" and st == "active":
 		t += "[b]Objectives[/b]\n" + quests.story.original_tracker() + "\n"
-	if quests.q.has(id) and d.has("steps"):
+	if quests.q.has(id) and st != "declined" and d.has("steps"):
 		t += "[b]Objectives[/b]\n"
 		var cur: int = quests.q[id].step
 		for si in d.steps.size():
@@ -466,8 +471,8 @@ func _show_quest(id: String) -> void:
 	if r != "":
 		t += "\n[b]Rewards[/b]\n%s%s\n" % [r, "  [color=%s](received)[/color]" % DONE_HEX if st == "completed" else ""]
 	_detail(d.title, t, st == "completed")
-	action_btn.visible = st == "active" and quests.tracked != id
-	action_btn.text = "Track this quest"
+	action_btn.visible = st == "active" and quests.tracked != id or st == "declined"
+	action_btn.text = "Reconsider and accept" if st == "declined" else "Track this quest"
 	action_btn.icon = UiTheme.icon("pin")
 
 
