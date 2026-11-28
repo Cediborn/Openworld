@@ -73,6 +73,25 @@ def ellipsoid(p, c, r):
     return k0 * (k0 - 1.0) / np.maximum(k1, 1e-9)
 
 
+def _rot(euler):
+    """Rotation matrix from XYZ euler angles (radians)."""
+    rx, ry, rz = euler
+    cx, sx, cy, sy, cz, sz = np.cos(rx), np.sin(rx), np.cos(ry), np.sin(ry), np.cos(rz), np.sin(rz)
+    X = np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]])
+    Y = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
+    Z = np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]])
+    return Z @ Y @ X
+
+
+def round_box(p, c, half, euler, r):
+    """Distance to a box with rounded edges (radius r), centre c, half extents, rotated."""
+    q = (p - np.asarray(c, float)) @ _rot(euler)   # world -> box space (rows: p @ R == R^T p)
+    d = np.abs(q) - (np.asarray(half, float) - r)
+    outside = np.linalg.norm(np.maximum(d, 0.0), axis=1)
+    inside = np.minimum(np.max(d, axis=1), 0.0)
+    return outside + inside - r
+
+
 def smin(a, b, k):
     if k <= 0:
         return np.minimum(a, b)
@@ -81,23 +100,40 @@ def smin(a, b, k):
 
 
 class Part:
-    def __init__(self, kind, args, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0):
+    """gloss 0..1: 0 = the model's base roughness, 1 = wet and shiny (eyes, noses, shell)."""
+    def __init__(self, kind, args, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0, gloss=0.0):
         self.kind, self.args, self.bone = kind, args, bone
         self.color = np.asarray(color, float)
-        self.blend, self.fur, self.tag, self.glow = blend, fur, tag, glow
+        self.blend, self.fur, self.tag, self.glow, self.gloss = blend, fur, tag, glow, gloss
 
     def dist(self, p):
         if self.kind == "cone":
             return round_cone(p, *self.args)
+        if self.kind == "box":
+            return round_box(p, *self.args)
         return ellipsoid(p, *self.args)
 
 
-def cone(a, b, ra, rb, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0):
-    return Part("cone", (a, b, ra, rb), bone, color, blend, fur, tag, glow)
+def cone(a, b, ra, rb, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0, gloss=0.0):
+    return Part("cone", (a, b, ra, rb), bone, color, blend, fur, tag, glow, gloss)
 
 
-def ell(c, r, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0):
-    return Part("ell", (c, r), bone, color, blend, fur, tag, glow)
+def ell(c, r, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0, gloss=0.0):
+    return Part("ell", (c, r), bone, color, blend, fur, tag, glow, gloss)
+
+
+def box(c, half, euler, r, bone, color, blend=0.04, fur=0.0, tag="", glow=0.0, gloss=0.0):
+    """Rounded, rotated box: rock slabs, armour plates, knuckles."""
+    return Part("box", (c, half, euler, r), bone, color, blend, fur, tag, glow, gloss)
+
+
+def eye(c, r, bone, iris, blend=0.003, look=(0.0, 0.0, -1.0)):
+    """A glossy eye: dark ball with a coloured iris ring and a black pupil facing `look`."""
+    look = np.asarray(look, float) / np.linalg.norm(look)
+    c = np.asarray(c, float)
+    return [ell(tuple(c), (r, r, r), bone, (0.03, 0.025, 0.02), blend, tag="eye", gloss=1.0),
+            ell(tuple(c + look * r * 0.55), (r * 0.62, r * 0.62, r * 0.5), bone, iris, 0.001, tag="iris", gloss=1.0),
+            ell(tuple(c + look * r * 0.8), (r * 0.3, r * 0.3, r * 0.25), bone, (0.01, 0.01, 0.01), 0.001, tag="pupil", gloss=1.0)]
 
 
 def mirror(parts):
@@ -108,11 +144,14 @@ def mirror(parts):
         if pt.kind == "cone":
             a, b, ra, rb = pt.args
             args = ((-a[0], a[1], a[2]), (-b[0], b[1], b[2]), ra, rb)
+        elif pt.kind == "box":
+            c, half, (ex, ey, ez), r = pt.args
+            args = ((-c[0], c[1], c[2]), half, (ex, -ey, -ez), r)   # mirror in x flips y and z turns
         else:
             c, r = pt.args
             args = ((-c[0], c[1], c[2]), r)
         bone = pt.bone.replace("_L", "_R") if pt.bone.endswith("_L") else pt.bone
-        out.append(Part(pt.kind, args, bone, pt.color, pt.blend, pt.fur, pt.tag, pt.glow))
+        out.append(Part(pt.kind, args, bone, pt.color, pt.blend, pt.fur, pt.tag, pt.glow, pt.gloss))
     return out
 
 # ---------------------------------------------------------------- model
@@ -147,6 +186,11 @@ class Model:
                 for q in (a, b):
                     lo = np.minimum(lo, np.asarray(q) - r)
                     hi = np.maximum(hi, np.asarray(q) + r)
+            elif pt.kind == "box":
+                c, half, _, _ = pt.args
+                ext = np.linalg.norm(half)
+                lo = np.minimum(lo, np.asarray(c) - ext)
+                hi = np.maximum(hi, np.asarray(c) + ext)
             else:
                 c, r = pt.args
                 lo = np.minimum(lo, np.asarray(c) - np.asarray(r))
@@ -199,6 +243,8 @@ class Model:
         glow = hard @ np.array([pt.glow for pt in self.parts])
         if self.glow_fn is not None:
             glow = np.maximum(glow, self.glow_fn(verts, norms, pd))
+        # Gloss blends softly like the colours, so a shiny shell fades into matte legs.
+        self.gloss = np.clip((w @ np.array([pt.gloss for pt in self.parts])) / w.sum(1), 0, 1)
         return np.clip(cols, 0, 1), np.clip(glow, 0, 1)
 
     def weights(self, verts, pd):
@@ -220,13 +266,16 @@ class Model:
         pd = self.part_distances(verts)
         cols, glow = self.colors(verts, norms, pd, faces)
         joints, wts = self.weights(verts, pd)
-        write_glb(path, self.name, verts, norms, cols, faces, joints, wts, self.bones, glow)
+        write_glb(path, self.name, verts, norms, cols, faces, joints, wts, self.bones, glow, self.gloss)
         return len(verts), len(faces)
 
 # ---------------------------------------------------------------- glTF
 
-def write_glb(path, name, verts, norms, cols, faces, joints, wts, bones, glow=None):
-    """Vertex alpha stores 1 - glow, so ordinary surfaces stay fully opaque white-alpha."""
+def write_glb(path, name, verts, norms, cols, faces, joints, wts, bones, glow=None, gloss=None):
+    """Vertex alpha stores 1 - glow, so ordinary surfaces stay fully opaque white-alpha.
+    UV.x stores gloss (0 matte .. 1 wet), read by spatial_creature_fur.gdshader."""
+    if gloss is None:
+        gloss = np.zeros(len(verts))
     if glow is None:
         glow = np.zeros(len(verts))
     blobs, views, accs = [], [], []
@@ -256,6 +305,7 @@ def write_glb(path, name, verts, norms, cols, faces, joints, wts, bones, glow=No
     a_col = add(c8, U8, "VEC4", 34962, normalized=True)
     a_jnt = add(joints, U16, "VEC4", 34962)
     a_wgt = add(wts, F, "VEC4", 34962)
+    a_uv = add(np.stack([gloss, np.zeros(len(verts))], 1).astype(np.float32), F, "VEC2", 34962)
     a_idx = add(faces.astype(np.uint32).ravel(), U32, "SCALAR", 34963)
 
     names = [b[0] for b in bones]
@@ -284,7 +334,7 @@ def write_glb(path, name, verts, norms, cols, faces, joints, wts, bones, glow=No
         "scenes": [{"nodes": [0]}],
         "nodes": nodes,
         "meshes": [{"name": name, "primitives": [{
-            "attributes": {"POSITION": a_pos, "NORMAL": a_nor, "COLOR_0": a_col, "JOINTS_0": a_jnt, "WEIGHTS_0": a_wgt},
+            "attributes": {"POSITION": a_pos, "NORMAL": a_nor, "COLOR_0": a_col, "JOINTS_0": a_jnt, "WEIGHTS_0": a_wgt, "TEXCOORD_0": a_uv},
             "indices": a_idx, "material": 0}]}],
         "materials": [{"name": name + "_fur", "pbrMetallicRoughness": {"baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0.0, "roughnessFactor": 0.85}}],
         "skins": [{"joints": list(range(first, first + len(bones))), "inverseBindMatrices": a_ibm, "skeleton": first}],

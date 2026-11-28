@@ -24,7 +24,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from sdf_model import Model, cone, ell, mirror, fbm  # noqa: E402
+from sdf_model import Model, box, cone, ell, eye, mirror, fbm  # noqa: E402
 from build_creatures import legs, OUT  # noqa: E402
 
 
@@ -70,7 +70,7 @@ def ice_troll():
         cone(leg[0], leg[1], 0.18, 0.13, "L1_L", SKIN, 0.06, fur=0.006),
         cone(leg[1], leg[2], 0.13, 0.11, "L2_L", SKIN, 0.05, fur=0.006),
         ell((0.27, 0.08, -0.07), (0.13, 0.08, 0.21), "L3_L", DARK, 0.04),
-        ell((0.065, 2.21, -0.345), (0.026, 0.016, 0.014), "Head", ICE, 0.004, glow=1.0),
+        ell((0.065, 2.21, -0.345), (0.026, 0.016, 0.014), "Head", ICE, 0.004, glow=1.0, gloss=1.0),
         cone((0.07, 2.06, -0.36), (0.08, 2.15, -0.38), 0.022, 0.004, "Head", (0.9, 0.92, 0.88), 0.004),
         # Ice crystals: shoulders, back and forearms.
         cone((0.48, 2.10, 0.06), (0.62, 2.42, 0.10), 0.07, 0.0, "A1_L", ICE, 0.01, tag="ice", glow=0.25),
@@ -91,6 +91,9 @@ def ice_troll():
         ell((0, 2.27, -0.33), (0.16, 0.045, 0.06), "Head", DARK, 0.04),
         ell((0, 2.16, -0.37), (0.05, 0.05, 0.05), "Head", DARK, 0.03),
         ell((0, 2.05, -0.375), (0.085, 0.022, 0.025), "Head", (0.12, 0.14, 0.2), 0.01),
+        # Two ivory tusks from the underbite.
+        cone((0.065, 2.03, -0.37), (0.09, 2.15, -0.41), 0.022, 0.006, "Head", (0.86, 0.84, 0.76), 0.006, gloss=0.5),
+        cone((-0.065, 2.03, -0.37), (-0.09, 2.15, -0.41), 0.022, 0.006, "Head", (0.86, 0.84, 0.76), 0.006, gloss=0.5),
         ell((0, 0.98, -0.02), (0.36, 0.20, 0.29), "Hips", CLOTH, 0.015, fur=0.01, tag="cloth"),
         ell((0, 0.84, -0.27), (0.22, 0.16, 0.035), "Hips", CLOTH, 0.01, fur=0.008, tag="cloth"),
     ]
@@ -136,43 +139,72 @@ def frost_spirit():
 # ---------------------------------------------------------------- lava golem
 
 def lava_golem():
-    ROCK = (0.20, 0.17, 0.16)
-    ROCK2 = (0.27, 0.23, 0.21)
+    """Basalt slabs and boulders stacked into a hunched giant: huge shoulders and
+    fists, a small head sunk under a heavy brow with glowing eye slits, obsidian
+    shards on the back, and lava glowing in every seam between the plates."""
+    ROCK = (0.17, 0.15, 0.14)
+    ROCK2 = (0.24, 0.21, 0.19)
+    OBSIDIAN = (0.05, 0.045, 0.06)
     LAVA = (1.0, 0.45, 0.08)
     arm = [(0.46, 1.86, 0.02), (0.62, 1.38, 0.04), (0.68, 0.92, -0.06)]
     leg = [(0.24, 1.0, 0.0), (0.28, 0.55, -0.04), (0.28, 0.12, 0.02)]
     bones = spine((0, 1.05, 0), (0, 1.35, 0.0), (0, 1.7, 0.02), (0, 2.0, -0.04), (0, 2.08, -0.12)) + limbs(arm, leg)
-    rng = np.random.default_rng(5)
+    F = 0.013   # rock grain (noise displacement)
     side = [
-        ell((0.48, 1.9, 0.03), (0.24, 0.2, 0.22), "A1_L", ROCK, 0.035, fur=0.01),
-        ell((0.55, 1.62, 0.03), (0.16, 0.2, 0.15), "A1_L", ROCK2, 0.035, fur=0.01),
-        ell((0.64, 1.25, 0.02), (0.16, 0.22, 0.16), "A2_L", ROCK, 0.035, fur=0.01),
-        ell((0.69, 0.86, -0.07), (0.19, 0.19, 0.18), "A3_L", ROCK2, 0.035, fur=0.01),
-        ell((0.25, 0.8, -0.02), (0.18, 0.26, 0.18), "L1_L", ROCK, 0.035, fur=0.01),
-        ell((0.28, 0.36, -0.02), (0.15, 0.24, 0.15), "L2_L", ROCK2, 0.035, fur=0.01),
-        ell((0.29, 0.09, -0.08), (0.17, 0.1, 0.22), "L3_L", ROCK, 0.035, fur=0.01),
-        ell((0.07, 2.08, -0.25), (0.035, 0.025, 0.02), "Head", LAVA, 0.004, glow=1.0),
+        # Shoulder boulders and plates.
+        box((0.5, 1.93, 0.03), (0.21, 0.17, 0.2), (0.3, 0.4, 0.5), 0.06, "A1_L", ROCK2, 0.015, fur=F),
+        box((0.63, 1.8, 0.06), (0.12, 0.15, 0.17), (0.1, 0.2, 0.9), 0.04, "A1_L", ROCK, 0.012, fur=F),
+        # Upper arm, elbow, a forearm that widens into a boulder fist with knuckles.
+        box((0.57, 1.6, 0.03), (0.12, 0.18, 0.12), (0.0, 0.0, 0.25), 0.04, "A1_L", ROCK, 0.012, fur=F),
+        ell((0.63, 1.38, 0.04), (0.12, 0.1, 0.12), "A2_L", ROCK2, 0.012, fur=F),
+        box((0.66, 1.15, 0.0), (0.15, 0.2, 0.15), (0.05, 0.2, 0.08), 0.045, "A2_L", ROCK, 0.012, fur=F),
+        box((0.68, 0.99, -0.03), (0.18, 0.09, 0.18), (0.0, 0.5, 0.0), 0.04, "A2_L", ROCK2, 0.01, fur=F),
+        box((0.69, 0.84, -0.08), (0.16, 0.11, 0.15), (0.1, 0.3, 0.0), 0.05, "A3_L", ROCK, 0.012, fur=F),
+        box((0.62, 0.87, -0.22), (0.035, 0.045, 0.045), (0.2, 0.0, 0.1), 0.015, "A3_L", ROCK2, 0.006),
+        box((0.69, 0.87, -0.23), (0.035, 0.045, 0.045), (0.2, 0.1, 0.0), 0.015, "A3_L", ROCK2, 0.006),
+        box((0.76, 0.86, -0.21), (0.035, 0.045, 0.045), (0.2, 0.3, -0.1), 0.015, "A3_L", ROCK2, 0.006),
+        # Thick pillar legs on wide feet with two toe slabs.
+        box((0.25, 0.8, -0.01), (0.15, 0.22, 0.16), (0.0, 0.0, 0.06), 0.05, "L1_L", ROCK2, 0.012, fur=F),
+        ell((0.28, 0.55, -0.07), (0.12, 0.1, 0.11), "L2_L", ROCK, 0.012, fur=F),
+        box((0.28, 0.34, -0.01), (0.13, 0.19, 0.14), (0.05, 0.0, 0.0), 0.045, "L2_L", ROCK2, 0.012, fur=F),
+        box((0.29, 0.08, -0.06), (0.17, 0.08, 0.22), (0.0, 0.1, 0.0), 0.04, "L3_L", ROCK, 0.012, fur=F),
+        box((0.22, 0.06, -0.3), (0.06, 0.05, 0.07), (0.0, 0.15, 0.0), 0.02, "L3_L", ROCK2, 0.006),
+        box((0.35, 0.06, -0.29), (0.06, 0.05, 0.07), (0.0, -0.1, 0.0), 0.02, "L3_L", ROCK2, 0.006),
+        # Chest plates.
+        box((0.2, 1.78, -0.24), (0.18, 0.15, 0.07), (0.25, 0.2, 0.1), 0.04, "Chest", ROCK2, 0.012, fur=F),
+        # Eye slit under the brow.
+        ell((0.068, 2.12, -0.385), (0.045, 0.018, 0.025), "Head", LAVA, 0.003, glow=1.0, tag="core"),
     ]
-    for i in range(5):   # extra boulders crusted on the shoulders and back
-        c = (0.2 + rng.random() * 0.3, 1.6 + rng.random() * 0.4, 0.1 + rng.random() * 0.2)
-        side.append(ell(c, tuple(0.08 + rng.random(3) * 0.08), "Chest" if c[0] < 0.35 else "A1_L", ROCK2, 0.01, fur=0.012))
+    # Obsidian shards breaking out of the back, glossy black.
+    for i, (x, y, z, tx, ty, tz, r) in enumerate([(0.12, 1.98, 0.22, 0.22, 2.42, 0.42, 0.075), (0.26, 1.88, 0.24, 0.42, 2.22, 0.46, 0.06), (0.06, 1.72, 0.3, 0.12, 2.02, 0.6, 0.055)]):
+        side.append(cone((x, y, z), (tx, ty, tz), r, 0.008, "Chest", OBSIDIAN, 0.01, gloss=0.8, tag="shard"))
     parts = mirror(side) + [
-        ell((0, 1.05, 0.0), (0.3, 0.22, 0.22), "Hips", ROCK, 0.04, fur=0.01),
-        ell((0, 1.36, 0.0), (0.32, 0.24, 0.24), "Spine", ROCK2, 0.04, fur=0.01),
-        ell((0, 1.72, 0.03), (0.44, 0.32, 0.3), "Chest", ROCK, 0.04, fur=0.012),
-        ell((0, 1.7, -0.27), (0.12, 0.12, 0.06), "Chest", LAVA, 0.03, glow=1.0, tag="core"),
-        ell((0, 2.08, -0.13), (0.17, 0.15, 0.16), "Head", ROCK2, 0.04, fur=0.01),
-        ell((0, 1.98, -0.27), (0.08, 0.025, 0.02), "Head", LAVA, 0.006, glow=1.0),
+        box((0, 1.03, 0.0), (0.3, 0.16, 0.2), (0.05, 0.0, 0.0), 0.05, "Hips", ROCK, 0.012, fur=F),
+        box((0, 1.28, 0.0), (0.27, 0.13, 0.2), (0.1, 0.15, 0.04), 0.045, "Spine", ROCK2, 0.012, fur=F),
+        box((0, 1.45, -0.02), (0.3, 0.1, 0.21), (-0.08, -0.1, 0.0), 0.04, "Spine", ROCK, 0.012, fur=F),
+        box((0, 1.75, 0.03), (0.44, 0.25, 0.27), (0.12, 0.0, 0.0), 0.07, "Chest", ROCK, 0.015, fur=F),
+        box((0, 1.92, 0.2), (0.31, 0.15, 0.18), (-0.4, 0.0, 0.0), 0.05, "Chest", ROCK2, 0.012, fur=F),
+        ell((0, 1.72, -0.29), (0.09, 0.15, 0.05), "Chest", LAVA, 0.01, glow=1.0, tag="core"),
+        # Head: small block, overhanging brow, jaw.
+        box((0, 2.1, -0.24), (0.15, 0.13, 0.15), (0.1, 0.0, 0.0), 0.04, "Head", ROCK2, 0.012, fur=F),
+        box((0, 2.19, -0.35), (0.18, 0.045, 0.07), (-0.3, 0.0, 0.0), 0.02, "Head", ROCK, 0.008, fur=F),
+        box((0, 2.0, -0.34), (0.12, 0.05, 0.07), (0.2, 0.0, 0.0), 0.02, "Head", ROCK, 0.008, fur=F),
     ]
-    m = Model("LavaGolem", bones, parts, voxel=0.018, tris=7500, fur_freq=14, seed=6)
+    m = Model("LavaGolem", bones, parts, voxel=0.014, tris=10000, fur_freq=11, seed=6)
+    rock = np.array([p.tag == "" for p in m.parts])
 
     def glow(v, n, pd):
-        # Thin molten veins: where a low-frequency noise crosses 0.5.
-        g = 1.0 - np.clip(np.abs(fbm(v, 5, 2, 21) - 0.5) / 0.018, 0, 1)
-        return g * 0.95
+        # Lava shows in the seams where two rock plates meet, and in thin veins.
+        rd = np.sort(pd[:, rock], 1)
+        seam = np.clip(1.0 - (rd[:, 1] - rd[:, 0]) / 0.005, 0, 1) * (rd[:, 0] < 0.004)
+        veins = 1.0 - np.clip(np.abs(fbm(v, 3, 2, 21) - 0.5) / 0.006, 0, 1)
+        return np.maximum(seam, veins * 0.6)
 
     def col(v, n, pd, c):
-        c = mottle(c, v, 0.18, 9, 6)
+        c = mottle(c, v, 0.2, 7, 6)
+        # Grey ash settles on upward faces.
+        ash = np.clip(n[:, 1] - 0.55, 0, 1)[:, None] * 1.4
+        c = c * (1 - ash) + np.array([0.42, 0.4, 0.38]) * ash
         g = glow(v, n, pd)[:, None]
         return c * (1 - g) + np.array(LAVA) * g
     m.glow_fn = glow
@@ -195,7 +227,7 @@ def fire_salamander():
         for i in range(3):
             side.append(cone(pts[i], pts[i + 1], 0.03 - i * 0.005, 0.025 - i * 0.005, f"{tag}{i + 1}_L", BLACK, 0.02))
         side.append(ell((pts[3][0] + 0.01, 0.01, pts[3][2] - 0.02), (0.03, 0.01, 0.03), f"{tag}4_L", BLACK, 0.015))
-    side.append(ell((0.045, 0.235, -0.36), (0.014, 0.012, 0.012), "Head", (0.9, 0.7, 0.2), 0.003, glow=0.8))
+    side.append(ell((0.045, 0.235, -0.36), (0.014, 0.012, 0.012), "Head", (0.9, 0.7, 0.2), 0.003, glow=0.8, gloss=1.0))
     parts = mirror(side) + [
         ell((0, 0.18, 0.0), (0.085, 0.06, 0.25), "Spine", BLACK, 0.04),
         ell((0, 0.19, -0.16), (0.08, 0.06, 0.1), "Chest", BLACK, 0.04),
@@ -224,12 +256,19 @@ def fire_salamander():
 # ---------------------------------------------------------------- mushroom beetle
 
 def mushroom_beetle():
-    SHELL = (0.10, 0.12, 0.22)
-    LEG = (0.07, 0.07, 0.10)
-    HORN = (0.16, 0.12, 0.10)
+    """A rhino beetle the size of a pony: split, ridged wing cases with two rows
+    of glowing spots, a glossy pronotum with its own short horn, a long curved
+    head horn with a forked tip, compound eyes, mandibles, clubbed antennae and
+    jointed, spined legs ending in hooked feet. Glowing mushrooms sprout from
+    the back (it lives in Glow Hollow)."""
+    SHELL = (0.10, 0.19, 0.30)
+    UNDER = (0.08, 0.07, 0.09)
+    LEG = (0.12, 0.08, 0.06)
+    HORN = (0.13, 0.09, 0.07)
     CAP = (0.62, 0.80, 0.92)
     STEM = (0.82, 0.86, 0.88)
     CYAN = (0.35, 0.95, 1.0)
+    EYE = (0.32, 0.08, 0.05)
     front = [(0.15, 0.38, -0.32), (0.32, 0.42, -0.42), (0.42, 0.2, -0.5), (0.46, 0.01, -0.55)]
     mid = [(0.17, 0.36, 0.0), (0.37, 0.41, 0.02), (0.48, 0.19, 0.05), (0.52, 0.01, 0.06)]
     hind = [(0.15, 0.36, 0.25), (0.34, 0.41, 0.36), (0.44, 0.19, 0.48), (0.48, 0.01, 0.56)]
@@ -241,38 +280,79 @@ def mushroom_beetle():
             prev = f"M{i + 1}{side_tag}"
     side = []
     for tag, pts in (("F", front), ("M", mid), ("H", hind)):
-        for i in range(3):
-            side.append(cone(pts[i], pts[i + 1], 0.06 - i * 0.012, 0.05 - i * 0.012, f"{tag}{i + 1}_L", LEG, 0.015))
-    side.append(ell((0.09, 0.45, -0.6), (0.025, 0.02, 0.02), "Head", (0.05, 0.05, 0.05), 0.004))
-    mush = [(0.12, 0.74, 0.0, 0.11), (-0.06, 0.76, 0.18, 0.14), (0.02, 0.72, -0.16, 0.08), (-0.16, 0.70, -0.02, 0.07), (0.17, 0.68, 0.24, 0.06)]
+        p0, p1, p2, p3 = [np.asarray(q, float) for q in pts]
+        side.append(ell(tuple(p0), (0.06, 0.05, 0.06), f"{tag}1_L", LEG, 0.01, gloss=0.5))                     # coxa
+        side.append(cone(tuple(p0), tuple(p1), 0.05, 0.045, f"{tag}1_L", LEG, 0.01, gloss=0.5))                # femur
+        side.append(cone(tuple(p1), tuple(p2), 0.038, 0.026, f"{tag}2_L", LEG, 0.008, gloss=0.5))              # tibia
+        for k in (0.35, 0.6, 0.85):   # spines along the tibia
+            q = p1 + (p2 - p1) * k
+            side.append(cone(tuple(q), tuple(q + np.array([0.05, -0.02, 0.0])), 0.009, 0.002, f"{tag}2_L", LEG, 0.003, gloss=0.5))
+        for k in range(3):            # tarsus segments and the claw
+            a_ = p2 + (p3 - p2) * (k / 3.0)
+            b_ = p2 + (p3 - p2) * ((k + 1) / 3.0)
+            side.append(cone(tuple(a_), tuple(b_), 0.02 - k * 0.003, 0.016 - k * 0.003, f"{tag}3_L", LEG, 0.004, gloss=0.5))
+        side.append(cone(tuple(p3), tuple(p3 + np.array([0.03, 0.0, -0.05])), 0.01, 0.002, f"{tag}4_L", LEG, 0.003, gloss=0.6))
+    # Wing cases: one per side with a hairline seam down the middle.
+    side.append(ell((0.13, 0.56, 0.13), (0.2, 0.19, 0.43), "Spine", SHELL, 0.004, tag="shell", gloss=0.8))
+    # Head: compound eye, mandible, clubbed antenna.
+    side += [ell((0.1, 0.45, -0.575), (0.042, 0.045, 0.045), "Head", EYE, 0.004, tag="ceye", gloss=1.0),
+             cone((0.065, 0.37, -0.62), (0.05, 0.345, -0.72), 0.026, 0.014, "Head", HORN, 0.006, gloss=0.6),
+             cone((0.05, 0.345, -0.72), (0.012, 0.34, -0.77), 0.014, 0.004, "Head", HORN, 0.004, gloss=0.6),
+             cone((0.085, 0.48, -0.62), (0.2, 0.6, -0.76), 0.008, 0.006, "Head", LEG, 0.004),
+             ell((0.21, 0.61, -0.775), (0.022, 0.016, 0.03), "Head", LEG, 0.004)]
+    mush = [(0.12, 0.83, 0.04, 0.11), (-0.08, 0.84, 0.2, 0.13), (0.03, 0.81, -0.12, 0.08)]
     caps = []
     for (x, y, z, r) in mush:
         caps.append(cone((x, y - 0.12, z), (x, y + r * 0.6, z), r * 0.28, r * 0.22, "Spine", STEM, 0.02, tag="stem", glow=0.2))
         caps.append(ell((x, y + r * 0.7, z), (r, r * 0.42, r), "Spine", CAP, 0.01, tag="cap", glow=0.55))
     parts = mirror(side) + caps + [
-        ell((0, 0.52, 0.1), (0.38, 0.26, 0.52), "Spine", SHELL, 0.03, tag="shell"),
-        ell((0, 0.47, -0.37), (0.30, 0.2, 0.18), "Chest", SHELL, 0.03, tag="shell"),
-        ell((0, 0.41, -0.55), (0.13, 0.1, 0.1), "Head", SHELL, 0.03),
-        cone((0, 0.42, -0.6), (0, 0.58, -0.86), 0.06, 0.035, "Head", HORN, 0.02),
-        cone((0, 0.58, -0.86), (0, 0.78, -0.90), 0.035, 0.008, "Head", HORN, 0.015),
-        cone((0, 0.6, -0.42), (0, 0.66, -0.68), 0.05, 0.01, "Chest", HORN, 0.02),
+        ell((0, 0.43, 0.1), (0.3, 0.14, 0.46), "Spine", UNDER, 0.03, tag="belly"),
+        ell((0, 0.5, -0.33), (0.29, 0.17, 0.19), "Chest", SHELL, 0.02, tag="shell", gloss=0.8),
+        ell((0, 0.42, -0.53), (0.13, 0.1, 0.11), "Head", UNDER, 0.02, gloss=0.4),
+        # Head horn: a long curve with a forked tip.
+        cone((0, 0.42, -0.58), (0, 0.55, -0.82), 0.065, 0.045, "Head", HORN, 0.02, gloss=0.7, tag="horn"),
+        cone((0, 0.55, -0.82), (0, 0.73, -0.93), 0.045, 0.028, "Head", HORN, 0.015, gloss=0.7, tag="horn"),
+        cone((0, 0.73, -0.93), (0, 0.86, -0.89), 0.028, 0.016, "Head", HORN, 0.01, gloss=0.7, tag="horn"),
+        cone((0, 0.86, -0.89), (0.035, 0.93, -0.84), 0.016, 0.004, "Head", HORN, 0.006, gloss=0.7, tag="horn"),
+        cone((0, 0.86, -0.89), (-0.035, 0.93, -0.84), 0.016, 0.004, "Head", HORN, 0.006, gloss=0.7, tag="horn"),
+        # Short pronotum horn.
+        cone((0, 0.62, -0.4), (0, 0.67, -0.6), 0.05, 0.012, "Chest", HORN, 0.02, gloss=0.7, tag="horn"),
     ]
-    m = Model("MushroomBeetle", bones, parts, voxel=0.012, tris=8000, seed=14)
+    m = Model("MushroomBeetle", bones, parts, voxel=0.009, tris=11000, seed=14)
     shell = np.array([p.tag == "shell" for p in m.parts])
     capm = np.array([p.tag == "cap" for p in m.parts])
+    belly = np.array([p.tag == "belly" for p in m.parts])
+    ceye = np.array([p.tag == "ceye" for p in m.parts])
 
-    def glow(v, n, pd):
-        on_shell = pd[:, shell].min(1) < 0.01
-        spots = np.clip((fbm(v, 22, 1, 41) - 0.62) / 0.05, 0, 1)
-        return spots * on_shell * (n[:, 1] > -0.2)
+    def spots(v, n, pd):
+        # Two rows of round glowing spots down each wing case.
+        on = (pd[:, shell].min(1) < 0.01) & (n[:, 1] > -0.1) & (v[:, 2] > -0.12)
+        ax = np.abs(v[:, 0])
+        row = np.minimum(np.abs(ax - 0.08), np.abs(ax - 0.2))
+        along = np.abs(((v[:, 2] + 0.3) / 0.16) % 1.0 - 0.5) * 0.16
+        d = np.hypot(row, along)
+        return np.clip((0.034 - d) / 0.01, 0, 1) * on
+
+    def under_caps(pd, n):
+        return (pd[:, capm].min(1) < 0.01) & (n[:, 1] < -0.3)
 
     def col(v, n, pd, c):
-        g = glow(v, n, pd)[:, None]
+        on_shell = pd[:, shell].min(1) < 0.01
+        # Fine ridges along the wing cases, and an oily blue-violet sheen near the top.
+        ridge = 0.5 + 0.5 * np.cos(np.abs(v[:, 0]) * 160.0)
+        c[on_shell] *= (0.8 + 0.3 * ridge[on_shell])[:, None]
+        sheen = np.clip(n[:, 1], 0, 1)[:, None] * on_shell[:, None]
+        c = c * (1 - 0.5 * sheen) + np.array([0.18, 0.16, 0.36]) * 0.5 * sheen
+        # Segment bands on the belly, facets on the compound eyes.
+        on_belly = pd[:, belly].min(1) < 0.006
+        c[on_belly] *= (0.7 + 0.5 * (np.sin(v[on_belly, 2] * 45.0) > 0.6))[:, None]
+        on_eye = pd[:, ceye].min(1) < 0.004
+        c[on_eye] *= (0.6 + 0.8 * fbm(v[on_eye], 220, 1, 3))[:, None]
+        g = spots(v, n, pd)[:, None]
         c = c * (1 - g) + np.array(CYAN) * g
-        under = (pd[:, capm].min(1) < 0.01) & (n[:, 1] < -0.3)
-        c[under] = CYAN   # glowing gills under the caps
+        c[under_caps(pd, n)] = CYAN   # glowing gills under the caps
         return c
-    m.glow_fn = lambda v, n, pd: np.maximum(glow(v, n, pd), ((pd[:, capm].min(1) < 0.01) & (n[:, 1] < -0.3)) * 0.9)
+    m.glow_fn = lambda v, n, pd: np.maximum(spots(v, n, pd), under_caps(pd, n) * 0.9)
     m.color_fn = col
     return m
 

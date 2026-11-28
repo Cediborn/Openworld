@@ -19,7 +19,7 @@ const SECTIONS := [["quests", "Quests", "quest"], ["people", "People", "person"]
 	["lore", "Lore", "lore"], ["notes", "Notes", "note"], ["inventory", "Inventory", "armor"], ["map", "Map", "map"]]
 const QUEST_FILTERS := [["main", "Main"], ["side", "Side"], ["special", "Special"], ["contract", "Contracts"], ["done", "Completed"]]
 const ITEM_FILTERS := [["all", "All"], ["weapon", "Weapons"], ["armor", "Armour"], ["potion", "Potions"], ["material", "Materials"], ["valuable", "Valuables"], ["quest", "Quest"]]
-const KIND_ICON := {"weapon": "sword", "armor": "armor", "potion": "potion", "key": "key", "quest": "quest", "material": "material",
+const KIND_ICON := {"weapon": "sword", "armor": "armor", "outfit": "armor", "potion": "potion", "key": "key", "quest": "quest", "material": "material",
 	"collectible": "collectible", "trophy": "trophy"}
 const INK_HEX := "#38230f"
 const SOFT_HEX := "#6b4a26"
@@ -649,8 +649,8 @@ func _fill_inventory() -> void:
 		else:
 			item_filter = k
 		_fill_inventory())
-	var ids := ["iron_sword"] + state.items.keys()
-	var kinds := ["weapon", "armor", "potion", "key", "quest", "material", "collectible", "trophy"]
+	var ids := ["iron_sword"] + GameState.OUTFITS + state.items.keys()
+	var kinds := ["weapon", "armor", "outfit", "potion", "key", "quest", "material", "collectible", "trophy"]
 	if sort_by_name:
 		ids.sort_custom(func(a, b): return state.item_name(a) < state.item_name(b))
 	else:
@@ -658,11 +658,11 @@ func _fill_inventory() -> void:
 	for id in ids:
 		var it := state.item(id)
 		var k: String = it.kind
-		var group := "valuable" if k in ["collectible", "trophy"] else ("quest" if k in ["quest", "key"] else k)
+		var group := "valuable" if k in ["collectible", "trophy"] else ("quest" if k in ["quest", "key"] else ("armor" if k == "outfit" else k))
 		if item_filter != "all" and group != item_filter:
 			continue
-		var n := 1 if id == "iron_sword" else state.count(id)
-		var eq: bool = (id == state.weapon or id == state.armor)
+		var n := 1 if id == "iron_sword" or id in GameState.OUTFITS else state.count(id)
+		var eq: bool = (id == state.weapon or id == state.armor or id == state.outfit)
 		_add(id, it.name + (" ×%d" % n if n > 1 else "") + ("   ✦ equipped" if eq else ""), KIND_ICON.get(k, "collectible"),
 			Color(0.55, 0.3, 0.05) if eq else UiTheme.INK_SOFT)
 	_finish("Nothing here", "armor", "No items of this kind in your bag.")
@@ -671,7 +671,7 @@ func _fill_inventory() -> void:
 
 func _show_item(id: String) -> void:
 	var it := state.item(id)
-	var eq: bool = (id == state.weapon or id == state.armor)
+	var eq: bool = (id == state.weapon or id == state.armor or id == state.outfit)
 	var t := "[color=%s]%s%s[/color]\n\n%s\n" % [SOFT_HEX, it.kind.capitalize(), "  ·  equipped" if eq else "", it.get("desc", "")]
 	if it.kind == "weapon":
 		t += "\n[b]Damage[/b]  ×%.2f" % float(it.get("damage", 1.0))
@@ -686,8 +686,8 @@ func _show_item(id: String) -> void:
 		state.item_name(state.weapon), state.item_name(state.armor) if state.armor != "" else "none"]
 	_detail(it.name, t, false)
 	portrait.visible = player != null and player.is_inside_tree()
-	action_btn.visible = it.kind in ["weapon", "armor"] and not eq
-	action_btn.text = "Equip"
+	action_btn.visible = it.kind in ["weapon", "armor", "outfit"] and not eq
+	action_btn.text = "Wear" if it.kind == "outfit" else "Equip"
 	action_btn.icon = UiTheme.icon(KIND_ICON.get(it.kind, "armor"))
 
 

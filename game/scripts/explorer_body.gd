@@ -18,33 +18,56 @@ const ANIMS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Jump_Start", "Jump", "Jump
 const ONE_SHOTS := ["Jump_Start", "Jump", "Jump_Land", "Sword_Slash1", "Sword_Slash2", "Sword_Slash3", "Hit_Chest", "Death01", "PickUp_Table", "Roll",
 	"Whistle", "Pistol_Shoot", "Pistol_Reload"]
 ## The explorer's look; villagers pass their own outfit before being added.
+## kit: "ranger" or "peasant" (Quaternius modular outfits); hair: a style from
+## HAIR_FILES; skin: index into SKIN_TONES. Colours tint the clothes (see
+## shaders/spatial_char_kit.gdshader).
 const EXPLORER := {
-	"model": "male", "jacket": Color(0.29, 0.29, 0.19), "pants": Color(0.16, 0.16, 0.13),
+	"model": "male", "kit": "ranger", "hair_style": "parted", "skin": 1, "face": 2,
+	"jacket": Color(0.30, 0.32, 0.19), "pants": Color(0.17, 0.16, 0.12),
 	"boots": Color(0.27, 0.17, 0.10), "hair": Color(0.07, 0.05, 0.035),
-	"accessories": ["scarf", "explorer", "sword"],
+	"accessories": ["explorer", "sword"],
 }
-## Upper-chest width factor (1.0 = base superhero build).
-const SHOULDER_SLIM := 0.86
-## Dressed meshes are expensive to build, so each body model is dressed once.
-static var _mesh_cache := {}
+## The hero's second outfit: an original long white open coat over a dark
+## shirt, relaxed dark trousers, a wide sash and high boots with silver trim.
+const WHITE_COAT := {
+	"model": "male", "kit": "coat", "hair_style": "long", "skin": 1, "face": 2,
+	"jacket": Color(0.86, 0.86, 0.84), "shirt": Color(0.07, 0.07, 0.08), "pants": Color(0.09, 0.09, 0.1),
+	"boots": Color(0.08, 0.07, 0.07), "sash": Color(0.16, 0.16, 0.18), "trim": Color(0.78, 0.8, 0.84),
+	"hair": Color(0.2, 0.15, 0.1), "accessories": ["explorer", "sword"],
+}
 
-enum Region { SKIN, JACKET, PANTS, BOOTS, HAIR }
+## The explorer's outfits by item id (see GameState.OUTFITS).
+const HERO_OUTFITS := {"field_clothes": EXPLORER, "white_coat": WHITE_COAT}
 
-## How far each region is pushed out along the normal (metres) and how many
-## smoothing passes it gets. Smoothing hides the base body's muscles under cloth.
-const INFLATE := [0.0, 0.034, 0.02, 0.016, 0.009]
-const SMOOTH_PASSES := [0, 24, 16, 18, 2]
-
-const JACKET_BONES := ["Spine", "Chest", "UpperChest", "LeftShoulder", "RightShoulder",
-	"LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm"]
-const LEG_BONES := ["LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg"]
-const FOOT_BONES := ["LeftFoot", "RightFoot", "LeftToes", "RightToes"]
+## Clothes: Quaternius Modular Character Outfits - Fantasy (CC0), skinned to
+## the same skeleton as the animations. Heads, eyes, hair and brows: Quaternius
+## Universal Base Characters (CC0). See assets/character/ASSETS.md.
+const KIT_DIR := "res://assets/character/kit/"
+const OUTFIT_FILES := {
+	"male": {"peasant": "outfits/Male_Peasant.gltf", "ranger": "outfits/Male_Ranger.gltf"},
+	"female": {"peasant": "outfits/Female_Peasant.gltf", "ranger": "outfits/Female_Ranger.gltf"},
+}
+const HAIR_FILES := {
+	"parted": "hair/Hair_SimpleParted.gltf", "long": "hair/Hair_Long.gltf", "buzzed": "hair/Hair_Buzzed.gltf",
+	"buzzed_f": "hair/Hair_BuzzedFemale.gltf", "buns": "hair/Hair_Buns.gltf", "beard": "hair/Hair_Beard.gltf",
+	"brows": "hair/Eyebrows_Regular.gltf", "brows_f": "hair/Eyebrows_Female.gltf",
+}
+## Skin tones (multiplied onto the painted skin), light to dark.
+const SKIN_TONES := [Color(1.0, 0.97, 0.95), Color(0.93, 0.85, 0.78), Color(0.82, 0.68, 0.56),
+	Color(0.66, 0.5, 0.39), Color(0.5, 0.36, 0.27), Color(0.38, 0.27, 0.2)]
+## Head coverings that would clip through long or full hair.
+const HATS := ["helmet", "hat", "cap", "chef_hat", "headscarf", "hood"]
+## Mesh parts per kit, by the part's name suffix, and which outfit colour dyes them.
+const PART_COLOUR := {"Body": "jacket", "Arms": "jacket", "Legs": "pants", "Feet": "boots", "Boots": "boots", "Hood": "hood_color"}
+## Shared head meshes (cut from the full base body once per model) and materials.
+static var _parts_cache := {}
+static var _head_cache := {}
+static var _mat_cache := {}
 
 var anim: AnimationPlayer
 var skeleton: Skeleton3D
 var current := ""
 var outfit: Dictionary = EXPLORER
-var outfit_mat: ShaderMaterial
 var sword_hand: Node3D
 var sword_hip: Node3D
 ## The flintlock in the hand and in its holster (explorer only).
@@ -55,32 +78,26 @@ var aim_pitch := 0.0
 var _aim_mod: AimLean
 var blade_mat: StandardMaterial3D
 var _busy_left := 0.0   # seconds of game time until a one-shot animation ends
-var smooth_normals := PackedVector3Array()
+## Everything the current outfit added (swapped out by set_outfit).
+var _outfit_nodes: Array[Node] = []
+var _model: Node3D
+## What _build_outfit picked: {kit, face, skin, hair, beard} (tests and debugging).
+var look := {}
+var _tone: Color = SKIN_TONES[1]
 
 
 func _ready() -> void:
-	var model_path: String = MODELS[outfit.get("model", "male")]
-	var model: Node3D = load(model_path).instantiate()
-	add_child(model)
-	skeleton = model.find_children("*", "Skeleton3D", true, false)[0]
-	for mi: MeshInstance3D in skeleton.find_children("*", "MeshInstance3D", false, false):
-		var key := model_path + ":" + mi.name
-		if not _mesh_cache.has(key):
-			_dress(mi)
-			_mesh_cache[key] = mi.mesh
-		mi.mesh = _mesh_cache[key]
-		for s in mi.mesh.get_surface_count():
-			var m := mi.mesh.surface_get_material(s)
-			if m is ShaderMaterial:
-				# Per-person colours on a copy of the shared outfit material.
-				outfit_mat = m.duplicate()
-				for k in ["jacket", "pants", "boots", "hair"]:
-					outfit_mat.set_shader_parameter(k + "_color", outfit.get(k, EXPLORER[k]))
-				mi.set_surface_override_material(s, outfit_mat)
-		if outfit.get("hide_hair_mesh", false) and mi.name.to_lower().contains("hair"):
-			mi.visible = false
-	_add_accessories()
-	_slim_shoulders()
+	var g: String = outfit.get("model", "male")
+	# Any kit file gives the skeleton: every outfit shares the same rest pose.
+	_model = load(KIT_DIR + OUTFIT_FILES[g]["peasant"]).instantiate()
+	add_child(_model)
+	skeleton = _model.find_children("*", "Skeleton3D", true, false)[0]
+	for mi in skeleton.find_children("*", "MeshInstance3D", false, false):
+		mi.free()
+	_build_outfit()
+	if "sword" in outfit.get("accessories", []):
+		_add_sword()
+	var model := _model
 	anim = AnimationPlayer.new()
 	add_child(anim)
 	anim.root_node = anim.get_path_to(model)
@@ -163,203 +180,6 @@ func set_sword_drawn(drawn: bool) -> void:
 		sword_hip.visible = not drawn
 
 
-## The base body is built like a superhero; narrow the upper chest a little so
-## the explorer and villagers look like ordinary people.
-func _slim_shoulders() -> void:
-	var i := skeleton.find_bone("UpperChest")
-	if i == -1:
-		return
-	var rest := skeleton.get_bone_rest(i)
-	rest.basis = rest.basis.scaled_local(Vector3(SHOULDER_SLIM, 1.0, 0.96))
-	skeleton.set_bone_rest(i, rest)
-	skeleton.set_bone_pose_scale(i, Vector3(SHOULDER_SLIM, 1.0, 0.96))
-
-
-# ---------- Clothing ----------
-
-func _region_of_bone(b: String, y: float) -> int:
-	if b in FOOT_BONES:
-		return Region.BOOTS
-	if b in LEG_BONES:
-		return Region.BOOTS if y < 0.36 else Region.PANTS
-	if b == "Hips":
-		return Region.JACKET if y > 0.93 else Region.PANTS   # jacket hem falls over the hips
-	if b in JACKET_BONES:
-		return Region.JACKET
-	return Region.SKIN
-
-
-func _dress(mi: MeshInstance3D) -> void:
-	var mesh: ArrayMesh = mi.mesh
-	var skin := mi.skin
-	if mesh == null or skin == null:
-		return
-	var out := ArrayMesh.new()
-	for s in mesh.get_surface_count():
-		var arrays := mesh.surface_get_arrays(s)
-		var mat := mesh.surface_get_material(s)
-		var is_body := mat != null and mat.resource_name.to_lower().contains("superhero")
-		if is_body:
-			arrays = _paint_regions(arrays, skin)
-			mat = _outfit_material(mat)
-		var flags: int = mesh.surface_get_format(s) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
-		for c in [Mesh.ARRAY_CUSTOM0, Mesh.ARRAY_CUSTOM1, Mesh.ARRAY_CUSTOM2, Mesh.ARRAY_CUSTOM3]:
-			arrays[c] = null   # custom channels need extra format flags; the body doesn't use them
-		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, flags)
-		out.surface_set_material(s, mat)
-	mi.mesh = out
-
-
-func _paint_regions(arrays: Array, skin: Skin) -> Array:
-	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-	var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
-	var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
-	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	var per: int = bones.size() / verts.size()
-	var bind_names := []
-	for i in skin.get_bind_count():
-		var nm: StringName = skin.get_bind_name(i)
-		if nm == &"":
-			nm = skeleton.get_bone_name(skin.get_bind_bone(i))
-		bind_names.append(String(nm))
-	var region := PackedInt32Array()
-	region.resize(verts.size())
-	var head_w := PackedFloat32Array()
-	head_w.resize(verts.size())
-	for v in verts.size():
-		var score := [0.0, 0.0, 0.0, 0.0]
-		for k in per:
-			var w: float = weights[v * per + k]
-			if w <= 0.0:
-				continue
-			var bi: int = bones[v * per + k]
-			var bname: String = bind_names[bi] if bi < bind_names.size() else ""
-			score[_region_of_bone(bname, verts[v].y)] += w
-			if bname == "Head":
-				head_w[v] += w
-		var r := 0
-		for i in 4:
-			if score[i] > score[r]:
-				r = i
-		region[v] = r
-	_mark_hair(verts, head_w, region)
-	smooth_normals = norms.duplicate()
-	verts = _smooth_cloth(verts, indices, region)
-	# Winding check: keep the new normals pointing the same way as the originals.
-	for v in verts.size():
-		if smooth_normals[v].dot(norms[v]) < 0.0:
-			smooth_normals[v] = -smooth_normals[v]
-	norms = smooth_normals
-	arrays[Mesh.ARRAY_NORMAL] = norms
-	var cols := PackedColorArray()
-	cols.resize(verts.size())
-	for v in verts.size():
-		cols[v] = Color(region[v] / 4.0, 0, 0, 1)
-		var push: float = INFLATE[region[v]]
-		if region[v] == Region.JACKET:
-			# Fill the base body's narrow waist so the jacket hangs straight like a parka.
-			push += 0.035 * clampf(1.0 - absf(verts[v].y - 1.05) / 0.18, 0.0, 1.0)
-		verts[v] += norms[v] * push
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_COLOR] = cols
-	return arrays
-
-
-## Short hair: the top and back of the skull, above the brow and ears.
-func _mark_hair(verts: PackedVector3Array, head_w: PackedFloat32Array, region: PackedInt32Array) -> void:
-	var lo := Vector3.INF
-	var hi := -Vector3.INF
-	for v in verts.size():
-		if head_w[v] > 0.6:
-			lo = lo.min(verts[v])
-			hi = hi.max(verts[v])
-	if lo == Vector3.INF:
-		return
-	var h := hi - lo
-	var cx := (lo.x + hi.x) * 0.5
-	for v in verts.size():
-		if head_w[v] < 0.5:
-			continue
-		var q := (verts[v] - lo) / h   # 0..1 inside the head's box; face is +Z
-		var crown := q.y > 0.70 - 0.10 * (1.0 - q.z)          # hairline sweeps lower towards the back
-		var back := q.z < 0.42 and q.y > 0.36
-		var side := absf(verts[v].x - cx) / (h.x * 0.5) > 0.82 and q.y > 0.62 and q.z < 0.6   # temples, above the ears
-		if crown or back or side:
-			region[v] = Region.HAIR
-
-
-## Taubin smoothing on clothing only. Vertices are welded by position first,
-## so UV seams don't tear apart.
-func _smooth_cloth(verts: PackedVector3Array, indices: PackedInt32Array, region: PackedInt32Array) -> PackedVector3Array:
-	var key_of := {}
-	var weld := PackedInt32Array()
-	weld.resize(verts.size())
-	var uniq: Array[Vector3] = []
-	for v in verts.size():
-		var key := Vector3i((verts[v] * 2000.0).round())
-		if not key_of.has(key):
-			key_of[key] = uniq.size()
-			uniq.append(verts[v])
-		weld[v] = key_of[key]
-	var n := uniq.size()
-	var reg := PackedInt32Array()
-	reg.resize(n)
-	for v in verts.size():
-		reg[weld[v]] = maxi(reg[weld[v]], region[v])
-	var nbrs: Array = []
-	nbrs.resize(n)
-	for i in n:
-		nbrs[i] = []   # plain Array: packed arrays are copied on access, so append() would be lost
-	for t in range(0, indices.size(), 3):
-		for e in 3:
-			var a := weld[indices[t + e]]
-			var b := weld[indices[t + (e + 1) % 3]]
-			nbrs[a].append(b)
-			nbrs[b].append(a)
-	var pos := PackedVector3Array(uniq)
-	for pass_i in SMOOTH_PASSES.max():
-		var nxt := pos.duplicate()
-		for i in n:
-			if pass_i >= SMOOTH_PASSES[reg[i]] or nbrs[i].is_empty():
-				continue
-			var avg := Vector3.ZERO
-			for j in nbrs[i]:
-				avg += pos[j]
-			avg /= nbrs[i].size()
-			# Taubin smoothing: alternate shrink and grow steps so cloth keeps its volume.
-			nxt[i] = pos[i].lerp(avg, 0.6 if pass_i % 2 == 0 else -0.63)
-		pos = nxt
-	# Fresh normals from the smoothed surface, so cloth no longer shades like muscle.
-	var nrm := PackedVector3Array()
-	nrm.resize(n)
-	for t in range(0, indices.size(), 3):
-		var a := weld[indices[t]]
-		var b := weld[indices[t + 1]]
-		var c := weld[indices[t + 2]]
-		var fn := (pos[b] - pos[a]).cross(pos[c] - pos[a])
-		nrm[a] += fn
-		nrm[b] += fn
-		nrm[c] += fn
-	var out := verts.duplicate()
-	for v in verts.size():
-		out[v] = pos[weld[v]]
-		if region[v] != Region.SKIN and nrm[weld[v]].length_squared() > 0.0:
-			smooth_normals[v] = nrm[weld[v]].normalized()
-	return out
-
-
-func _outfit_material(body: Material) -> ShaderMaterial:
-	var m := ShaderMaterial.new()
-	m.shader = load("res://shaders/spatial_char_outfit.gdshader")
-	if body is BaseMaterial3D:
-		m.set_shader_parameter("skin_albedo", body.albedo_texture)
-		m.set_shader_parameter("skin_normal", body.normal_texture)
-		m.set_shader_parameter("skin_rough", body.roughness_texture)
-	m.set_shader_parameter("weave_noise", Props.noise())
-	return m
-
-
 # ---------- Accessories ----------
 
 func _attach(bone: String) -> BoneAttachment3D:
@@ -386,142 +206,529 @@ static func _fabric(c: Color, rough := 0.9) -> StandardMaterial3D:
 	return m
 
 
-func _add_accessories() -> void:
+# ---------- Outfit (modelled clothes, head, hair) ----------
+
+## Swaps the clothes, hair and head props for another outfit; skeleton,
+## animation and held weapons stay as they are.
+func set_outfit(o: Dictionary) -> void:
+	for n in _outfit_nodes:
+		if is_instance_valid(n):
+			n.free()
+	_outfit_nodes.clear()
+	outfit = o
+	_build_outfit()
+
+
+func _build_outfit() -> void:
+	var g: String = outfit.get("model", "male")
 	var acc: Array = outfit.get("accessories", [])
-	_add_boots()
-	if "scarf" in acc:
-		_add_scarf()
-	if "explorer" in acc:
-		_add_explorer_kit()
-	if "sword" in acc:
-		_add_sword()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(outfit.get("seed", 1))
+	var skin_i := clampi(int(outfit.get("skin", rng.randi() % SKIN_TONES.size())), 0, SKIN_TONES.size() - 1)
+	var tone: Color = SKIN_TONES[skin_i]
+	_tone = tone
+	var face_i := int(outfit.get("face", rng.randi() % FACES))
+	var kit: String = outfit.get("kit", "ranger" if acc.any(func(a): return a in ["sword", "spear", "helmet"]) else "peasant")
+	var cloth_kit := "peasant" if kit == "coat" else kit
+	var armoured: bool = "helmet" in acc or "armor" in acc
+	for part in _kit_parts(KIT_DIR + OUTFIT_FILES[g][cloth_kit]):
+		var nm: String = part.name
+		if nm.ends_with("Hood") and not ("hood" in acc or "headscarf" in acc):
+			continue
+		if (nm.contains("Pauldron") or nm.contains("Bracer")) and not armoured:
+			continue
+		if kit == "coat" and (nm.ends_with("Feet") or nm.ends_with("Arms")):
+			continue   # ranger boots and full-length sleeves instead
+		_add_part(part, _cloth_colour(nm, kit))
+	if kit == "coat":
+		for part in _kit_parts(KIT_DIR + OUTFIT_FILES[g]["ranger"]):
+			if part.name.ends_with("Boots"):
+				_add_part(part, {"tint": outfit.get("boots", Color(0.08, 0.07, 0.07)), "green_only": false})
+			elif part.name.ends_with("Arms"):
+				_add_part(part, {"tint": outfit.get("shirt", Color(0.07, 0.07, 0.08)), "green_only": false})
+	# A peasant in a hood or headscarf borrows the ranger's hood.
+	if ("hood" in acc or "headscarf" in acc) and cloth_kit == "peasant":
+		for part in _kit_parts(KIT_DIR + OUTFIT_FILES[g]["ranger"]):
+			if part.name.ends_with("Hood"):
+				_add_part(part, _cloth_colour(part.name, kit))
+	if kit == "coat":
+		_add_coat(g)
+	# Head: face, eyes and ears from the base body; the neck tucks under the collar.
+	var head: Dictionary = _head(g, face_i)
+	_add_part({"mesh": head.mesh, "skin": head.skin}, {"skin_tone": tone})
+	_add_part({"mesh": head.eyes, "skin": head.skin}, {})
+	# Hair: style by gender and headwear, brows always, a beard on some men.
+	var hair_col: Color = outfit.get("hair", Color(0.15, 0.1, 0.06))
+	var style: String = outfit.get("hair_style", "")
+	if "bun" in acc:
+		style = "buns"
+	elif acc.any(func(a): return a in HATS):
+		style = "buzzed" if g == "male" else "buzzed_f"
+	elif style == "":
+		var pool: Array = ["parted", "parted", "buzzed", "long"] if g == "male" else ["long", "long", "buns", "buzzed_f"]
+		style = pool[rng.randi() % pool.size()]
+	if style != "none":
+		_add_hair(style, hair_col)
+	_add_hair("brows" if g == "male" else "brows_f", hair_col.darkened(0.1))
+	var beard: bool = g == "male" and ("beard" in acc or outfit.get("beard", rng.randf() < 0.3 and not "explorer" in acc))
+	if beard:
+		_add_hair("beard", hair_col)
+	look = {"kit": kit, "face": face_i, "skin": skin_i, "hair": style, "beard": beard}
 	_add_villager_props(acc)
 
 
-func _add_scarf() -> void:
-	var neck := _attach("Neck")
-	var scarf := MeshInstance3D.new()
-	var tor := TorusMesh.new()
-	tor.inner_radius = 0.055
-	tor.outer_radius = 0.105
-	tor.rings = 24
-	tor.ring_segments = 10
-	scarf.mesh = tor
-	scarf.material_override = _fabric(Color(0.45, 0.10, 0.08))
-	scarf.position = Vector3(0, 0.02, 0.0)
-	scarf.scale = Vector3(1.05, 0.75, 1.0)
-	neck.add_child(scarf)
-	var tail := MeshInstance3D.new()
-	var tb := BoxMesh.new()
-	tb.size = Vector3(0.07, 0.22, 0.02)
-	tail.mesh = tb
-	tail.material_override = scarf.material_override
-	tail.position = Vector3(0.05, -0.1, 0.1)
-	tail.rotation.z = 0.25
-	neck.add_child(tail)
+func _add_hair(style: String, col: Color) -> void:
+	for part in _kit_parts(KIT_DIR + HAIR_FILES[style]):
+		_add_part(part, {"hair": col})
 
 
-## Boot soles, laced cuffs and toe caps (the boots themselves are painted on the feet).
-func _add_boots() -> void:
-	for side in ["Left", "Right"]:
-		var foot := _attach(side + "Foot")
-		var leather := _fabric(Color(0.25, 0.16, 0.09), 0.6)
-		var sole := MeshInstance3D.new()
-		var sm := BoxMesh.new()
-		sm.size = Vector3(0.105, 0.26, 0.03)
-		sole.mesh = sm
-		sole.material_override = _fabric(Color(0.07, 0.06, 0.05), 0.85)
-		# Foot bone: local +Y points to the toes, local +Z points up.
-		sole.position = Vector3(0, 0.06, -0.075)
-		foot.add_child(sole)
-		var cuff := MeshInstance3D.new()
-		var cm := CylinderMesh.new()
-		cm.top_radius = 0.066
-		cm.bottom_radius = 0.058
-		cm.height = 0.07
-		cuff.mesh = cm
-		cuff.material_override = leather
-		cuff.position = Vector3(0, -0.01, 0.1)
-		cuff.rotation.x = PI * 0.5
-		foot.add_child(cuff)
-		# Rounded toe cap hides the base body's toes.
-		var cap := SphereMesh.new()
-		cap.radius = 0.06
-		cap.height = 0.12
-		_piece(foot, cap, leather, Vector3(0, 0.13, -0.035), Vector3.ZERO, Vector3(0.95, 1.45, 0.7))
+## A part's dye: which outfit colour, and how the shader applies it.
+func _cloth_colour(part_name: String, kit: String) -> Dictionary:
+	for k in PART_COLOUR:
+		if part_name.ends_with(k) or part_name.contains("_" + k):
+			var key: String = PART_COLOUR[k]
+			var c = outfit.get(key, outfit.get("scarf_color" if key == "hood_color" else "jacket", outfit.get("jacket", Color(0.5, 0.4, 0.3))))
+			if kit == "coat":
+				# Under the coat: dark shirt and sleeves, dark trousers, black boots.
+				c = {"jacket": outfit.get("shirt", Color(0.07, 0.07, 0.08)), "pants": outfit.pants, "boots": outfit.boots}.get(key, c)
+			return {"tint": c, "green_only": kit == "ranger" and key != "boots", "keep_dark": k == "Arms"}
+	return {}
 
 
-## The explorer's backpack, sleeping mat, pockets and jacket details.
-func _add_explorer_kit() -> void:
-	# Backpack with a rolled sleeping mat on top.
-	var chest := _attach("UpperChest")
-	var pack := MeshInstance3D.new()
-	var pm := CapsuleMesh.new()
-	pm.radius = 0.15
-	pm.height = 0.48
-	pack.mesh = pm
-	pack.material_override = _fabric(Color(0.42, 0.33, 0.20))
-	pack.position = Vector3(0, -0.12, -0.2)
-	pack.scale = Vector3(1.15, 1.0, 0.75)
-	chest.add_child(pack)
-	var pocket := MeshInstance3D.new()
-	var pkm := BoxMesh.new()
-	pkm.size = Vector3(0.2, 0.14, 0.06)
-	pocket.mesh = pkm
-	pocket.material_override = pack.material_override
-	pocket.position = Vector3(0, -0.2, -0.32)
-	chest.add_child(pocket)
-	var roll := MeshInstance3D.new()
-	var rm := CylinderMesh.new()
-	rm.top_radius = 0.075
-	rm.bottom_radius = 0.075
-	rm.height = 0.44
-	roll.mesh = rm
-	roll.material_override = _fabric(Color(0.30, 0.33, 0.25))
-	roll.position = Vector3(0, 0.14, -0.2)
-	roll.rotation.z = PI * 0.5
-	chest.add_child(roll)
-	for side in [-1.0, 1.0]:
-		var strap := MeshInstance3D.new()
-		var sm := BoxMesh.new()
-		sm.size = Vector3(0.04, 0.42, 0.012)
-		strap.mesh = sm
-		strap.material_override = _fabric(Color(0.22, 0.17, 0.11))
-		strap.position = Vector3(0.1 * side, -0.05, 0.11)
-		strap.rotation.x = -0.12
-		chest.add_child(strap)
-
-	_add_jacket_details()
+## Adds one skinned mesh to the skeleton with per-person materials.
+## style: {} as painted, {"tint", "green_only"} dyed cloth, {"skin_tone"}, {"hair"}.
+func _add_part(part: Dictionary, style: Dictionary) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = part.mesh
+	mi.skin = part.skin
+	skeleton.add_child(mi)
+	mi.skeleton = NodePath("..")
+	_outfit_nodes.append(mi)
+	var mesh: Mesh = part.mesh
+	for s in mesh.get_surface_count():
+		var src := mesh.surface_get_material(s)
+		var nm := src.resource_name if src else ""
+		var m: Material = src
+		if nm.contains("Regular") or nm.contains("Superhero"):
+			m = _skin_material(src, style.get("skin_tone", _tone))
+		elif style.has("hair"):
+			m = _tinted(src, style.hair)
+		elif style.has("tint") and src is BaseMaterial3D:
+			m = _cloth_material(src, style.tint, style.green_only, false, style.get("keep_dark", false))
+		mi.set_surface_override_material(s, m)
+	return mi
 
 
-## Field-jacket details from the concept sheet: collar, chest pockets with
-## flaps, front zip, thigh cargo pockets and the backpack's flap and side pockets.
-func _add_jacket_details() -> void:
-	var jacket := _fabric(Color(0.27, 0.28, 0.18))
-	var seam := _fabric(Color(0.17, 0.17, 0.11))
-	var neck := _attach("Neck")
-	_piece(neck, _torus(0.075, 0.118), jacket, Vector3(0, -0.035, -0.005), Vector3.ZERO, Vector3(1.0, 1.1, 1.0))
-	var chest := _attach("UpperChest")
-	for sx in [-1.0, 1.0]:
-		_piece(chest, _box(Vector3(0.1, 0.11, 0.03)), jacket, Vector3(0.085 * sx, 0.0, 0.125), Vector3(-0.12, 0, 0))
-		_piece(chest, _box(Vector3(0.11, 0.035, 0.035)), seam, Vector3(0.085 * sx, 0.06, 0.132), Vector3(-0.12, 0, 0))
-	_piece(chest, _box(Vector3(0.014, 0.5, 0.012)), seam, Vector3(0, -0.2, 0.135), Vector3(-0.1, 0, 0))
-	var pants := _fabric(Color(0.15, 0.15, 0.12))
-	for side in ["Left", "Right"]:
-		var leg := _attach(side + "UpperLeg")
-		var sx := -1.0 if side == "Left" else 1.0   # outer side of each thigh
-		_piece(leg, _box(Vector3(0.035, 0.16, 0.13)), pants, Vector3(0.085 * sx, 0.24, 0.02))
-		_piece(leg, _box(Vector3(0.04, 0.035, 0.14)), pants, Vector3(0.087 * sx, 0.155, 0.02))
-	var canvas := _fabric(Color(0.42, 0.33, 0.20))
-	_piece(chest, _box(Vector3(0.3, 0.06, 0.22)), _fabric(Color(0.36, 0.28, 0.17)), Vector3(0, 0.07, -0.21))
-	for sx in [-1.0, 1.0]:
-		var pocket := CapsuleMesh.new()
-		pocket.radius = 0.06
-		pocket.height = 0.22
-		_piece(chest, pocket, canvas, Vector3(0.19 * sx, -0.2, -0.2))
-	# Straps that hold the sleeping mat.
-	for sx in [-1.0, 1.0]:
-		_piece(chest, _torus(0.074, 0.084), _fabric(Color(0.22, 0.17, 0.11)), Vector3(0.12 * sx, 0.14, -0.2), Vector3(0, 0, PI * 0.5))
+static func _key(c: Color) -> String:
+	return "%.2f,%.2f,%.2f" % [c.r, c.g, c.b]
+
+
+static func _skin_material(src: Material, tone: Color) -> Material:
+	return _tinted(src, tone)
+
+
+## A copy of a painted material with its colour multiplied (skin tones, hair colour).
+static func _tinted(src: Material, c: Color) -> Material:
+	var key := "t:%s:%s" % [src.get_instance_id(), _key(c)]
+	if not _mat_cache.has(key):
+		var m: BaseMaterial3D = src.duplicate()
+		m.albedo_color = c
+		_mat_cache[key] = m
+	return _mat_cache[key]
+
+
+## Dyed cloth: the kit's painted texture recoloured by spatial_char_kit.
+static func _cloth_material(src: BaseMaterial3D, c: Color, green_only: bool, whiten := false, keep_dark := false) -> Material:
+	var key := "c:%s:%s:%s:%s:%s" % [src.get_instance_id(), _key(c), green_only, whiten, keep_dark]
+	if not _mat_cache.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/spatial_char_kit.gdshader")
+		m.set_shader_parameter("albedo_tex", src.albedo_texture)
+		m.set_shader_parameter("normal_tex", src.normal_texture)
+		m.set_shader_parameter("orm_tex", src.roughness_texture)
+		m.set_shader_parameter("tint", c)
+		m.set_shader_parameter("recolor", 1.0)
+		m.set_shader_parameter("green_only", 1.0 if green_only else 0.0)
+		m.set_shader_parameter("whiten", 1.0 if whiten else 0.0)
+		m.set_shader_parameter("keep_dark", 1.0 if keep_dark else 0.0)
+		_mat_cache[key] = m
+	return _mat_cache[key]
+
+
+## The skinned meshes of a kit file: [{name, mesh, skin}], loaded once.
+static func _kit_parts(path: String) -> Array:
+	if not _parts_cache.has(path):
+		var n: Node = load(path).instantiate()
+		var out := []
+		for mi: MeshInstance3D in n.find_children("*", "MeshInstance3D", true, false):
+			out.append({"name": String(mi.name), "mesh": mi.mesh, "skin": mi.skin})
+		n.free()
+		_parts_cache[path] = out
+	return _parts_cache[path]
+
+
+## Face shapes: each one nudges the base face (nose, jaw, cheekbones, chin,
+## brow) so townsfolk don't share one face. Values are metres, kept small.
+const FACES := 6
+## Triangles whose corners carry at least this much head + neck weight belong
+## to the head (lower = the neck reaches further down under open collars).
+const NECK_KEEP := 0.15
+const FACE_SHAPES := [
+	{"nose": 0.0, "jaw": 0.0, "cheek": 0.0, "chin": 0.0, "brow": 0.0},
+	{"nose": 0.006, "jaw": 0.07, "cheek": 0.02, "chin": -0.006, "brow": 0.003},
+	{"nose": 0.003, "jaw": -0.04, "cheek": 0.04, "chin": 0.004, "brow": 0.002},
+	{"nose": -0.003, "jaw": 0.03, "cheek": -0.03, "chin": -0.01, "brow": -0.002},
+	{"nose": 0.008, "jaw": -0.06, "cheek": -0.02, "chin": 0.008, "brow": 0.004},
+	{"nose": -0.002, "jaw": 0.1, "cheek": 0.05, "chin": -0.004, "brow": 0.0},
+]
+
+
+## The base body's head and neck (face, ears, skin) as its own mesh, reshaped
+## by FACE_SHAPES[face], plus the eyes. {mesh, eyes, skin}; built once per shape.
+static func _head(g: String, face: int) -> Dictionary:
+	var key := "%s:%d" % [g, face]
+	if _head_cache.has(key):
+		return _head_cache[key]
+	var src: Node = load(MODELS[g]).instantiate()
+	var sk: Skeleton3D = src.find_children("*", "Skeleton3D", true, false)[0]
+	var body: MeshInstance3D = null
+	var eyes: MeshInstance3D = null
+	for mi: MeshInstance3D in sk.find_children("*", "MeshInstance3D", false, false):
+		if mi.name.contains("Eyes"):
+			eyes = mi
+		elif mi.name.to_lower().contains("superhero"):
+			body = mi
+	var arrays := body.mesh.surface_get_arrays(0)
+	var mat := body.mesh.surface_get_material(0)
+	var head_bones := {}
+	for i in body.skin.get_bind_count():
+		var nm := String(body.skin.get_bind_name(i))
+		if nm == "":
+			nm = sk.get_bone_name(body.skin.get_bind_bone(i))
+		if nm in ["Head", "Neck"]:
+			head_bones[i] = nm
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+	var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+	var per: int = bones.size() / verts.size()
+	var hw := PackedFloat32Array()   # weight on head + neck
+	var headonly := PackedFloat32Array()   # weight on the head bone alone
+	hw.resize(verts.size())
+	headonly.resize(verts.size())
+	for v in verts.size():
+		for k in per:
+			var b := bones[v * per + k]
+			if head_bones.has(b):
+				hw[v] += weights[v * per + k]
+				if head_bones[b] == "Head":
+					headonly[v] += weights[v * per + k]
+	_shape_face(verts, headonly, FACE_SHAPES[face % FACE_SHAPES.size()])
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	# Keep triangles that are mostly head or neck.
+	var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var keep := PackedInt32Array()
+	for t in range(0, idx.size(), 3):
+		if hw[idx[t]] >= NECK_KEEP and hw[idx[t + 1]] >= NECK_KEEP and hw[idx[t + 2]] >= NECK_KEEP:
+			keep.append_array([idx[t], idx[t + 1], idx[t + 2]])
+	arrays[Mesh.ARRAY_INDEX] = keep
+	for c in [Mesh.ARRAY_CUSTOM0, Mesh.ARRAY_CUSTOM1, Mesh.ARRAY_CUSTOM2, Mesh.ARRAY_CUSTOM3]:
+		arrays[c] = null
+	# Through ImporterMesh so the head gets distance LODs like the imported parts.
+	var im := ImporterMesh.new()
+	im.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, mat, "", body.mesh.surface_get_format(0) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS)
+	im.generate_lods(25.0, 60.0, [])
+	var mesh := im.get_mesh()
+	var out := {"mesh": mesh, "eyes": eyes.mesh, "skin": body.skin}
+	src.free()
+	_head_cache[key] = out
+	return out
+
+
+## Moves face vertices for one face shape. Landmarks (nose tip, chin) are
+## found on the mesh itself, so the same shapes work on both base heads.
+static func _shape_face(verts: PackedVector3Array, w: PackedFloat32Array, f: Dictionary) -> void:
+	var nose := Vector3(0, 0, -INF)
+	var chin := Vector3(0, INF, 0)
+	var top := -INF
+	for v in verts.size():
+		if w[v] < 0.9:
+			continue
+		var p := verts[v]
+		top = maxf(top, p.y)
+		if absf(p.x) < 0.012 and p.z > nose.z:
+			nose = p
+	for v in verts.size():
+		var p := verts[v]
+		if w[v] >= 0.9 and absf(p.x) < 0.012 and p.z > nose.z - 0.05 and p.y < chin.y:
+			chin = p
+	if nose.z == -INF:
+		return
+	var face_h := nose.y - chin.y
+	for v in verts.size():
+		if w[v] <= 0.0:
+			continue
+		var p := verts[v]
+		var front := clampf((p.z - (nose.z - 0.12)) / 0.08, 0.0, 1.0)
+		# Nose length: pull the tip and bridge forward.
+		p.z += f.nose * exp(-p.distance_squared_to(nose) / (2.0 * 0.018 * 0.018))
+		# Jaw width: widen the lower face, most at the jaw angle.
+		var below := clampf((nose.y - p.y) / face_h, 0.0, 1.0)
+		p.x *= 1.0 + f.jaw * below * (1.0 - below * 0.4) * w[v]
+		# Cheekbones: wider at nose height, fading up and down.
+		var cheek_k := exp(-pow((p.y - nose.y) / 0.025, 2.0)) * front
+		p.x *= 1.0 + f.cheek * cheek_k * w[v]
+		# Chin: longer or shorter.
+		p.y -= f.chin * exp(-p.distance_squared_to(chin) / (2.0 * 0.025 * 0.025))
+		# Brow ridge: forward above the eyes.
+		var brow_y := nose.y + face_h * 0.75
+		p.z += f.brow * exp(-pow((p.y - brow_y) / 0.015, 2.0)) * front
+		verts[v] = p
+
+
+## The white coat outfit: dark peasant shirt, sleeves and trousers under a
+## white coat (the shirt's own mesh pushed out and opened at the front, with
+## long white sleeves), a flared skirt to mid-calf with folds, silver trim
+## along its opening and hem, and a wide dark sash with a hanging tail.
+## Everything is skinned to the same skeleton, so it moves with the animations.
+func _add_coat(g: String) -> void:
+	var body: Dictionary = {}
+	var arms: Dictionary = {}
+	for p in _kit_parts(KIT_DIR + OUTFIT_FILES[g]["peasant"]):
+		if p.name.ends_with("Body"):
+			body = p
+	for p in _kit_parts(KIT_DIR + OUTFIT_FILES[g]["ranger"]):
+		if p.name.ends_with("Arms"):
+			arms = p   # full-length sleeves
+	var white: Color = outfit.get("jacket", Color(0.95, 0.95, 0.93))
+	var src_mat: BaseMaterial3D = body.mesh.surface_get_material(0)
+	var coat_mat := _cloth_material(src_mat, white, false, true)
+	var key := "coat:" + g
+	if not _head_cache.has(key):
+		_head_cache[key] = _build_coat(g, body, arms)
+	var built: Dictionary = _head_cache[key]
+	var trim := StandardMaterial3D.new()
+	trim.albedo_color = outfit.get("trim", Color(0.78, 0.8, 0.84))
+	trim.metallic = 0.85
+	trim.roughness = 0.32
+	var sash := _fabric(outfit.get("sash", Color(0.16, 0.16, 0.18)), 0.7)
+	sash.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var skirt_mat := _fabric(white, 0.85)
+	skirt_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	skirt_mat.rim_enabled = true
+	skirt_mat.rim = 0.15
+	_add_part({"mesh": built.torso, "skin": body.skin}, {}).set_surface_override_material(0, coat_mat)
+	_add_part({"mesh": built.sleeves, "skin": arms.skin}, {}).set_surface_override_material(0, coat_mat)
+	var skirt := _add_part({"mesh": built.skirt, "skin": body.skin}, {})
+	skirt.set_surface_override_material(0, skirt_mat)
+	skirt.set_surface_override_material(1, trim)
+	_add_part({"mesh": built.sash, "skin": body.skin}, {}).set_surface_override_material(0, sash)
+
+
+## Coat meshes for one body model: {torso, sleeves, skirt, sash}. Built once.
+static func _build_coat(_g: String, body: Dictionary, arms: Dictionary) -> Dictionary:
+	# Torso: the shirt pushed 1.4 cm out, opened in a V from the collar down.
+	var torso := _shell(body.mesh, 0, 0.014, func(c: Vector3) -> bool:
+		return c.z > 0.0 and c.y < 1.43 and absf(c.x) < 0.045 + (1.43 - c.y) * 0.16)
+	var sleeves := _shell(arms.mesh, 0, 0.011, func(_c: Vector3) -> bool: return false)
+	var skin: Skin = body.skin
+	var b := {}
+	for nm in ["Hips", "Spine", "LeftUpperLeg", "RightUpperLeg"]:
+		b[nm] = _bind_of(skin, nm)
+	return {"torso": torso, "sleeves": sleeves, "skirt": _skirt(b), "sash": _sash(b)}
+
+
+## A work apron: cloth hanging in front from the waist to the knees, skinned
+## so it swings with the legs.
+func _add_apron(col: Color) -> void:
+	var g: String = outfit.get("model", "male")
+	var body: Dictionary = _kit_parts(KIT_DIR + OUTFIT_FILES[g]["peasant"]).filter(func(p): return p.name.ends_with("Body"))[0]
+	var key := "apron:" + g
+	if not _head_cache.has(key):
+		var b := {}
+		for nm in ["Hips", "Spine", "LeftUpperLeg", "RightUpperLeg"]:
+			b[nm] = _bind_of(body.skin, nm)
+		var w := 1.0 if g == "male" else 0.94
+		_head_cache[key] = _drape(b, func(_f: float, _r: Vector2) -> float: return -1.15, func(_f: float, _r: Vector2) -> float: return 1.15,
+			1.06 * w, 0.5 * w, Vector2(0.185, 0.155) * w, Vector2(0.22, 0.2) * w, 0.04, 8, 16)[0]
+	var mat := _fabric(col, 0.9)
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_add_part({"mesh": _head_cache[key], "skin": body.skin}, {}).set_surface_override_material(0, mat)
+
+
+## Copies one surface of a skinned mesh, every vertex pushed out along its
+## normal, minus the triangles whose centre `drop` rejects.
+static func _shell(mesh: Mesh, surface: int, push: float, drop: Callable) -> ArrayMesh:
+	var a := mesh.surface_get_arrays(surface)
+	var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var n: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	for i in v.size():
+		v[i] += n[i] * push
+	a[Mesh.ARRAY_VERTEX] = v
+	var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	var keep := PackedInt32Array()
+	for t in range(0, idx.size(), 3):
+		if not drop.call((v[idx[t]] + v[idx[t + 1]] + v[idx[t + 2]]) / 3.0):
+			keep.append_array([idx[t], idx[t + 1], idx[t + 2]])
+	a[Mesh.ARRAY_INDEX] = keep
+	for c in [Mesh.ARRAY_CUSTOM0, Mesh.ARRAY_CUSTOM1, Mesh.ARRAY_CUSTOM2, Mesh.ARRAY_CUSTOM3]:
+		a[c] = null
+	var out := ArrayMesh.new()
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a, [], {}, mesh.surface_get_format(surface) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS)
+	return out
+
+
+static func _bind_of(skin: Skin, bone: String) -> int:
+	for i in skin.get_bind_count():
+		if String(skin.get_bind_name(i)) == bone:
+			return i
+	return 0
+
+
+## Hanging cloth around the hips (coat skirt, apron): rows from `top` down to
+## `hem`, an arc from angle th0 to th1 (0 = straight ahead, +PI/2 = left),
+## radii growing from r_top to r_hem, with folds that deepen towards the hem.
+## Returns the mesh and its vertex grid ([row][col] positions).
+## Top rows follow the hips; lower rows follow the thigh on their side.
+static func _drape(b: Dictionary, th0: Callable, th1: Callable, top: float, hem: float, r_top: Vector2, r_hem: Vector2, fold_amt: float, rows := 14, cols := 40) -> Array:
+	var grid := []
+	var st := SurfaceTool.new()
+	st.set_skin_weight_count(SurfaceTool.SKIN_4_WEIGHTS)
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for r in rows + 1:
+		var f := float(r) / rows
+		var y := lerpf(top, hem, f)
+		var rad := r_top.lerp(r_hem, pow(f, 0.85))
+		var row := []
+		for c in cols + 1:
+			var th := lerpf(th0.call(f, rad), th1.call(f, rad), float(c) / cols)
+			var fold := 1.0 + fold_amt * f * sin(th * 9.0 + 0.6) + fold_amt * 0.5 * f * sin(th * 17.0)
+			var p := Vector3(rad.x * fold * sin(th), y, -0.03 + rad.y * fold * cos(th))
+			row.append(p)
+			st.set_uv(Vector2(float(c) / cols * 4.0, f * 2.0))
+			_skirt_weights(st, p, f, b)
+			st.add_vertex(p)
+		grid.append(row)
+	for r in rows:
+		for c in cols:
+			var i := r * (cols + 1) + c
+			st.add_index(i)
+			st.add_index(i + cols + 1)
+			st.add_index(i + 1)
+			st.add_index(i + 1)
+			st.add_index(i + cols + 1)
+			st.add_index(i + cols + 2)
+	st.generate_normals()
+	st.generate_tangents()
+	return [st.commit(), grid]
+
+
+## Coat skirt from the waist to mid-calf, open at the front. Surface 0 is
+## cloth, surface 1 the silver trim on the opening and hem.
+const SKIRT_TOP := 1.07
+const SKIRT_HEM := 0.36
+static func _skirt(b: Dictionary) -> ArrayMesh:
+	var rows := 14
+	var cols := 40
+	var gap := func(f: float, rad: Vector2) -> float: return atan2(lerpf(0.11, 0.2, f), rad.y)
+	var d := _drape(b, gap, func(f: float, rad: Vector2) -> float: return TAU - gap.call(f, rad),
+		SKIRT_TOP, SKIRT_HEM, Vector2(0.185, 0.15), Vector2(0.31, 0.27), 0.06, rows, cols)
+	var mesh: ArrayMesh = d[0]
+	var grid: Array = d[1]
+	# Trim: thin bands along both front edges and the hem, just proud of the cloth.
+	var tr := SurfaceTool.new()
+	tr.set_skin_weight_count(SurfaceTool.SKIN_4_WEIGHTS)
+	tr.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var strips := [[], [], []]
+	for r in rows + 1:
+		strips[0].append([grid[r][0], grid[r][1], float(r) / rows])
+		strips[1].append([grid[r][cols], grid[r][cols - 1], float(r) / rows])
+	for c in cols + 1:
+		strips[2].append([grid[rows][c], grid[rows - 1][c], 1.0])
+	var base := 0
+	for s in strips:
+		for e in s:
+			var edge: Vector3 = e[0]
+			var inward: Vector3 = (e[1] - edge).normalized() * 0.03
+			var out_n := Vector3(edge.x, 0, edge.z + 0.03).normalized() * 0.004
+			for p in [edge + out_n, edge + inward + out_n]:
+				tr.set_uv(Vector2.ZERO)
+				_skirt_weights(tr, p, e[2], b)
+				tr.add_vertex(p)
+		for k in s.size() - 1:
+			var i: int = base + k * 2
+			tr.add_index(i)
+			tr.add_index(i + 2)
+			tr.add_index(i + 1)
+			tr.add_index(i + 1)
+			tr.add_index(i + 2)
+			tr.add_index(i + 3)
+		base += s.size() * 2
+	tr.generate_normals()
+	return tr.commit(mesh)
+
+
+static func _skirt_weights(st: SurfaceTool, p: Vector3, f: float, b: Dictionary) -> void:
+	# Weight moves from the hips to the thigh on the same side as you go down;
+	# the back seam stays mostly on the hips so the two halves don't tear apart.
+	var leg := clampf(f * 1.6, 0.0, 1.0) * clampf(absf(p.x) / 0.12, 0.0, 1.0) * 0.9
+	var thigh: int = b.LeftUpperLeg if p.x > 0.0 else b.RightUpperLeg
+	st.set_bones(PackedInt32Array([b.Hips, thigh, b.Spine, 0]))
+	st.set_weights(PackedFloat32Array([1.0 - leg, leg, 0.0, 0.0]))
+
+
+## Wide sash around the waist with a knot and a hanging tail at the left hip.
+static func _sash(b: Dictionary) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.set_skin_weight_count(SurfaceTool.SKIN_4_WEIGHTS)
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cols := 36
+	for r in 3:
+		var y := lerpf(1.0, 1.13, r / 2.0)
+		var bulge := 1.0 + 0.04 * sin(PI * r / 2.0)   # cloth bunches out in the middle
+		for c in cols + 1:
+			var th := TAU * c / cols
+			var p := Vector3(0.19 * bulge * sin(th), y, -0.025 + 0.165 * bulge * cos(th))
+			st.set_uv(Vector2(float(c) / cols * 6.0, r / 2.0))
+			st.set_bones(PackedInt32Array([b.Hips, b.Spine, 0, 0]))
+			st.set_weights(PackedFloat32Array([1.0 - r * 0.25, r * 0.25, 0.0, 0.0]))
+			st.add_vertex(p)
+	for r in 2:
+		for c in cols:
+			var i := r * (cols + 1) + c
+			st.add_index(i)
+			st.add_index(i + cols + 1)
+			st.add_index(i + 1)
+			st.add_index(i + 1)
+			st.add_index(i + cols + 1)
+			st.add_index(i + cols + 2)
+	# Two tails from the knot at the front-left of the waist.
+	var base := 3 * (cols + 1)
+	for tail in [[0.11, 0.62, 0.065, 0.0], [0.135, 0.7, 0.055, 0.3]]:
+		var rows := 8
+		for r in rows + 1:
+			var f := float(r) / rows
+			var y := lerpf(1.05, tail[1], f)
+			var cx: float = tail[0] + 0.03 * f + 0.01 * sin(f * 5.0 + tail[3])
+			var cz := 0.15 - 0.03 * f
+			for side in [-1.0, 1.0]:
+				var p := Vector3(cx + side * tail[2] * (0.6 + 0.4 * f), y, cz + 0.02 * side * f)
+				st.set_uv(Vector2(side * 0.5 + 0.5, f * 2.0))
+				var leg := clampf(f * 1.3, 0.0, 0.8)
+				st.set_bones(PackedInt32Array([b.Hips, b.LeftUpperLeg, 0, 0]))
+				st.set_weights(PackedFloat32Array([1.0 - leg, leg, 0.0, 0.0]))
+				st.add_vertex(p)
+		for r in rows:
+			var i := base + r * 2
+			st.add_index(i)
+			st.add_index(i + 1)
+			st.add_index(i + 2)
+			st.add_index(i + 1)
+			st.add_index(i + 3)
+			st.add_index(i + 2)
+		base += (rows + 1) * 2
+	st.generate_normals()
+	st.generate_tangents()
+	return st.commit()
 
 
 func _piece(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE) -> MeshInstance3D:
@@ -712,7 +919,9 @@ class AimLean:
 
 ## Props for villagers: apron, chef hat, beard, cane, basket, hammer, hair bun.
 func _add_villager_props(acc: Array) -> void:
-	var head := _attach("Head") if acc.any(func(a): return a in ["chef_hat", "beard", "bun", "headscarf", "cap", "helmet", "hood", "hat"]) else null
+	var head := _attach("Head") if acc.any(func(a): return a in ["chef_hat", "cap", "helmet", "hat"]) else null
+	if head:
+		_outfit_nodes.append(head)
 	if "helmet" in acc:
 		var steel := StandardMaterial3D.new()
 		steel.albedo_color = Color(0.55, 0.56, 0.6)
@@ -724,11 +933,6 @@ func _add_villager_props(acc: Array) -> void:
 		dome.is_hemisphere = true
 		_piece(head, dome, steel, Vector3(0, 0.1, -0.01), Vector3.ZERO, Vector3(1.05, 1.1, 1.12))
 		_piece(head, _box(Vector3(0.025, 0.09, 0.02)), steel, Vector3(0, 0.07, 0.125))
-	if "hood" in acc:
-		var hood := SphereMesh.new()
-		hood.radius = 0.14
-		hood.height = 0.3
-		_piece(head, hood, _fabric(outfit.get("hood_color", Color(0.18, 0.16, 0.2))), Vector3(0, 0.08, -0.04), Vector3.ZERO, Vector3(1.05, 1.0, 1.15))
 	if "hat" in acc:
 		var brim := CylinderMesh.new()
 		brim.top_radius = 0.2
@@ -781,9 +985,7 @@ func _add_villager_props(acc: Array) -> void:
 		var lh := _attach("LeftHand")
 		_piece(lh, _box(Vector3(0.16, 0.04, 0.22)), _fabric(Color(0.45, 0.15, 0.12)), Vector3(0, 0.08, 0.04))
 	if "apron" in acc:
-		var spine := _attach("Spine")
-		var col: Color = outfit.get("apron_color", Color(0.9, 0.88, 0.82))
-		_piece(spine, _box(Vector3(0.34, 0.6, 0.02)), _fabric(col), Vector3(0, -0.12, 0.165), Vector3(-0.05, 0, 0))
+		_add_apron(outfit.get("apron_color", Color(0.9, 0.88, 0.82)))
 	if "chef_hat" in acc:
 		var c := CylinderMesh.new()
 		c.top_radius = 0.13
@@ -795,21 +997,6 @@ func _add_villager_props(acc: Array) -> void:
 		sph.radius = 0.11
 		sph.height = 0.12
 		_piece(head, sph, _fabric(outfit.get("cap_color", Color(0.3, 0.2, 0.15))), Vector3(0, 0.16, -0.01), Vector3.ZERO, Vector3(1.05, 0.8, 1.1))
-	if "headscarf" in acc:
-		var sph2 := SphereMesh.new()
-		sph2.radius = 0.12
-		sph2.height = 0.2
-		_piece(head, sph2, _fabric(outfit.get("scarf_color", Color(0.6, 0.25, 0.2))), Vector3(0, 0.13, -0.02), Vector3.ZERO, Vector3(1.05, 0.9, 1.1))
-	if "beard" in acc:
-		var b := SphereMesh.new()
-		b.radius = 0.07
-		b.height = 0.16
-		_piece(head, b, _fabric(Color(0.82, 0.8, 0.76), 1.0), Vector3(0, 0.0, 0.09), Vector3(0.25, 0, 0), Vector3(1.0, 1.25, 0.7))
-	if "bun" in acc:
-		var bun := SphereMesh.new()
-		bun.radius = 0.06
-		bun.height = 0.12
-		_piece(head, bun, _fabric(outfit.get("hair", Color(0.2, 0.12, 0.06))), Vector3(0, 0.17, -0.1))
 	if "cane" in acc:
 		# Held upright at the right side (character's right is -X).
 		var cyl := CylinderMesh.new()

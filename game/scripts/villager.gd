@@ -79,6 +79,8 @@ func setup(villager_cfg: Dictionary, seed_value: int) -> void:
 	for k in cfg.outfit:
 		var v = cfg.outfit[k]
 		outfit[k] = Color(v[0], v[1], v[2]) if v is Array and v.size() == 3 and (v[0] is float or v[0] is int) else v
+	# Each person gets their own face, skin tone and hair from a seed of their id.
+	outfit["seed"] = hash(cfg.get("id", name))
 	body = ExplorerBody.new()
 	body.outfit = outfit
 	body.scale = Vector3.ONE * float(cfg.get("scale", 1.0))

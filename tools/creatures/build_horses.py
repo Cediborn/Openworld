@@ -50,8 +50,8 @@ def horse(name):
         cone(hind[3], (0.18, 0.02, 0.73), 0.05, 0.065, "H4_L", HOOF, 0.015, tag="hoof"),
         # Ears, eyes.
         cone((0.055, 2.02, -1.07), (0.075, 2.18, -1.05), 0.035, 0.008, "Head", coat, 0.02),
-        ell((0.098, 1.93, -1.20), (0.022, 0.024, 0.026), "Head", EYE, 0.004, tag="eye"),
-        ell((0.05, 1.60, -1.48), (0.02, 0.02, 0.012), "Head", EYE, 0.004, tag="eye"),   # nostril
+        ell((0.098, 1.93, -1.20), (0.022, 0.024, 0.026), "Head", EYE, 0.004, tag="eye", gloss=1.0),
+        ell((0.05, 1.60, -1.48), (0.02, 0.02, 0.012), "Head", EYE, 0.004, tag="eye", gloss=1.0),   # nostril
         # Bridle: cheek strap, noseband ring and bit ring.
         cone((0.105, 2.0, -1.10), (0.09, 1.70, -1.33), 0.012, 0.012, "Head", LEATHER, 0.003, tag="tack"),
         ell((0.085, 1.68, -1.36), (0.016, 0.016, 0.016), "Head", METAL, 0.002, tag="metal"),

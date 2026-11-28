@@ -20,6 +20,9 @@ var reputation := 0
 var items := {}            # id -> count
 var weapon := "iron_sword"
 var armor := ""
+## Clothes the explorer wears (an "outfit" item; every outfit is always carried).
+var outfit := "field_clothes"
+const OUTFITS := ["field_clothes", "white_coat"]
 var smith_level := 0
 var flags := {}            # name -> true / value
 
@@ -120,12 +123,14 @@ func has_flag(name: String) -> bool:
 
 func equip(id: String) -> void:
 	var it := item(id)
-	if count(id) <= 0 and id != "iron_sword":
+	if count(id) <= 0 and id != "iron_sword" and not id in OUTFITS:
 		return
 	if it.kind == "weapon":
 		weapon = id
 	elif it.kind == "armor":
 		armor = id
+	elif it.kind == "outfit":
+		outfit = id
 	apply_stats()
 	changed.emit()
 
@@ -152,6 +157,9 @@ func apply_stats() -> void:
 	var glow = w.get("glow", null)
 	player.damage_mult = sword_damage_mult()
 	if player.body:
+		var look: Dictionary = ExplorerBody.HERO_OUTFITS.get(outfit, ExplorerBody.EXPLORER)
+		if player.body.outfit != look:
+			player.body.set_outfit(look)
 		if glow is Array:
 			player.body.set_blade_glow(Color(glow[0], glow[1], glow[2]))
 		else:
@@ -198,7 +206,7 @@ func add_note(kind: String, title: String, text: String) -> void:
 
 func save_state() -> Dictionary:
 	return {"coins": coins, "xp": xp, "level": level, "reputation": reputation, "items": items,
-		"weapon": weapon, "armor": armor, "smith_level": smith_level, "flags": flags}
+		"weapon": weapon, "armor": armor, "outfit": outfit, "smith_level": smith_level, "flags": flags}
 
 
 func load_state(s: Dictionary) -> void:
@@ -211,6 +219,9 @@ func load_state(s: Dictionary) -> void:
 		items[k] = int(items[k])
 	weapon = s.get("weapon", "iron_sword")
 	armor = s.get("armor", "")
+	outfit = s.get("outfit", "field_clothes")
+	if not outfit in OUTFITS:
+		outfit = "field_clothes"
 	smith_level = int(s.get("smith_level", 0))
 	flags = s.get("flags", {}).duplicate()
 	if s.is_empty():

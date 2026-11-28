@@ -1,5 +1,5 @@
 {
-  "_comment": "Everything the explorer can carry. kind: potion (heal = hit points), material, quest (cannot be sold), key, collectible, trophy, weapon (damage = sword multiplier, glow = blade colour), armor (armor = damage taken multiplier, frost/fire = extra multiplier against that element and for fire also lava). value = coins a merchant pays; price = coins to buy. firearm = the flintlock pistol (see game_config.json firearm); ammo = pistol shot; food heals like a small potion and can be eaten from the inventory. food heals like a weaker potion (eaten with H once potions are gone).",
+  "_comment": "Everything the explorer can carry. kind: potion (heal = hit points), material, quest (cannot be sold), key, collectible, trophy, weapon (damage = sword multiplier, glow = blade colour), armor (armor = damage taken multiplier, frost/fire = extra multiplier against that element and for fire also lava). value = coins a merchant pays; price = coins to buy. firearm = the flintlock pistol (see game_config.json firearm); ammo = pistol shot; food heals like a small potion and can be eaten from the inventory. food heals like a weaker potion (eaten with H once potions are gone). outfit = clothes for the explorer, always carried; equip one to wear it.",
   "items": {
     "potion": {
       "name": "Healing Draught",
@@ -494,6 +494,16 @@
       "kind": "material",
       "value": 40,
       "desc": "A wisp of violet darkness in a sealed vial."
+    },
+    "field_clothes": {
+      "name": "Explorer's Field Clothes",
+      "kind": "outfit",
+      "desc": "Olive ranger's jerkin with leather straps and buckles, dark trousers and high boots. Equip it to wear it."
+    },
+    "white_coat": {
+      "name": "White Long Coat",
+      "kind": "outfit",
+      "desc": "A long white open-front coat with silver-trimmed edges, worn over a dark shirt and relaxed dark trousers, with a wide sash and high boots. Equip it to wear it."
     }
   },
   "shop": {
