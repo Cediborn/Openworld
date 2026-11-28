@@ -2,8 +2,7 @@ extends SceneTree
 ## Saves screenshots of the real game for QA evidence (needs a display, not --headless):
 ##   xvfb-run -s "-screen 0 1600x900x24" godot --path game --rendering-method gl_compatibility \
 ##     -s res://tests/integration/screenshot_tool.gd -- <shot> [<shot> ...]
-## Shots: dialogue, hero, outfit, npcs, animals, creatures, shotgun. Files go to
-## ../production/qa/evidence/.
+## Shots: dialogue. Files go to ../production/qa/evidence/.
 
 const OUT := "res://../production/qa/evidence/"
 
@@ -41,21 +40,6 @@ func _save(name: String) -> void:
 	print("saved ", path)
 
 
-## Points the camera at a spot from a given offset (world space).
-func _look(target: Vector3, offset: Vector3) -> void:
-	var cam := root.get_camera_3d()
-	world.player.set_physics_process(false)
-	world.player.set_process(false)
-	cam.global_position = target + offset
-	cam.look_at(target, Vector3.UP)
-	await frames(2)
-
-
-func _day() -> void:
-	if "time_of_day" in world.state:
-		world.state.time_of_day = 0.45
-
-
 func _shot_dialogue() -> void:
 	var qs: Quests = world.quests
 	for id in qs.defs:
@@ -73,3 +57,4 @@ func _shot_dialogue() -> void:
 	while world.story.in_dialogue():
 		world.hud.dialogue_advanced.emit()
 		await frames(2)
+

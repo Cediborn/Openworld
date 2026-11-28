@@ -146,7 +146,7 @@ func _draw() -> void:
 	draw_rect(Rect2(jc + Vector2(-18, -20) * u, Vector2(36, 40) * u), Color(0.75, 0.55, 0.3))
 	draw_line(jc + Vector2(-10, -8) * u, jc + Vector2(10, -8) * u, Color(1, 1, 1), 3 * u)
 	draw_line(jc + Vector2(-10, 2) * u, jc + Vector2(10, 2) * u, Color(1, 1, 1), 3 * u)
-	# Pistol (draw / holster), reload (while drawn) and the horse whistle.
+	# Shotgun (draw / sling), reload (while drawn) and the horse whistle.
 	if player and player.gun and player.gun.owned():
 		var gc := gun_btn.get_center()
 		draw_circle(gc, gun_btn.size.x * 0.5, Color(0.55, 0.35, 0.15, 0.85) if player.gun.drawn else Color(0, 0, 0, 0.35))

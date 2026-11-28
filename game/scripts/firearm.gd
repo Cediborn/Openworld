@@ -1,11 +1,13 @@
 class_name Firearm
 extends Node3D
-## The explorer's flintlock pistol: draw it (G or the pistol button), aim
+## The explorer's pump-action shotgun: draw it (G or the gun button), aim
 ## (right mouse, or automatically on phones), fire (left click / the attack
-## button), reload (R, or automatically when you fire an empty pistol).
-## One ball per load, like a real flintlock; each reload uses a "pistol_shot"
-## (lead ball and powder) from the pouch. The shot leaves the muzzle and flies
-## to where the crosshair points; it stops at the first wall, rock or creature.
+## button), reload (R, or automatically when you fire it empty).
+## The magazine tube holds `capacity` shells; after every shot the fore-end is
+## pumped to chamber the next one. Reloading thumbs in one shell at a time
+## from the pouch ("shotgun_shell") and can be cut short by firing. Each shot
+## throws `pellets` pellets in a cone towards the crosshair; every pellet stops
+## at the first wall, rock or creature, and hurts less with distance.
 ## Gunfire carries: deer and other shy animals bolt, monsters nearby come for
 ## you. Tuning: data/game_config.json "firearm".
 
@@ -14,16 +16,28 @@ signal fired(hit: Node3D, at: Vector3)
 signal ammo_changed
 signal message(text: String)
 
-const AMMO_ITEM := "pistol_shot"
-const GUN_ITEM := "flintlock"
+const AMMO_ITEM := "shotgun_shell"
+const GUN_ITEM := "shotgun"
+## Items from saves made before the shotgun replaced the flintlock.
+const OLD_GUN_ITEM := "flintlock"
+const OLD_AMMO_ITEM := "pistol_shot"
 
 var player: Player
 var state: GameState
 var cfg: Dictionary = {}
 var drawn := false
-var loaded := true
+## Shells in the magazine tube (one is chambered while it's above zero).
+var shells := 6
+## True while a shell is ready to fire (kept for older callers).
+var loaded: bool:
+	get:
+		return shells > 0
+	set(v):
+		shells = maxi(shells, 1) if v else 0
 var aiming := false
 var reload_left := 0.0
+## Seconds until the pump stroke after a shot is finished.
+var pump_left := 0.0
 var cooldown := 0.0
 var _flash: OmniLight3D
 var _flash_mesh: MeshInstance3D
@@ -40,7 +54,16 @@ func setup(p: Player, game_state: GameState, config: Dictionary) -> void:
 	state = game_state
 	cfg = config
 	_rng.seed = 77
+	shells = capacity()
 	_build_effects()
+
+
+func capacity() -> int:
+	return int(cfg.get("capacity", 6))
+
+
+func pumping() -> bool:
+	return pump_left > 0.0
 
 
 ## Whether the explorer owns the pistol.
@@ -69,6 +92,7 @@ func set_drawn(on: bool) -> void:
 	if not drawn:
 		aiming = false
 		reload_left = 0.0
+		pump_left = 0.0
 	player.body.set_gun_drawn(drawn)
 	if drawn:
 		player.body.set_sword_drawn(false)
@@ -86,39 +110,65 @@ func update(delta: float, want_fire: bool, want_aim: bool, want_reload: bool) ->
 		_flash.visible = _flash_t > 0.0
 	if not drawn:
 		return
-	if reload_left > 0.0:
-		reload_left -= delta
-		aiming = false
-		if reload_left <= 0.0:
-			if state.remove_item(AMMO_ITEM, 1):
-				loaded = true
+	if pump_left > 0.0:
+		pump_left -= delta
+		player.body.set_pump(1.0 - clampf(pump_left / _pump_time(), 0.0, 1.0))
+		if pump_left <= 0.0:
+			player.body.set_pump(0.0)
 			ammo_changed.emit()
-		return
-	# Phones have no aim button: a drawn pistol is held up and aimed at the crosshair.
+	# Phones have no aim button: a drawn gun is held up and aimed at the crosshair.
 	aiming = want_aim or DisplayServer.is_touchscreen_available()
-	if want_reload and not loaded:
+	if reload_left > 0.0:
+		# Firing cuts a reload short as soon as one shell is in.
+		if want_fire and shells > 0:
+			reload_left = 0.0
+			player.body.cancel_action()
+		else:
+			reload_left -= delta
+			aiming = false
+			if reload_left <= 0.0:
+				if state.remove_item(AMMO_ITEM, 1):
+					shells += 1
+					player.body.load_shell()
+					_sfx("shotgun_shell", -7.0, _rng.randf_range(0.95, 1.05))
+				ammo_changed.emit()
+				if shells < capacity() and ammo() > 0:
+					_next_shell()
+			return
+	if want_reload and shells < capacity():
 		start_reload()
 		return
-	if want_fire and cooldown <= 0.0:
-		if loaded:
+	if want_fire and cooldown <= 0.0 and not pumping():
+		if shells > 0:
 			fire()
 		elif ammo() > 0:
 			start_reload()
 		else:
-			_sfx("flintlock_click", -6.0)
+			_sfx("shotgun_click", -6.0)
 			cooldown = 0.4
-			message.emit("Out of shot. Buy lead and powder from Tilly, Hale or Brann.")
+			message.emit("Out of shells. Buy them from Tilly, Hale or Brann.")
 
 
+## Starts loading shells one at a time until the tube is full (or you fire).
 func start_reload() -> void:
-	if loaded or reloading() or ammo() <= 0:
-		if ammo() <= 0 and not loaded:
-			message.emit("Out of shot. Buy lead and powder from Tilly, Hale or Brann.")
+	if shells >= capacity() or reloading() or ammo() <= 0:
+		if ammo() <= 0 and shells == 0:
+			message.emit("Out of shells. Buy them from Tilly, Hale or Brann.")
 		return
-	reload_left = float(cfg.get("reload_time", 2.0))
-	player.body.play_once("Pistol_Reload", 0.12, 2.0 / reload_left)
-	_sfx("flintlock_reload", -8.0)
+	# One reload animation spread over every shell that will go in.
+	var n := mini(capacity() - shells, ammo())
+	var length := player.body.anim_length("Pistol_Reload")
+	player.body.play_once("Pistol_Reload", 0.12, length / (n * float(cfg.get("reload_time", 0.5))) if length > 0.0 else 1.0)
+	_next_shell()
 	ammo_changed.emit()
+
+
+func _next_shell() -> void:
+	reload_left = float(cfg.get("reload_time", 0.5))
+
+
+func _pump_time() -> float:
+	return float(cfg.get("pump_time", 0.45))
 
 
 ## Where the crosshair points: the first thing under the screen centre, or a
@@ -136,49 +186,73 @@ func aim_point() -> Vector3:
 	return best
 
 
-## Fires the loaded ball. Returns the creature hit, or null.
+## Fires one shell: a cone of pellets towards the crosshair. Each creature hit
+## takes the sum of its pellets in one blow. Returns the creature that took
+## the most pellets, or null.
 func fire() -> Node3D:
-	if not loaded or not drawn:
+	if shells <= 0 or not drawn or pumping():
 		return null
-	loaded = false
-	cooldown = float(cfg.get("fire_cooldown", 0.5))
+	shells -= 1
+	cooldown = float(cfg.get("fire_cooldown", 0.3))
 	var target := aim_point()
 	var muzzle := player.body.muzzle_position()
-	var dir := (target - muzzle).normalized()
-	# A flintlock is not a rifle: a little scatter, more when fired from the hip or on the move.
-	var spread := float(cfg.get("spread_aimed", 0.008)) if aiming else float(cfg.get("spread_hip", 0.03))
+	var aim_dir := (target - muzzle).normalized()
+	# Buckshot spreads; tighter when aimed, wider from the hip or on the move.
+	var spread := float(cfg.get("spread_aimed", 0.04)) if aiming else float(cfg.get("spread_hip", 0.07))
 	if Vector2(player.velocity.x, player.velocity.z).length() > 2.0:
-		spread *= 1.8
-	dir = (dir + Vector3(_rng.randfn(0, spread), _rng.randfn(0, spread), _rng.randfn(0, spread))).normalized()
-	var end := muzzle + dir * float(cfg.get("range", 120.0))
-	var wall := _ray(muzzle, end)
-	var stop: Vector3 = end if wall.is_empty() else wall.position
-	var hit := _creature_on_segment(muzzle, stop)
-	var at := stop
+		spread *= 1.4
+	var reach := float(cfg.get("range", 45.0))
+	var per := float(cfg.get("damage", 14.0))
+	var hits := {}     # creature -> [damage, pellets, point]
+	var wall_at := Vector3.INF
+	for i in int(cfg.get("pellets", 8)):
+		var dir := (aim_dir + Vector3(_rng.randfn(0, spread), _rng.randfn(0, spread), _rng.randfn(0, spread))).normalized()
+		var end := muzzle + dir * reach
+		var wall := _ray(muzzle, end)
+		var stop: Vector3 = end if wall.is_empty() else wall.position
+		var hit := _creature_on_segment(muzzle, stop)
+		if hit.is_empty():
+			if not wall.is_empty() and wall_at == Vector3.INF:
+				wall_at = stop
+			continue
+		var c: Node3D = hit["creature"]
+		var h: Array = hits.get(c, [0.0, 0, hit["point"]])
+		h[0] += per * damage_falloff(muzzle.distance_to(hit["point"]))
+		h[1] += 1
+		hits[c] = h
 	var victim: Node3D = null
-	if not hit.is_empty():
-		victim = hit["creature"]
-		at = hit["point"]
-		var d := muzzle.distance_to(at)
-		var dmg := float(cfg.get("damage", 70.0)) * damage_falloff(d)
-		victim.take_hit(dmg, player.global_position)
+	var best := 0
+	for c in hits:
+		c.take_hit(hits[c][0], player.global_position)
+		if hits[c][1] > best:
+			best = hits[c][1]
+			victim = c
+	var at: Vector3 = hits[victim][2] if victim else (wall_at if wall_at != Vector3.INF else muzzle + aim_dir * reach)
+	if victim:
 		player.struck.emit(victim, at)
-	_effects(muzzle, dir, at, victim == null and not wall.is_empty())
+	_effects(muzzle, aim_dir, at, victim == null and wall_at != Vector3.INF)
 	_alert(player.global_position)
-	# Recoil: the camera kicks up and the arm jumps.
-	player.pitch = clampf(player.pitch + float(cfg.get("recoil", 0.05)), -1.2, 0.6)
+	# Recoil: the camera kicks up hard and the gun jumps.
+	player.pitch = clampf(player.pitch + float(cfg.get("recoil", 0.09)), -1.2, 0.6)
 	player.body.play_once("Pistol_Shoot", 0.04)
-	_sfx("flintlock_shot", -1.0, _rng.randf_range(0.95, 1.05))
+	player.body.kick()
+	_sfx("shotgun_shot", -1.0, _rng.randf_range(0.96, 1.04))
+	# Rack the pump: the spent hull flies out and the next shell is chambered.
+	if shells > 0:
+		pump_left = _pump_time()
+		get_tree().create_timer(0.12).timeout.connect(func() -> void:
+			_sfx("shotgun_pump", -5.0)
+			player.body.eject_shell())
 	ammo_changed.emit()
 	fired.emit(victim, at)
 	return victim
 
 
-## Damage multiplier with distance: full up close, half at the far limit.
+## Damage multiplier with distance: full up close, falloff_min at the far limit.
 func damage_falloff(dist: float) -> float:
-	var a := float(cfg.get("falloff_start", 18.0))
-	var b := float(cfg.get("falloff_end", 70.0))
-	return lerpf(1.0, 0.5, clampf((dist - a) / maxf(b - a, 1.0), 0.0, 1.0))
+	var a := float(cfg.get("falloff_start", 8.0))
+	var b := float(cfg.get("falloff_end", 30.0))
+	return lerpf(1.0, float(cfg.get("falloff_min", 0.25)), clampf((dist - a) / maxf(b - a, 1.0), 0.0, 1.0))
 
 
 func _ray(from: Vector3, to: Vector3) -> Dictionary:

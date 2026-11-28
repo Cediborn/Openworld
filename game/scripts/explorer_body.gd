@@ -70,12 +70,13 @@ var current := ""
 var outfit: Dictionary = EXPLORER
 var sword_hand: Node3D
 var sword_hip: Node3D
-## The flintlock in the hand and in its holster (explorer only).
+## The shotgun in the hands and slung on the back (explorer only).
 var gun_hand: Node3D
 var gun_hip: Node3D
 ## Leans the chest up or down to follow the aim (radians, + = up).
 var aim_pitch := 0.0
 var _aim_mod: AimLean
+var _grip_ik: ForeGripIK
 var blade_mat: StandardMaterial3D
 var _busy_left := 0.0   # seconds of game time until a one-shot animation ends
 ## Everything the current outfit added (swapped out by set_outfit).
@@ -811,89 +812,336 @@ func _add_sword() -> void:
 		_add_pistol(hand, hips)
 
 
-## A flintlock pistol: walnut stock, browned iron barrel, brass furniture and
-## a working-looking lock (hammer, frizzen, pan). Barrel along local +Y, like
-## the sword blade, so the baked aim poses point it where the "blade" goes.
-func _pistol_mesh() -> Node3D:
+## A pump-action shotgun: blued steel receiver, barrel and magazine tube,
+## walnut fore-end (the "Pump" node slides back and forward), pistol grip and
+## stock with a rubber butt pad, trigger and guard, ejection port and bead
+## sight. Barrel along local +Y (like the sword blade), top of the gun +Z, the
+## grip in the hand at the origin.
+func _shotgun_mesh() -> Node3D:
 	var root := Node3D.new()
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color(0.17, 0.18, 0.21)   # blued steel
+	steel.metallic = 0.85
+	steel.roughness = 0.33
 	var walnut := StandardMaterial3D.new()
-	walnut.albedo_color = Color(0.32, 0.17, 0.08)
+	walnut.albedo_color = Color(0.3, 0.16, 0.07)
 	walnut.roughness = 0.45
-	var iron := StandardMaterial3D.new()
-	iron.albedo_color = Color(0.2, 0.19, 0.18)
-	iron.metallic = 0.85
-	iron.roughness = 0.35
+	walnut.clearcoat_enabled = true
+	walnut.clearcoat = 0.4
+	var rubber := StandardMaterial3D.new()
+	rubber.albedo_color = Color(0.05, 0.05, 0.05)
+	rubber.roughness = 0.9
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.02, 0.02, 0.02)
+	dark.roughness = 0.6
+	for m in [steel, walnut, rubber]:
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED   # extruded parts are seen from both sides
+	# Receiver: side profile (y along the gun, z up), 3.6 cm thick.
+	_piece(root, _extrude(PackedVector2Array([Vector2(-0.03, 0.0), Vector2(0.17, 0.0), Vector2(0.17, 0.072),
+		Vector2(0.15, 0.08), Vector2(-0.02, 0.08), Vector2(-0.03, 0.065)]), 0.036, 0.004), steel, Vector3.ZERO)
+	_piece(root, _box(Vector3(0.003, 0.07, 0.03)), dark, Vector3(-0.0185, 0.07, 0.05))   # ejection port
+	_piece(root, _box(Vector3(0.02, 0.06, 0.004)), dark, Vector3(0.0, 0.06, 0.0))         # loading gate underneath
+	# Barrel, magazine tube under it, cap and bead sight.
+	_piece(root, _cyl(0.0115, 0.0115, 0.49), steel, Vector3(0, 0.415, 0.058))
+	_piece(root, _cyl(0.0125, 0.0125, 0.39), steel, Vector3(0, 0.365, 0.026))
+	_piece(root, _cyl(0.014, 0.014, 0.02), steel, Vector3(0, 0.565, 0.026))
+	_piece(root, _cyl(0.0125, 0.0125, 0.03), steel, Vector3(0, 0.55, 0.042), Vector3.ZERO, Vector3(0.6, 1, 1))   # barrel band
+	var bead := SphereMesh.new()
+	bead.radius = 0.004
+	bead.height = 0.008
 	var brass := StandardMaterial3D.new()
-	brass.albedo_color = Color(0.7, 0.52, 0.22)
-	brass.metallic = 0.85
+	brass.albedo_color = Color(0.8, 0.62, 0.28)
+	brass.metallic = 0.9
 	brass.roughness = 0.3
-	var barrel := CylinderMesh.new()
-	barrel.top_radius = 0.011
-	barrel.bottom_radius = 0.014
-	barrel.height = 0.26
-	barrel.radial_segments = 10
-	_piece(root, barrel, iron, Vector3(0, 0.2, 0.022))
-	var muzzle := CylinderMesh.new()
-	muzzle.top_radius = 0.015
-	muzzle.bottom_radius = 0.015
-	muzzle.height = 0.018
-	muzzle.radial_segments = 10
-	_piece(root, muzzle, brass, Vector3(0, 0.325, 0.022))
-	# Fore-stock under the barrel, then the grip curving down to a brass butt cap.
-	_piece(root, _box(Vector3(0.026, 0.2, 0.022)), walnut, Vector3(0, 0.17, 0.004))
-	_piece(root, _box(Vector3(0.03, 0.07, 0.04)), walnut, Vector3(0, 0.05, 0.012))
-	_piece(root, _box(Vector3(0.028, 0.11, 0.034)), walnut, Vector3(0, 0.0, -0.035), Vector3(-0.9, 0, 0))
-	var cap := SphereMesh.new()
-	cap.radius = 0.024
-	cap.height = 0.04
-	_piece(root, cap, brass, Vector3(0, -0.035, -0.085))
-	# Lock plate, hammer (cock), frizzen, trigger and its guard.
-	_piece(root, _box(Vector3(0.006, 0.06, 0.022)), iron, Vector3(0.016, 0.06, 0.02))
-	_piece(root, _box(Vector3(0.006, 0.012, 0.035)), iron, Vector3(0.018, 0.035, 0.045), Vector3(0.6, 0, 0))
-	_piece(root, _box(Vector3(0.006, 0.02, 0.012)), iron, Vector3(0.018, 0.085, 0.04))
-	_piece(root, _box(Vector3(0.004, 0.006, 0.02)), iron, Vector3(0, 0.04, -0.02), Vector3(0.4, 0, 0))
-	var guard := TorusMesh.new()
-	guard.inner_radius = 0.014
-	guard.outer_radius = 0.018
-	_piece(root, guard, brass, Vector3(0, 0.04, -0.022), Vector3(0, 0, PI * 0.5))
+	_piece(root, bead, brass, Vector3(0, 0.655, 0.071))
+	# Fore-end: ribbed walnut sleeve around the magazine tube; slides when pumped.
+	var pump := Node3D.new()
+	pump.name = "Pump"
+	root.add_child(pump)
+	_piece(pump, _cyl(0.024, 0.022, 0.15), walnut, Vector3(0, 0.33, 0.03), Vector3.ZERO, Vector3(0.9, 1, 1.1))
+	for k in 6:
+		_piece(pump, _cyl(0.0255, 0.0255, 0.006), walnut, Vector3(0, 0.275 + k * 0.022, 0.03), Vector3.ZERO, Vector3(0.92, 1, 1.12))
+	var grip_mark := Marker3D.new()
+	grip_mark.name = "ForeGrip"
+	grip_mark.position = Vector3(0, 0.29, 0.0)
+	pump.add_child(grip_mark)
+	# Trigger and guard.
+	_piece(root, _torus(0.016, 0.02), steel, Vector3(0, 0.02, -0.008), Vector3(0, 0, PI * 0.5), Vector3(1, 1.3, 1))
+	_piece(root, _box(Vector3(0.005, 0.006, 0.022)), steel, Vector3(0, 0.022, -0.006), Vector3(0.3, 0, 0))
+	# Pistol grip and stock in walnut, black rubber butt pad.
+	# Stock: comb dropping gently to the heel, a curved pistol grip, a slim wrist.
+	_piece(root, _extrude(PackedVector2Array([Vector2(-0.03, 0.068), Vector2(-0.03, 0.0), Vector2(-0.042, -0.045), Vector2(-0.058, -0.088),
+		Vector2(-0.078, -0.106), Vector2(-0.1, -0.104), Vector2(-0.112, -0.075), Vector2(-0.13, -0.045), Vector2(-0.25, -0.06),
+		Vector2(-0.37, -0.085), Vector2(-0.372, 0.045), Vector2(-0.2, 0.058), Vector2(-0.08, 0.068)]), 0.04, 0.008), walnut, Vector3.ZERO)
+	_piece(root, _extrude(PackedVector2Array([Vector2(-0.37, -0.085), Vector2(-0.392, -0.088), Vector2(-0.392, 0.047), Vector2(-0.372, 0.045)]), 0.043, 0.004), rubber, Vector3.ZERO)
 	var tip := Marker3D.new()
 	tip.name = "Muzzle"
-	tip.position = Vector3(0, 0.34, 0.022)
+	tip.position = Vector3(0, 0.665, 0.058)
 	root.add_child(tip)
+	var port := Marker3D.new()
+	port.name = "Port"
+	port.position = Vector3(-0.02, 0.07, 0.05)
+	root.add_child(port)
 	return root
 
 
-func _add_pistol(hand: BoneAttachment3D, hips: BoneAttachment3D) -> void:
-	gun_hand = _pistol_mesh()
+## The characters' arms are a little short for a full-size long gun.
+const GUN_SCALE := 0.9
+
+
+static func _cyl(top: float, bottom: float, h: float) -> CylinderMesh:
+	var c := CylinderMesh.new()
+	c.top_radius = top
+	c.bottom_radius = bottom
+	c.height = h
+	c.radial_segments = 14
+	return c
+
+
+## A flat shape (points in the gun's y/z side view) extruded `thick` wide in x,
+## its outline edges bevelled by `bevel`.
+static func _extrude(poly: PackedVector2Array, thick: float, bevel: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var tri := Geometry2D.triangulate_polygon(poly)
+	var inner := Geometry2D.offset_polygon(poly, -bevel)
+	var face: PackedVector2Array = inner[0] if inner.size() > 0 else poly
+	var ftri := Geometry2D.triangulate_polygon(face)
+	var hx := thick * 0.5
+	for side in [-1.0, 1.0]:
+		for i in range(0, ftri.size(), 3):
+			var v := [Vector3(side * hx, face[ftri[i]].x, face[ftri[i]].y), Vector3(side * hx, face[ftri[i + 1]].x, face[ftri[i + 1]].y),
+				Vector3(side * hx, face[ftri[i + 2]].x, face[ftri[i + 2]].y)]
+			# Keep every face wound the same way as the bevel strips (front side outwards).
+			if (v[1] - v[0]).cross(v[2] - v[0]).x * side < 0.0:
+				v.reverse()
+			for q in v:
+				st.add_vertex(q)
+	# Bevelled sides: outline at half-thickness - bevel, face outline at full thickness.
+	var n := poly.size()
+	for i in n:
+		var a := poly[i]
+		var b := poly[(i + 1) % n]
+		var fa := _nearest(face, a)
+		var fb := _nearest(face, b)
+		for side in [-1.0, 1.0]:
+			var ra := Vector3(side * (hx - bevel), a.x, a.y)
+			var rb := Vector3(side * (hx - bevel), b.x, b.y)
+			var qa := Vector3(side * hx, fa.x, fa.y)
+			var qb := Vector3(side * hx, fb.x, fb.y)
+			var quad := [ra, rb, qb, qa] if side > 0 else [rb, ra, qa, qb]
+			for k in [0, 1, 2, 0, 2, 3]:
+				st.add_vertex(quad[k])
+		var la := Vector3(-(hx - bevel), a.x, a.y)
+		var lb := Vector3(-(hx - bevel), b.x, b.y)
+		var ra2 := Vector3(hx - bevel, a.x, a.y)
+		var rb2 := Vector3(hx - bevel, b.x, b.y)
+		for v in [la, ra2, rb2, la, rb2, lb]:
+			st.add_vertex(v)
+	st.generate_normals()
+	return st.commit()
+
+
+static func _nearest(pts: PackedVector2Array, q: Vector2) -> Vector2:
+	var best := pts[0]
+	for p in pts:
+		if p.distance_squared_to(q) < best.distance_squared_to(q):
+			best = p
+	return best
+
+
+func _add_pistol(hand: BoneAttachment3D, _hips: BoneAttachment3D) -> void:
+	gun_hand = _shotgun_mesh()
+	gun_hand.scale = Vector3.ONE * GUN_SCALE
 	# Same hand frame as the sword: the barrel runs out past the knuckles.
 	gun_hand.position = Vector3(-0.01, 0.07, 0.02)
 	gun_hand.rotation = Vector3(0, 0, PI * 0.5)
 	hand.add_child(gun_hand)
+	# Slung across the back, muzzle up over the right shoulder.
+	var back := _attach("UpperChest")
 	gun_hip = Node3D.new()
-	hips.add_child(gun_hip)
-	var holstered := _pistol_mesh()
-	gun_hip.add_child(holstered)
-	_piece(holstered, _box(Vector3(0.045, 0.2, 0.05)), _fabric(Color(0.24, 0.15, 0.08), 0.7), Vector3(0, 0.2, 0.02))
-	gun_hip.position = Vector3(-0.2, 0.02, 0.02)
-	gun_hip.rotation = Vector3(0.25, 0, -PI * 0.92)
+	back.add_child(gun_hip)
+	gun_hip.add_child(_shotgun_mesh())
+	gun_hip.scale = Vector3.ONE * GUN_SCALE
+	gun_hip.position = Vector3(0.0, 0.02, -0.17)
+	gun_hip.rotation = Vector3(0.0, PI, -0.6)
 	_aim_mod = AimLean.new()
 	skeleton.add_child(_aim_mod)
 	_aim_mod.body = self
+	_grip_ik = ForeGripIK.new()
+	skeleton.add_child(_grip_ik)
+	_grip_ik.body = self
 	set_gun_drawn(false)
 
 
-## Shows the pistol in the hand (aiming) or in its holster.
+## Shows the shotgun in the hands (aiming) or slung on the back.
 func set_gun_drawn(drawn: bool) -> void:
 	if gun_hand:
 		gun_hand.visible = drawn
 		gun_hip.visible = not drawn
 
 
-## World position of the pistol's muzzle (shots and the flash start here).
+## World position of the muzzle (shots and the flash start here).
 func muzzle_position() -> Vector3:
 	if gun_hand == null:
 		return global_position + Vector3.UP * 1.4
 	return (gun_hand.get_node("Muzzle") as Node3D).global_position
+
+
+## Pump stroke, 0 = forward, 0.5 = all the way back, 1 = forward again.
+func set_pump(t: float) -> void:
+	if gun_hand:
+		(gun_hand.get_node("Pump") as Node3D).position.y = -0.08 * sin(clampf(t, 0.0, 1.0) * PI)
+
+
+## Recoil: the gun jumps up and back for a moment.
+func kick() -> void:
+	if gun_hand == null:
+		return
+	var tw := create_tween()
+	gun_hand.rotation.x = 0.0
+	tw.tween_property(gun_hand, "rotation:x", -0.35, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(gun_hand, "rotation:x", 0.0, 0.25).set_trans(Tween.TRANS_SINE)
+
+
+## A spent red hull flies out of the ejection port and falls away.
+func eject_shell() -> void:
+	if gun_hand == null or not gun_hand.visible:
+		return
+	var port: Node3D = gun_hand.get_node("Port")
+	var shell := _shell_mesh()
+	get_tree().current_scene.add_child(shell) if get_tree().current_scene else add_child(shell)
+	shell.global_transform = port.global_transform
+	var side := -gun_hand.global_basis.x.normalized()
+	var to := shell.global_position + side * 0.6 + Vector3.UP * 0.25
+	var tw := shell.create_tween().set_parallel()
+	tw.tween_property(shell, "global_position", to, 0.18).set_ease(Tween.EASE_OUT)
+	tw.tween_property(shell, "rotation", shell.rotation + Vector3(6, 3, 0), 0.6)
+	tw.chain().tween_property(shell, "global_position:y", to.y - 1.6, 0.4).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(shell.queue_free)
+
+
+## A fresh shell appears under the receiver and slides into the loading gate.
+func load_shell() -> void:
+	if gun_hand == null or not gun_hand.visible:
+		return
+	var shell := _shell_mesh()
+	gun_hand.add_child(shell)
+	shell.position = Vector3(0.0, 0.0, -0.09)
+	var tw := shell.create_tween()
+	tw.tween_property(shell, "position", Vector3(0.0, 0.08, 0.0), 0.14)
+	tw.tween_callback(shell.queue_free)
+
+
+static func _shell_mesh() -> Node3D:
+	var root := Node3D.new()
+	var hull := StandardMaterial3D.new()
+	hull.albedo_color = Color(0.62, 0.08, 0.06)
+	hull.roughness = 0.5
+	var brass := StandardMaterial3D.new()
+	brass.albedo_color = Color(0.82, 0.64, 0.3)
+	brass.metallic = 0.9
+	brass.roughness = 0.3
+	var h := MeshInstance3D.new()
+	h.mesh = _cyl(0.0105, 0.0105, 0.055)
+	h.material_override = hull
+	root.add_child(h)
+	var b := MeshInstance3D.new()
+	b.mesh = _cyl(0.0115, 0.0115, 0.014)
+	b.material_override = brass
+	b.position.y = -0.03
+	root.add_child(b)
+	return root
+
+
+func anim_length(name: String) -> float:
+	return anim.get_animation(name).length if anim and anim.has_animation(name) else 0.0
+
+
+## Holds the drawn shotgun like a long gun, after the animation: the right
+## hand pulls back so the stock sits at the shoulder (the gun keeps pointing
+## where the animation aimed it), then the left hand reaches the fore-end.
+## Two-bone IK on each arm; elbows stay on the side the animation gave them.
+## Weight fades in and out (off while loading shells).
+class ForeGripIK:
+	extends SkeletonModifier3D
+	var body: ExplorerBody
+	var weight := 0.0
+	## How far in front of the right shoulder the grip hand sits (metres).
+	const GRIP_FORWARD := 0.34
+	## Shooter's stance: the chest turns this far (radians) to bring the left shoulder forward.
+	const TWIST := -0.55
+	const GRIP_DOWN := 0.07
+
+	func _process_modification() -> void:
+		if body == null or body.gun_hand == null:
+			return
+		var want := 1.0 if body.gun_hand.visible and body.current != "Pistol_Reload" else 0.0
+		weight = move_toward(weight, want, 0.12)
+		if weight <= 0.0:
+			return
+		var sk := get_skeleton()
+		var r := [sk.find_bone("RightUpperArm"), sk.find_bone("RightLowerArm"), sk.find_bone("RightHand")]
+		var l := [sk.find_bone("LeftUpperArm"), sk.find_bone("LeftLowerArm"), sk.find_bone("LeftHand")]
+		if -1 in r or -1 in l:
+			return
+		# Where the animation points the barrel (skeleton space).
+		var hand_g: Transform3D = sk.get_bone_global_pose(r[2])
+		var gun_local: Transform3D = body.gun_hand.transform
+		var barrel := (hand_g.basis * (gun_local.basis * Vector3.UP)).normalized()
+		# Bladed stance: turn the chest (half each on Chest and UpperChest) about the up axis.
+		for nm in ["Chest", "UpperChest"]:
+			var i := sk.find_bone(nm)
+			if i >= 0:
+				var parent := sk.get_bone_parent(i)
+				var pg := sk.get_bone_global_pose(parent) if parent >= 0 else Transform3D()
+				var axis := (pg.basis.inverse() * Vector3.UP).normalized()
+				sk.set_bone_pose_rotation(i, Quaternion(axis, TWIST * 0.5 * weight) * sk.get_bone_pose_rotation(i))
+		var shoulder: Vector3 = sk.get_bone_global_pose(r[0]).origin
+		var grip_target := shoulder + barrel * GRIP_FORWARD + Vector3.DOWN * GRIP_DOWN
+		_reach(sk, r, hand_g.origin.lerp(grip_target - hand_g.basis * gun_local.origin, weight))
+		# Keep the hand (and so the gun) turned the way the animation had it.
+		_set_global_basis(sk, r[2], hand_g.basis)
+		# Left hand to the fore-end, wherever the gun now is.
+		var grip: Node3D = body.gun_hand.get_node("Pump/ForeGrip")
+		var fore: Vector3 = sk.get_bone_global_pose(r[2]) * (gun_local * ((grip.get_parent() as Node3D).transform * grip.position))
+		var lh: Vector3 = sk.get_bone_global_pose(l[2]).origin
+		_reach(sk, l, lh.lerp(fore, weight))
+
+	## Two-bone IK: bones [upper, lower, end] so `end` reaches `target`.
+	func _reach(sk: Skeleton3D, b: Array, target: Vector3) -> void:
+		var a: Vector3 = sk.get_bone_global_pose(b[0]).origin
+		var e: Vector3 = sk.get_bone_global_pose(b[1]).origin
+		var c: Vector3 = sk.get_bone_global_pose(b[2]).origin
+		var l1 := a.distance_to(e)
+		var l2 := e.distance_to(c)
+		var to := target - a
+		var d := clampf(to.length(), 0.05, l1 + l2 - 0.001)
+		var dir := to.normalized()
+		var pole := (e - a) - dir * (e - a).dot(dir)
+		if pole.length_squared() < 1e-6:
+			pole = Vector3.DOWN
+		pole = pole.normalized()
+		var cos_a := clampf((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0)
+		var elbow := a + dir * (cos_a * l1) + pole * (sqrt(1.0 - cos_a * cos_a) * l1)
+		_aim_bone(sk, b[0], e - a, elbow - a)
+		_aim_bone(sk, b[1], sk.get_bone_global_pose(b[2]).origin - sk.get_bone_global_pose(b[1]).origin, a + dir * d - elbow)
+
+	func _set_global_basis(sk: Skeleton3D, i: int, basis: Basis) -> void:
+		var parent := sk.get_bone_parent(i)
+		var pg := sk.get_bone_global_pose(parent) if parent >= 0 else Transform3D()
+		sk.set_bone_pose_rotation(i, (pg.basis.orthonormalized().inverse() * basis.orthonormalized()).get_rotation_quaternion())
+
+	## Turns a bone so its child, now along `from`, lies along `to` (skeleton space).
+	func _aim_bone(sk: Skeleton3D, i: int, from: Vector3, to: Vector3) -> void:
+		if from.length_squared() < 1e-8 or to.length_squared() < 1e-8:
+			return
+		var q := Quaternion(from.normalized(), to.normalized())
+		var g := sk.get_bone_global_pose(i)
+		var parent := sk.get_bone_parent(i)
+		var pg := sk.get_bone_global_pose(parent) if parent >= 0 else Transform3D()
+		var new_basis := Basis(q) * g.basis
+		sk.set_bone_pose_rotation(i, (pg.basis.inverse() * new_basis).get_rotation_quaternion())
 
 
 ## Leans the upper body to aim up or down (SkeletonModifier3D, after the animation).

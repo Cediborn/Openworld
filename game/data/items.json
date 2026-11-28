@@ -1,5 +1,5 @@
 {
-  "_comment": "Everything the explorer can carry. kind: potion (heal = hit points), material, quest (cannot be sold), key, collectible, trophy, weapon (damage = sword multiplier, glow = blade colour), armor (armor = damage taken multiplier, frost/fire = extra multiplier against that element and for fire also lava). value = coins a merchant pays; price = coins to buy. firearm = the flintlock pistol (see game_config.json firearm); ammo = pistol shot; food heals like a small potion and can be eaten from the inventory. food heals like a weaker potion (eaten with H once potions are gone). outfit = clothes for the explorer, always carried; equip one to wear it.",
+  "_comment": "Everything the explorer can carry. kind: potion (heal = hit points), material, quest (cannot be sold), key, collectible, trophy, weapon (damage = sword multiplier, glow = blade colour), armor (armor = damage taken multiplier, frost/fire = extra multiplier against that element and for fire also lava). value = coins a merchant pays; price = coins to buy. firearm = the pump-action shotgun (see game_config.json firearm); ammo = shotgun shells; food heals like a small potion and can be eaten from the inventory. food heals like a weaker potion (eaten with H once potions are gone). outfit = clothes for the explorer, always carried; equip one to wear it.",
   "items": {
     "potion": {
       "name": "Healing Draught",
@@ -385,18 +385,18 @@
       "value": 0,
       "desc": "Its needle twitches toward places you haven't found yet. Undiscovered places show on your map."
     },
-    "flintlock": {
-      "name": "Flintlock Pistol",
+    "shotgun": {
+      "name": "Pump-Action Shotgun",
       "kind": "firearm",
       "value": 0,
-      "desc": "A walnut-stocked flintlock with a browned iron barrel. One ball per load. G to draw or holster, right mouse to aim, left click to fire, R to reload."
+      "desc": "A six-shot pump-action shotgun: blued steel, walnut fore-end and stock. Each shell throws a spread of pellets, hardest-hitting up close. G to draw or put it on your back, right mouse to aim, left click to fire (the pump racks the next shell), R to load shells one at a time."
     },
-    "pistol_shot": {
-      "name": "Pistol Shot",
+    "shotgun_shell": {
+      "name": "Shotgun Shells",
       "kind": "ammo",
-      "price": 4,
+      "price": 3,
       "value": 1,
-      "desc": "A lead ball wrapped in a paper cartridge with its measure of black powder. One per reload."
+      "desc": "Red paper-hulled buckshot shells with brass bases. One per shot; the tube holds six."
     },
     "venison": {
       "name": "Venison",
@@ -511,7 +511,7 @@
       "potion",
       "elixir",
       "iron_ore",
-      "pistol_shot"
+      "shotgun_shell"
     ],
     "travelling": [
       "elixir",
@@ -519,10 +519,10 @@
       "rare_crystal",
       "obsidian",
       "potion",
-      "pistol_shot"
+      "shotgun_shell"
     ],
     "hunter": [
-      "pistol_shot",
+      "shotgun_shell",
       "potion"
     ],
     "tavern": [

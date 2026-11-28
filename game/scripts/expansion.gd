@@ -2,7 +2,7 @@ class_name Expansion
 extends Node3D
 ## Wires the expansion into the world: your house (white stone, by the south
 ## gardens), the Church of the Mended Isle, walk-in interiors for Brickton
-## (Interiors), the flintlock and its HUD, the horse whistle, hunting drops,
+## (Interiors), the shotgun and its HUD, the horse whistle, hunting drops,
 ## resting in your own bed and the town's night lights (LightPool).
 ## world.gd calls build_landmarks() during boot (before villagers spawn, so
 ## people inside the church stand on its floor) and wire() once the rest of
@@ -79,7 +79,7 @@ func wire(w: Node) -> void:
 		church.sky = w.sky
 		if w.story:
 			church.open_text = func(c: Dictionary) -> void: w.story.open(c)
-	# The flintlock.
+	# The shotgun.
 	var gun := Firearm.new()
 	player.add_child(gun)
 	gun.setup(player, w.state, w.config.get("firearm", {}))
@@ -140,25 +140,35 @@ func set_night(amount: float) -> void:
 		fill.visible = fill.light_energy > 0.02
 
 
-## New game: the flintlock and a pouch of shot.
+## New game: the shotgun and a box of shells.
 func on_new_game() -> void:
 	_give_kit(true)
 
 
-## Loaded save: older saves get the flintlock once, with a note.
+## Loaded save: older saves get the shotgun once, with a note. A flintlock and
+## pistol shot from before are swapped for the shotgun and as many shells.
 func on_loaded() -> void:
 	_give_kit(false)
 
 
 func _give_kit(quiet: bool) -> void:
 	var state: GameState = world.state
-	if state.has_flag("got_flintlock"):
+	if state.has_flag("got_shotgun"):
 		return
-	state.set_flag("got_flintlock")
+	state.set_flag("got_shotgun")
+	var old_shot := state.count(Firearm.OLD_AMMO_ITEM)
+	var had_flintlock := state.count(Firearm.OLD_GUN_ITEM) > 0 or state.has_flag("got_flintlock")
+	state.remove_item(Firearm.OLD_GUN_ITEM, state.count(Firearm.OLD_GUN_ITEM))
+	state.remove_item(Firearm.OLD_AMMO_ITEM, old_shot)
+	var shells := old_shot if had_flintlock else int(world.config.get("firearm", {}).get("start_shells", 12))
 	state.add_item(Firearm.GUN_ITEM, 1, true)
-	state.add_item(Firearm.AMMO_ITEM, int(world.config.get("firearm", {}).get("start_shot", 12)), true)
+	if shells > 0:
+		state.add_item(Firearm.AMMO_ITEM, shells, true)
+	if player and player.gun:
+		player.gun.shells = player.gun.capacity()
 	if not quiet:
-		world.hud.show_notice("Brann the hunter sent you a flintlock pistol and 12 shots.\nS to shoot (it draws itself), right mouse to aim, R to reload, A to go back to the sword.")
+		var what := "swapped your flintlock for a pump-action shotgun (your %d shots are now shells)" % old_shot if had_flintlock else "sent you a pump-action shotgun and %d shells" % shells
+		world.hud.show_notice("Brann the hunter %s.\nS to shoot (it draws itself), right mouse to aim, R to reload, A to go back to the sword." % what)
 
 
 ## Sleeping in your own bed: until morning, fully rested, game saved.
@@ -275,8 +285,9 @@ func _update_weapon_hud() -> void:
 	if ammo_label == null or player == null or player.gun == null:
 		return
 	var gun: Firearm = player.gun
-	var state_txt := "Reloading..." if gun.reloading() else ("● Loaded" if gun.loaded else "○ Empty (R)")
-	ammo_label.text = "Flintlock   %s   Shot × %d" % [state_txt, gun.ammo()]
+	var tube := "●".repeat(gun.shells) + "○".repeat(maxi(gun.capacity() - gun.shells, 0))
+	var state_txt := "Loading..." if gun.reloading() else ("Pumping..." if gun.pumping() else ("" if gun.shells > 0 else "Empty (R)"))
+	ammo_label.text = "Shotgun   %s  %s   Shells × %d" % [tube, state_txt, gun.ammo()]
 
 
 # ---------- Lights and ambience ----------

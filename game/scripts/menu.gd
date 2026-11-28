@@ -361,9 +361,9 @@ func _slider(parent: Container, label: String, key: String, lo: float, hi: float
 ## Read-only key and touch reference (remapping isn't supported yet).
 func _controls_reference(parent: Container) -> void:
 	var pc := [["Move", "Arrow keys"], ["Sprint", "W (or Shift)"], ["Walk slowly", "Ctrl"], ["Jump", "Space"],
-		["Sword attack", "A (or left mouse)"], ["Shoot the pistol", "S"], ["Defend (block)", "Hold D"],
-		["Aim the pistol", "Right mouse"], ["Dodge roll", "Q"], ["Interact, talk", "E"], ["Drink a potion", "H"],
-		["Draw or put away the pistol", "G"], ["Reload", "R"], ["Whistle for your horse", "T"], ["Journal", "J"], ["Pause", "Esc / P"]]
+		["Sword attack", "A (or left mouse)"], ["Shoot the shotgun", "S"], ["Defend (block)", "Hold D"],
+		["Aim the shotgun", "Right mouse"], ["Dodge roll", "Q"], ["Interact, talk", "E"], ["Drink a potion", "H"],
+		["Draw or put away the shotgun", "G"], ["Load shells", "R"], ["Whistle for your horse", "T"], ["Journal", "J"], ["Pause", "Esc / P"]]
 	var touch := [["Move", "Left thumb stick"], ["Look", "Drag the right side"], ["Attack, block, dodge", "Bottom-right buttons"],
 		["Interact", "Tap the prompt"], ["Journal, pause", "Top-right buttons"]]
 	for group in [["Keyboard and mouse", pc], ["Touch", touch]]:

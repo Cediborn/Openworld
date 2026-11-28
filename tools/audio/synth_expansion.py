@@ -3,9 +3,10 @@
 tavern and church (no recordings, no downloads). Author: Claude (Openworld).
 
 sfx/ (game/assets/audio/sfx):
-  flintlock_shot    pan flash, then the boom and its echo off the hills
-  flintlock_reload  paper tear, powder pour, ramrod strokes, cock of the hammer
-  flintlock_click   flint on frizzen with no charge (out of shot)
+  shotgun_shot      sharp muzzle crack, heavy low boom, echo off the hills
+  shotgun_pump      fore-end racked back and forward: two metal clacks and a slide
+  shotgun_shell     one shell thumbed into the magazine tube
+  shotgun_click     dry trigger click on an empty chamber
   whistle           two-finger whistle, rising then falling
   horse_whinny      a horse answering from a distance
   door              heavy wooden door: latch, creak, thud
@@ -17,7 +18,9 @@ ambience/ (game/assets/audio/ambience), seamless loops:
   church            hushed nave: air, distant footsteps, a cough, candle hiss
   fire              hearth crackle (fireplaces, forge)
 
-Run from the repo root: python3 tools/audio/synth_expansion.py  (needs numpy, scipy, ffmpeg)
+Run from the repo root: python3 tools/audio/synth_expansion.py [name ...]  (needs numpy, scipy, ffmpeg)
+With names, only those sounds are written (each sound has its own random seed,
+so rebuilding one never changes another).
 """
 import pathlib
 import subprocess
@@ -89,43 +92,50 @@ def crackle(d, rate, loud=1.0):
     return x
 
 
-def flintlock_shot():
-    d = 2.6
+def shotgun_shot():
+    d = 2.4
     x = np.zeros(int(d * SR))
-    # Flint strikes the frizzen, the pan flashes (a hiss) ...
-    place(x, bp(noise(0.02), 2500, 8000) * np.exp(-t(0.02) * 200) * 0.5, 0.0)
-    place(x, bp(noise(0.06), 1500, 6000) * np.exp(-t(0.06) * 50) * 0.35, 0.012)
-    # ... then the main charge: a sharp crack and a deep boom.
-    crack = bp(noise(0.08), 800, 9000) * np.exp(-t(0.08) * 60)
-    boom = lp(noise(0.9), 400) * np.exp(-t(0.9) * 6.5) * 3.0 + np.sin(2 * np.pi * 55 * t(0.9)) * np.exp(-t(0.9) * 9) * 0.8
-    place(x, crack, 0.055)
-    place(x, boom, 0.055)
-    # Rolling echo off the hills.
-    for k, (delay, g) in enumerate([(0.32, 0.28), (0.61, 0.17), (0.95, 0.1)]):
-        place(x, lp(boom, 600 - k * 120) * g, 0.055 + delay)
+    # A hard, wide crack (many pellets and a big powder charge) ...
+    crack = bp(noise(0.06), 600, 9500) * np.exp(-t(0.06) * 75) * 1.4
+    # ... a heavy chest-thump boom, lower and longer than a pistol ...
+    boom = lp(noise(1.0), 320) * np.exp(-t(1.0) * 5.5) * 3.4 + np.sin(2 * np.pi * 46 * t(1.0)) * np.exp(-t(1.0) * 7) * 1.1
+    place(x, crack, 0.0)
+    place(x, boom, 0.0)
+    # ... and the rolling echo off the hills.
+    for k, (delay, g) in enumerate([(0.29, 0.3), (0.58, 0.18), (0.9, 0.1)]):
+        place(x, lp(boom, 520 - k * 110) * g, delay)
     return x
 
 
-def flintlock_reload():
-    d = 2.0
+def _clack(d, lo, hi, decay, ring_hz, ring=0.35):
+    """Steel on steel: a band of noise and a short metallic ring."""
+    return bp(noise(d), lo, hi) * np.exp(-t(d) * decay) + ring * np.sin(2 * np.pi * ring_hz * t(d)) * np.exp(-t(d) * decay * 1.4)
+
+
+def shotgun_pump():
+    d = 0.55
     x = np.zeros(int(d * SR))
-    place(x, bp(noise(0.12), 1500, 6000) * np.exp(-t(0.12) * 20) * 0.5, 0.1)          # tear the cartridge
-    pour = bp(noise(0.35), 3000, 9000) * np.sin(np.linspace(0, np.pi, int(0.35 * SR))) * 0.25
-    place(x, pour, 0.3)                                                               # powder
-    for k in range(3):                                                               # ramrod strokes
-        s = bp(noise(0.05), 600, 3000) * np.exp(-t(0.05) * 80) + 0.4 * np.sin(2 * np.pi * 900 * t(0.05)) * np.exp(-t(0.05) * 60)
-        place(x, s * 0.7, 0.75 + k * 0.3)
-    cock = bp(noise(0.03), 2000, 8000) * np.exp(-t(0.03) * 150)
-    place(x, cock, 1.75)
-    place(x, cock * 0.7, 1.82)
+    slide = bp(noise(0.09), 1500, 6000) * np.sin(np.linspace(0, np.pi, int(0.09 * SR))) * 0.25
+    place(x, slide, 0.02)                                       # fore-end slides back
+    place(x, _clack(0.06, 900, 7000, 90, 2300) * 0.9, 0.1)      # bolt hits the rear
+    place(x, bp(noise(0.03), 2500, 9000) * np.exp(-t(0.03) * 160) * 0.3, 0.13)   # spent shell flicks out
+    place(x, slide * 0.9, 0.2)                                  # forward again
+    place(x, _clack(0.07, 700, 6000, 80, 1800), 0.28)           # locks into battery
     return x
 
 
-def flintlock_click():
+def shotgun_shell():
     d = 0.3
     x = np.zeros(int(d * SR))
-    place(x, bp(noise(0.03), 2000, 9000) * np.exp(-t(0.03) * 180), 0.0)
-    place(x, bp(noise(0.02), 3000, 9000) * np.exp(-t(0.02) * 220) * 0.6, 0.05)
+    place(x, bp(noise(0.04), 1200, 5000) * np.exp(-t(0.04) * 90) * 0.4, 0.0)   # brass rim on the loading gate
+    place(x, _clack(0.05, 800, 5000, 110, 1500, 0.25) * 0.7, 0.07)            # pushed home past the spring
+    return x
+
+
+def shotgun_click():
+    d = 0.25
+    x = np.zeros(int(d * SR))
+    place(x, _clack(0.03, 2000, 9000, 180, 3100, 0.2), 0.0)
     return x
 
 
@@ -231,10 +241,25 @@ def fire(d=24.0):
     return loopable(x)
 
 
+SOUNDS = {
+    "shotgun_shot": ("sfx", shotgun_shot, {"peak": 0.97}),
+    "shotgun_pump": ("sfx", shotgun_pump, {}),
+    "shotgun_shell": ("sfx", shotgun_shell, {}),
+    "shotgun_click": ("sfx", shotgun_click, {}),
+}
+
+
 def main():
-    save("sfx", "flintlock_shot", flintlock_shot(), peak=0.95)
-    save("sfx", "flintlock_reload", flintlock_reload())
-    save("sfx", "flintlock_click", flintlock_click())
+    import sys
+    global rng
+    for name, (folder, fn, kw) in SOUNDS.items():
+        if len(sys.argv) > 1 and name not in sys.argv[1:]:
+            continue
+        rng = np.random.default_rng(sum(map(ord, name)) * 7919)   # stable per sound
+        save(folder, name, fn(), **kw)
+    if len(sys.argv) > 1:
+        return
+    rng = np.random.default_rng(1717)
     save("sfx", "whistle", whistle())
     save("sfx", "horse_whinny", horse_whinny())
     save("sfx", "door", door())

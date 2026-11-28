@@ -74,18 +74,22 @@
     "potion_heal": 45.0
   },
   "firearm": {
-    "_comment": "Flintlock pistol. damage = hit points at close range, halved by falloff_end metres. reload_time seconds per ball. spread = radians of scatter (aimed / from the hip). startle_radius: shy animals bolt; alert_radius: monsters come for you. recoil = camera kick (radians).",
-    "damage": 70.0,
-    "range": 120.0,
-    "reload_time": 2.0,
-    "fire_cooldown": 0.5,
-    "spread_aimed": 0.006,
-    "spread_hip": 0.03,
-    "falloff_start": 18.0,
-    "falloff_end": 70.0,
-    "startle_radius": 70.0,
-    "alert_radius": 35.0,
-    "recoil": 0.05,
-    "start_shot": 12
+    "_comment": "Pump-action shotgun. Each shot fires `pellets` pellets; damage = hit points per pellet up close, falling to falloff_min of that by falloff_end metres; range = how far a pellet flies. capacity = shells in the tube; reload_time = seconds per shell loaded; pump_time = seconds to rack the next shell after a shot. spread = radians of scatter per pellet (aimed / from the hip). startle_radius: shy animals bolt; alert_radius: monsters come for you. recoil = camera kick (radians). start_shells = shells in a new game.",
+    "pellets": 8,
+    "damage": 14.0,
+    "range": 45.0,
+    "capacity": 6,
+    "reload_time": 0.5,
+    "pump_time": 0.45,
+    "fire_cooldown": 0.3,
+    "spread_aimed": 0.035,
+    "spread_hip": 0.07,
+    "falloff_start": 8.0,
+    "falloff_end": 30.0,
+    "falloff_min": 0.25,
+    "startle_radius": 80.0,
+    "alert_radius": 40.0,
+    "recoil": 0.09,
+    "start_shells": 12
   }
 }

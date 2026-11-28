@@ -57,15 +57,25 @@ func _place(p: Player, x: float, z: float) -> void:
 func _firearm(p: Player) -> void:
 	var st: GameState = world.state
 	var gun: Firearm = p.gun
-	check(gun != null and gun.owned(), "new game: you own the flintlock")
-	check(st.count("pistol_shot") == 12 and gun.loaded, "new game: loaded, with 12 shots in the pouch")
+	check(gun != null and gun.owned() and st.count("flintlock") == 0, "new game: you own the shotgun (no flintlock)")
+	check(st.count("shotgun_shell") == 12 and gun.shells == gun.capacity(), "new game: tube full (%d), 12 shells in the pouch" % gun.shells)
 	await _place(p, 30, 60)
 	gun.toggle()
-	check(gun.drawn and p.body.gun_hand.visible and not p.body.gun_hip.visible, "G draws the pistol from its holster")
+	check(gun.drawn and p.body.gun_hand.visible and not p.body.gun_hip.visible, "G takes the shotgun off the back")
 	await physics(30)
 	var m := p.body.muzzle_position()
 	var hand := p.body.skeleton.global_transform * p.body.skeleton.get_bone_global_pose(p.body.skeleton.find_bone("RightHand")).origin
-	check(m.distance_to(hand) < 0.5, "the muzzle is at the explorer's hand (%.2f m)" % m.distance_to(hand))
+	check(m.distance_to(hand) < 0.9, "the muzzle is just past the explorer's hands (%.2f m)" % m.distance_to(hand))
+	# Bone poses read back outside the skeleton update don't include IK; a bone attachment does.
+	var lh_att := BoneAttachment3D.new()
+	p.body.skeleton.add_child(lh_att)
+	lh_att.bone_name = "LeftHand"
+	await physics(3)
+	await process_frame
+	var lhand := lh_att.global_position
+	lh_att.queue_free()
+	var fore: Vector3 = (p.body.gun_hand.get_node("Pump/ForeGrip") as Node3D).global_position
+	check(lhand.distance_to(fore) < 0.12, "the left hand holds the fore-end (%.2f m)" % lhand.distance_to(fore))
 	# A deer 15 m ahead of the camera.
 	var deer: Creature = null
 	var other: Creature = null
@@ -109,16 +119,21 @@ func _firearm(p: Player) -> void:
 	gun.aiming = true
 	var hit := gun.fire()
 	check(hit == deer, "the shot hits the deer")
-	check(not deer.alive(), "one ball brings the deer down (health %.0f)" % deer.health)
+	check(not deer.alive(), "one shell of buckshot brings the deer down at 15 m (health %.0f)" % deer.health)
 	check(st.count("venison") > venison0 and st.count("deer_hide") > 0, "hunting reward: venison and a deer hide")
 	check(other.state == Creature.State.FLEE and other.scared > 0.0, "the gunshot startles a deer 50 m away into flight")
-	check(not gun.loaded, "the pistol is empty after the shot")
-	check(gun.fire() == null, "it cannot fire again unloaded")
-	gun.update(1.0 / 60.0, false, false, true)
-	check(gun.reloading(), "R starts a reload (%.1f s)" % gun.reload_left)
-	for i in 150:
+	check(gun.shells == gun.capacity() - 1, "one shell used (%d in the tube)" % gun.shells)
+	check(gun.pumping() and gun.fire() == null, "it can't fire again while the pump racks the next shell")
+	for i in 40:
 		gun.update(1.0 / 60.0, false, false, false)
-	check(gun.loaded and st.count("pistol_shot") == 11, "after the reload: loaded, 11 shots left")
+	check(not gun.pumping(), "pump finished in %.2f s" % float(world.config.firearm.pump_time))
+	# Falloff: pellets hurt less far away.
+	check(gun.damage_falloff(5.0) == 1.0 and gun.damage_falloff(40.0) < 0.3, "pellets lose power with distance")
+	gun.update(1.0 / 60.0, false, false, true)
+	check(gun.reloading(), "R starts loading shells (%.1f s each)" % gun.reload_left)
+	for i in 50:
+		gun.update(1.0 / 60.0, false, false, false)
+	check(gun.shells == gun.capacity() and st.count("shotgun_shell") == 11, "after loading: tube full, 11 shells left")
 	# Monsters hear it.
 	var troll: Creature = null
 	for c in get_nodes_in_group("creatures"):
@@ -134,24 +149,26 @@ func _firearm(p: Player) -> void:
 		check(troll.state in [Creature.State.ROAR, Creature.State.CHASE], "a monster 20 m away hears the shot and comes (state %d)" % troll.state)
 		troll.global_position = troll.home
 		troll.state = Creature.State.RETURN
-	# Out of shot.
-	st.remove_item("pistol_shot", st.count("pistol_shot"))
+	# Out of shells.
+	for i in 40:
+		gun.update(1.0 / 60.0, false, false, false)
+	st.remove_item("shotgun_shell", st.count("shotgun_shell"))
 	gun.loaded = false
 	var msgs: Array[String] = []
 	gun.message.connect(func(t: String) -> void: msgs.append(t))
 	gun.cooldown = 0.0
 	gun.update(1.0 / 60.0, true, false, false)
-	check(msgs.any(func(t: String) -> bool: return t.begins_with("Out of shot")), "firing with no shot says you're out")
-	# The sword still works once the pistol is holstered.
+	check(msgs.any(func(t: String) -> bool: return t.begins_with("Out of shells")), "firing with no shells says you're out")
+	# The sword still works once the shotgun is on the back.
 	gun.toggle()
-	check(not gun.drawn and p.body.gun_hip.visible, "G holsters the pistol")
+	check(not gun.drawn and p.body.gun_hip.visible, "G puts the shotgun on the back")
 	await physics(40)
 	p.attack_pressed = true
 	await physics(3)
 	check(p.swing >= 0, "the sword swings again after holstering (floor %s, busy %s %s)" % [p.is_on_floor(), p.body.busy(), p.body.current])
 	await physics(60)
-	st.add_item("pistol_shot", 12, true)
-	check(st.shops.get("hunter", []).has("pistol_shot") and st.shops.merchant.has("pistol_shot"), "shot is for sale (Brann, Tilly, Hale)")
+	st.add_item("shotgun_shell", 12, true)
+	check(st.shops.get("hunter", []).has("shotgun_shell") and st.shops.merchant.has("shotgun_shell"), "shells are for sale (Brann, Tilly, Hale)")
 
 
 func _buildings(p: Player) -> void:
@@ -326,10 +343,20 @@ func _save_compat(p: Player) -> void:
 	await physics(10)
 	check(st.coins == 345 and st.level == 4 and st.count("frost_coat") == 1 and st.armor == "frost_coat", "an old save keeps coins, level, items and armour")
 	check(st.has_flag("some_flag"), "and its world flags")
-	check(st.count("flintlock") == 1 and st.count("pistol_shot") == 12, "it gains the flintlock and 12 shots once")
+	check(st.count("shotgun") == 1 and st.count("shotgun_shell") == 12, "it gains the shotgun and 12 shells once")
 	world.save_game()
 	world._continue_game()
 	await physics(5)
-	check(st.count("pistol_shot") == 12, "not twice")
+	check(st.count("shotgun_shell") == 12, "not twice")
+	# A save from the flintlock days: the pistol and its shot become the shotgun and as many shells.
+	var flint := old.duplicate(true)
+	flint.progress.items["flintlock"] = 1
+	flint.progress.items["pistol_shot"] = 7
+	flint.progress.flags["got_flintlock"] = true
+	SaveGame.save(world.current_slot, flint, {"name": "Flintlock save"})
+	world._continue_game()
+	await physics(5)
+	check(st.count("flintlock") == 0 and st.count("pistol_shot") == 0 and st.count("shotgun") == 1 and st.count("shotgun_shell") == 7,
+		"a flintlock save swaps the pistol and 7 shots for the shotgun and 7 shells")
 	var white: Horse = world.stable.owned()
 	check(not world.data.is_lava(white.global_position.x, white.global_position.z), "its white horse is out of the lava")

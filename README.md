@@ -41,9 +41,9 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 | Gallop (on a horse) | W (or Shift) | Orange button |
 | Dialogue choices | 1, 2, 3 or click | Tap |
 | Journal (quests, people, discoveries, lore, notes, inventory, map) | J | Book button (top right) |
-| Draw / holster the flintlock | G | Pistol button (right side) |
-| Shoot the flintlock | S (draws it if holstered); hold right mouse to aim | Pistol drawn: red button fires (auto-aim at the crosshair) |
-| Reload | R (or fire when empty) | Reload button (while drawn) |
+| Draw the shotgun / sling it on your back | G | Gun button (right side) |
+| Shoot the shotgun (the pump racks the next shell) | S (draws it if slung); hold right mouse to aim | Gun drawn: red button fires (auto-aim at the crosshair) |
+| Load shells, one at a time (firing stops loading) | R (or fire when empty) | Reload button (while drawn) |
 | Whistle for your horse | T | Horseshoe button (right side) |
 | Open / close a door | E at the door | Tap the prompt |
 | Sleep until morning (your house) | E at your bed | Tap the prompt |
@@ -58,6 +58,9 @@ A full day lasts 16 real minutes (`game/data/game_config.json`). The clock is to
 - **Yellow "!"** floats over anyone (or anything, like the contract board or a found map) with a mission for you, and stays visible through buildings and from far away. A blue "?" means someone to report back to.
 - **Exploring**: 22 named places (some hidden), 12 treasures (chests, buried caches that need their map, a locked cellar, guarded hoards), 6 shrines with different puzzles, 4 rare bosses with unique weapons, random world events (raids, a travelling merchant, rare creatures, eruptions, travellers in need).
 - **Progress**: coins, experience and levels, Brickton reputation, weapons and armour (frost and fire resistance), blacksmith upgrades. Everything saves.
+- **Outfits**: the explorer's field clothes, or a long white open-front coat with silver trim, dark shirt and trousers, a wide sash and high boots. Change in Journal > Inventory > Armour ("Wear"); it's saved.
+- **Shotgun**: a six-shot pump-action shotgun. Each shell throws a spread of pellets (deadly up close, weak far away); the pump racks the next shell after every shot and spent hulls fly out; R loads shells one at a time. Buy shells from Tilly, Hale or Brann. Saves from the flintlock days get the shotgun and as many shells as they had shots.
+- **Quest offers**: Accept, Later (it stays on offer) or Deny (no more "!"; talk to them again or use "Reconsider and accept" in the journal).
 - **Save slots**: every New Game is its own adventure in its own slot; Continue picks up the one you played last, Load Game lists them all (name, level, region, time played, when saved) and lets you rename or delete them. The game saves itself every 30 seconds, at quest steps, when you pause, sleep or quit, and writes each save crash-safely (a damaged save falls back to the previous one). Saves from before slots existed appear as "Adventure 1"; the old file is left as it was.
 - **Menus**: a medieval look throughout (Cinzel and Alegreya fonts, gold-framed panels, a parchment journal with People, Discoveries, Lore and Notes pages, a sepia map you can drag and zoom). Settings has Display, Graphics, Audio, Gameplay, Controls and Accessibility pages (text size, reduced motion) with Apply, Cancel and Reset.
 
@@ -72,6 +75,9 @@ Design notes: `design/gdd/chapter-one.md`. Content is generated from `tools/cont
 - Phones render at a lower resolution that rises or falls to keep the frame rate steady.
 - `tools/fetch_vendor.py` + `tools/asset_manifest.json`: the **Fetch assets** workflow downloads the CC0 assets and stores them on the `assets` branch; builds copy them in.
 - Combat animations for the explorer are authored on his skeleton by `tools/bake_anims.gd` (swings, guard, block, hit, death, talking); monsters animate procedurally with per-species attack moves (`data/creatures.json`).
+- People are assembled from CC0 kits on one skeleton (`scripts/explorer_body.gd`): Quaternius modular outfits dyed per person (`shaders/spatial_char_kit.gdshader`), the base body's head reshaped six ways, six skin tones, hairstyles, brows and beards; the white coat and aprons are skinned cloth made in code. Sources and licences: `game/assets/character/ASSETS.md`.
+- The shotgun is modelled in code (`ExplorerBody._shotgun_mesh`); a two-bone IK puts the stock at the shoulder and the left hand on the pump. Gun sounds: `tools/audio/synth_expansion.py`.
+- Creatures are built by `tools/creatures/*.py` (signed-distance modelling: soft primitives, rounded boxes, glossy eyes) into skinned `.glb` files.
 - `.github/workflows/build.yml`: runs the world, combat and full-playthrough tests and builds Windows and Android on every push.
 - `.claude/`, `CLAUDE.md`, `project.yaml`: the [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) template (MIT, see `LICENSE-claude-code-game-studios`).
 - `.claude/skills/` also holds the Godot skills from [GodotPrompter](https://github.com/jame581/godotprompter) (MIT, see `LICENSE-godotprompter`).
@@ -79,4 +85,5 @@ Design notes: `design/gdd/chapter-one.md`. Content is generated from `tools/cont
 ## Credits (all CC0)
 
 - Explorer body and animations: Quaternius (Universal Base Characters, Universal Animation Library), via the Quaternius_IK_Rigged pack by jamesonBradfield.
+- Clothes, hairstyles, brows and beards: Quaternius (Modular Character Outfits - Fantasy, Universal Base Characters) [Standard releases]. See `game/assets/character/ASSETS.md`.
 - Textures, rocks and plants: Poly Haven (see `tools/asset_manifest.json`).

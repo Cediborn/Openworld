@@ -87,7 +87,13 @@ jobs:
           ~/godot/godot --headless --path . -s res://tests/integration/combat_test.gd
           ~/godot/godot --headless --path . -s res://tests/integration/sword_test.gd
 
-      - name: Run expansion tests (ground contact, horse whistle and lava rescue, flintlock, buildings, church, phone mode)
+      - name: Run character and dialogue tests (faces, outfits, the white coat, Accept / Later / Deny)
+        working-directory: game
+        run: |
+          ~/godot/godot --headless --path . -s res://tests/integration/characters_test.gd
+          ~/godot/godot --headless --path . -s res://tests/integration/dialogue_choices_test.gd
+
+      - name: Run expansion tests (ground contact, horse whistle and lava rescue, shotgun, buildings, church, phone mode)
         working-directory: game
         timeout-minutes: 30
         run: |

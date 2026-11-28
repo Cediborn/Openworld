@@ -47,7 +47,7 @@ var attack_pressed := false   # set by the touch attack button
 var dodge_pressed := false    # set by the touch dodge button
 var block_held := false       # set by the touch block button
 var potion_pressed := false   # set by the touch potion button
-var gun_toggle_pressed := false  # G / touch pistol button: draw or holster the flintlock
+var gun_toggle_pressed := false  # G / touch gun button: draw or holster the shotgun
 var reload_pressed := false      # R / touch reload button
 var aim_held := false            # touch: hold to aim (PC: right mouse while the pistol is drawn)
 var whistle_pressed := false     # T / touch horse button: whistle for your horse
@@ -56,7 +56,7 @@ var whistle_pressed := false     # T / touch horse button: whistle for your hors
 var sword_key_pressed := false
 var shoot_key_pressed := false
 var _shot_queued := 0.0          # S with the pistol holstered: draw it, then fire
-## The flintlock pistol (see Firearm); null until the world sets it up.
+## The pump-action shotgun (see Firearm); null until the world sets it up.
 var gun: Firearm
 ## Emitted when the explorer whistles for a horse.
 signal whistled
